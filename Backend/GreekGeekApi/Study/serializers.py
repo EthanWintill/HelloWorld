@@ -1,7 +1,9 @@
 from django.contrib.auth.models import Group, User
 from rest_framework import serializers
-from .models import Word
+#from .models import Word
 
+
+"""
 class WordSerializer(serializers.ModelSerializer):
     class Meta:
         model = Word
@@ -17,3 +19,5 @@ class GroupSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Group
         fields = ['url', 'name']
+
+"""

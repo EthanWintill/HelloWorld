@@ -5,9 +5,9 @@ services:
     image: postgres
     restart: always
     environment:
+      POSTGRES_DB: "greekdb"
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "postgres"
-      POSTGRES_DB: "greekdb"
     ports:
       - "5432:5432"
   adminer:
