@@ -37,7 +37,7 @@ class UserManager(BaseUserManager):
         
 # User Model
 class User(AbstractBaseUser):
-    org = models.ForeignKey(Org, on_delete=models.CASCADE, related_name="users", null=True)
+    org = models.ForeignKey(Org, on_delete=models.CASCADE, related_name="users", null=True, blank=True)
     first_name = models.CharField(max_length=255, default='Jon')
     last_name = models.CharField(max_length=255, default='Doe')
     is_staff = models.BooleanField(default=False)
@@ -45,9 +45,9 @@ class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=255)  # Store hashed password
     phone_number = models.CharField(max_length=20, blank=True, null=True)  # Optional phone number
-    group_id = models.IntegerField(null=True)  # Assuming this is a separate group identifier
+    group_id = models.IntegerField(null=True, blank=True)  # Assuming this is a separate group identifier
     live = models.BooleanField(default=False)
-    last_location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True, related_name="users")
+    last_location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
 
     USERNAME_FIELD = 'email'
 
