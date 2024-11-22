@@ -1,6 +1,66 @@
 from django.test import TestCase
 from .models import Org, User, Group, Location, Session
 
+class SignupTestCase(TestCase):
+    def setUp(self):
+        self.signup_url = '/api/signup/'
+        self.valid_payload = {
+            'email': 'test@example.com',
+            'password': 'testpass123',
+            'first_name': 'Test',
+            'last_name': 'User',
+            'phone_number': '1234567890'
+        }
+
+    def test_valid_signup(self):
+        response = self.client.post(
+            self.signup_url,
+            data=self.valid_payload,
+            format='json'
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.get().email, 'test@example.com')
+
+    def test_invalid_email_signup(self):
+        invalid_payload = self.valid_payload.copy()
+        invalid_payload['email'] = 'invalid-email'
+        response = self.client.post(
+            self.signup_url,
+            data=invalid_payload,
+            format='json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(User.objects.count(), 0)
+
+    def test_duplicate_email_signup(self):
+        # Create first user
+        self.client.post(
+            self.signup_url,
+            data=self.valid_payload,
+            format='json'
+        )
+        # Try to create second user with same email
+        response = self.client.post(
+            self.signup_url,
+            data=self.valid_payload,
+            format='json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_missing_required_fields(self):
+        invalid_payload = {
+            'email': 'test@example.com'
+        }
+        response = self.client.post(
+            self.signup_url,
+            data=invalid_payload,
+            format='json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(User.objects.count(), 0)
+
 class OrganizationTestCase(TestCase):
     
     def setUp(self):
@@ -18,7 +78,7 @@ class OrganizationTestCase(TestCase):
             org=self.org,
             first_name="John",
             last_name="Doe",
-            admin=True,
+            is_staff=True,
             email="john.doe@example.com",
             password="hashedpassword123",  # This should be hashed password in a real use case
             group_id=1,
@@ -30,7 +90,7 @@ class OrganizationTestCase(TestCase):
             org=self.org,
             first_name="Jane",
             last_name="Smith",
-            admin=False,
+            is_staff=False,
             email="jane.smith@example.com",
             password="hashedpassword456",
             group_id=2,
@@ -42,7 +102,7 @@ class OrganizationTestCase(TestCase):
             org=self.org,
             first_name="Alice",
             last_name="Johnson",
-            admin=False,
+            is_staff=False,
             email="alice.johnson@example.com",
             password="hashedpassword789",
             group_id=3,

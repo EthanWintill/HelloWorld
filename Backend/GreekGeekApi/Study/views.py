@@ -1,12 +1,26 @@
 from django.contrib.auth.models import Group, User
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, viewsets, status
 
-from tutorial.quickstart.serializers import GroupSerializer, UserSerializer
+from .serializers import UserSerializer
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-#from .models import Word
-#from .serializers import WordSerializer
+
+from rest_framework.views import APIView
+from rest_framework.generics import CreateAPIView
+
+from rest_framework.authtoken.models import Token
+
+from rest_framework.permissions import AllowAny, IsAuthenticated
+
+from rest_framework_simplejwt.views import TokenObtainPairView
+
+class Signup(CreateAPIView):
+    permission_classes = (AllowAny,)
+    serializer_class = UserSerializer
+
+    
+
 
 
 """
