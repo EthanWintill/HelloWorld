@@ -9,6 +9,9 @@ class Org(models.Model):
     study_req = models.FloatField()
     study_goal = models.FloatField()
 
+    class Meta:
+        ordering = ['id']
+
     def __str__(self):
         return self.name
 
