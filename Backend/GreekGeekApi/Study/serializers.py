@@ -1,7 +1,7 @@
 
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User
+from .models import User, Org
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -10,18 +10,27 @@ class UserSerializer(serializers.ModelSerializer):
         validators=[UniqueValidator(queryset=User.objects.all())]
     )
     password = serializers.CharField(min_length=8, write_only=True, required=True)
+    registration_code = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = User
-        fields = ('email', 'password', 'first_name', 'last_name', 'phone_number')
+        fields = ('email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code')
 
     def create(self, validated_data):
+        registration_code = validated_data.pop('registration_code')
+        try:
+            org = Org.objects.get(reg_code=registration_code)  # Assuming Org has a field `code`
+        except Org.DoesNotExist:
+            raise serializers.ValidationError("Invalid registration code.")
+        
+
         user = User.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
             phone_number=validated_data.get('phone_number', ''),
+            org = org
         )
         return user
 
@@ -36,6 +45,14 @@ class UserSerializer(serializers.ModelSerializer):
         
         instance.save()
         return instance
+    
+class UpdateUserSerializer(UserSerializer):
+    email = serializers.EmailField(
+        required=False,
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
+    password = serializers.CharField(min_length=8, write_only=True, required=False)
+    registration_code = serializers.CharField(write_only=True, required=False)
 
 
 

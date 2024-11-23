@@ -1,8 +1,7 @@
 
 from rest_framework import permissions, viewsets, status
 
-from .serializers import UserSerializer
-
+from .serializers import UserSerializer, UpdateUserSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
@@ -22,18 +21,8 @@ from django.http import Http404
 class Signup(CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSerializer
+    queryset = User.objects.all()
 
-class IsAdminOrSelf(BasePermission):
-    """
-    Custom permission to only allow users to edit their own profile or admin to edit any
-    """
-    def has_object_permission(self, request, view, obj):
-        # Admin permissions
-        if request.user.is_staff:
-            return True
-            
-        # Instance must be the user themselves
-        return obj == request.user
 
 class UserDetail(APIView):
     permission_classes = (IsAuthenticated,)
@@ -63,7 +52,7 @@ class UserDetail(APIView):
         if not self.staff_or_same_user(current_user, user):
             return Response({"detail": "Can only update your user info."}, 
                           status=status.HTTP_403_FORBIDDEN)
-        serializer = UserSerializer(user, data=request.data)
+        serializer = UpdateUserSerializer(user, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -87,35 +76,3 @@ class UserDetail(APIView):
 
     
 
-
-
-"""
-@api_view(['GET'])
-def get_words(request):
-    words = Word.objects.all()
-    serializer = WordSerializer(words, many=True)
-    return Response(serializer.data)
-
-@api_view(['POST'])
-def create_word(request):
-    word = request.data
-    serializer = WordSerializer(data=word)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=201)
-    return Response(serializer.errors, status=400)
-    
-
-class UserViewSet(viewsets.ModelViewSet):
-   
-    queryset = User.objects.all().order_by('-date_joined')
-    serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-
-class GroupViewSet(viewsets.ModelViewSet):
-  
-    queryset = Group.objects.all().order_by('name')
-    serializer_class = GroupSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    """
