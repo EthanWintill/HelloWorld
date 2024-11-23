@@ -4,6 +4,17 @@ from rest_framework.validators import UniqueValidator
 from .models import User, Org
 
 
+class OrgSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Org
+        fields = '__all__'
+
+class UpdateOrgSerializer(OrgSerializer):
+    name = serializers.CharField(required=False)
+    reg_code = serializers.CharField(required=False)
+    school = serializers.CharField(required=False)
+    study_req = serializers.FloatField(required=False)
+    study_goal = serializers.FloatField(required=False)
 class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
         required=True,
