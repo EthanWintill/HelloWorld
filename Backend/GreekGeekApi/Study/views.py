@@ -1,27 +1,42 @@
 
 from rest_framework import permissions, viewsets, status
 
-from .serializers import UserSerializer, UpdateUserSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
 from rest_framework.views import APIView
-from rest_framework.generics import CreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import CreateAPIView, ListCreateAPIView, ListAPIView, DestroyAPIView, UpdateAPIView, RetrieveUpdateDestroyAPIView
 
 from rest_framework.authtoken.models import Token
 
-from rest_framework.permissions import AllowAny, IsAuthenticated, DjangoModelPermissions, BasePermission
+from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import User
+from .models import User, Org
 
 from django.http import Http404
+
+class IsSuperUser(BasePermission):
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_superuser)
 
 class Signup(CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSerializer
     queryset = User.objects.all()
+
+class ListOrgs(ListCreateAPIView):
+    permission_classes = (IsSuperUser,)
+    serializer_class = OrgSerializer
+    queryset = Org.objects.all()
+
+class OrgDetail(RetrieveUpdateDestroyAPIView):
+    permission_classes = (IsSuperUser,)
+    serializer_class = UpdateOrgSerializer
+    queryset = Org.objects.all()
 
 
 class UserDetail(APIView):

@@ -3,6 +3,84 @@ from .models import Org, User, Group, Location, Session
 from rest_framework import status
 from rest_framework.test import APIClient
 from django.urls import reverse
+
+class OrgCrudTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.orgs_url = '/api/orgs/'
+        
+        # Create superuser
+        self.superuser = User.objects.create_superuser(
+            email="super@example.com",
+            password="password123"
+        )
+        
+        # Create regular user
+        self.regular_user = User.objects.create_user(
+            email="regular@example.com", 
+            password="password123"
+        )
+        
+        # Create test org data
+        self.org_data = {
+            "name": "Test Organization",
+            "reg_code": "12345",
+            "school": "Test School",
+            "study_req": 10.0,
+            "study_goal": 20.0
+        }
+        
+        # Create an org for update/delete tests
+        self.org = Org.objects.create(**self.org_data)
+        
+    def test_create_org_as_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.post(self.orgs_url, self.org_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Org.objects.count(), 2)
+        
+    def test_create_org_as_regular_user(self):
+        self.client.force_authenticate(user=self.regular_user)
+        response = self.client.post(self.orgs_url, self.org_data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+    def test_list_orgs_as_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get(self.orgs_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        
+    def test_list_orgs_as_regular_user(self):
+        self.client.force_authenticate(user=self.regular_user)
+        response = self.client.get(self.orgs_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+    def test_update_org_as_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        update_data = {"name": "Updated Org Name"}
+        response = self.client.patch(f'/api/org/{self.org.id}/', update_data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.org.refresh_from_db()
+        self.assertEqual(self.org.name, "Updated Org Name")
+        
+    def test_update_org_as_regular_user(self):
+        self.client.force_authenticate(user=self.regular_user)
+        update_data = {"name": "Updated Org Name"}
+        response = self.client.patch(f'/api/org/{self.org.id}/', update_data)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+    def test_delete_org_as_superuser(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.delete(f'/api/org/{self.org.id}/')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Org.objects.count(), 0)
+        
+    def test_delete_org_as_regular_user(self):
+        self.client.force_authenticate(user=self.regular_user)
+        response = self.client.delete(f'/api/org/{self.org.id}/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Org.objects.count(), 1)
+
 class UserDetailTestCase(TestCase):
     def setUp(self):
         self.user_detail_url = '/api/user/'
