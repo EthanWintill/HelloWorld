@@ -82,6 +82,11 @@ WSGI_APPLICATION = 'GreekGeekApi.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
 DB_USER_NM = os.getenv('DB_USER_NM')
 DB_USER_PW = os.getenv('DB_USER_PW')
 DB_HOST = os.getenv('DB_HOST')
