@@ -1,5 +1,239 @@
 from django.test import TestCase
 from .models import Org, User, Group, Location, Session
+from rest_framework import status
+from rest_framework.test import APIClient
+from django.urls import reverse
+class UserDetailTestCase(TestCase):
+    def setUp(self):
+        self.user_detail_url = '/api/user/'
+        self.token_url = '/api/token/'
+        # Create an organization
+        self.org = Org.objects.create(
+            name="Test Organization",
+            reg_code="12345",
+            school="Test School",
+            study_req=10.0,
+            study_goal=20.0
+        )
+        
+        # Create regular user and staff user
+        self.user1 = User.objects.create_user(
+            email="user1@example.com",
+            password="password123",
+            first_name="John",
+            last_name="Doe",
+            org=self.org
+        )
+        
+        self.user2 = User.objects.create_user(
+            email="user2@example.com",
+            password="password123",
+            first_name="Jane",
+            last_name="Doe",
+            org=self.org
+        )
+        
+        self.staff_user = User.objects.create_user(
+            email="staffuser@example.com",
+            password='password123',
+            first_name="Admin",
+            last_name="User",
+            is_staff=True,
+            org=self.org
+        )
+        
+        self.other_org = Org.objects.create(
+            name="Other Organization",
+            reg_code="54321",
+            school="Other School",
+            study_req=10.0,
+            study_goal=20.0
+        )
+        
+        self.user3 = User.objects.create_user(
+            email="user3@example.com",
+            password="password123",
+            first_name="Someone",
+            last_name="Else",
+            org=self.other_org
+        )
+        
+        # API client to simulate requests
+        self.client = APIClient()
+    
+    def get_token(self, user):
+        """Helper function to get JWT token for a user."""
+        url = self.token_url
+        response = self.client.post(url, {'email': user.email, 'password': 'password123'})
+        return response.data['access']
+
+    def test_get_user_details_as_owner(self):
+        """Test: Regular user should be able to view their own details."""
+        token = self.get_token(self.user1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')  # Set the token in the header
+        url = reverse('user-detail', args=[self.user1.id])  # Use reverse to construct the URL
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], self.user1.email)
+    
+    def test_get_user_details_as_staff_in_same_org(self):
+        """Test: Staff user should be able to view another user’s details in the same organization."""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user1.id])  # Use reverse here
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], self.user1.email)
+    
+    def test_get_user_details_as_staff_in_different_org(self):
+        """Test: Staff user should NOT be able to view user details in a different organization."""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user3.id])  # Use reverse here
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_get_user_details_as_non_owner_and_not_staff(self):
+        """Test: Regular user should not be able to view another user's details."""
+        token = self.get_token(self.user1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user2.id])  # Use reverse here
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_update_user_details_as_owner(self):
+        """Test: Regular user should be able to update their own details."""
+        token = self.get_token(self.user1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user1.id])  # Use reverse here
+        data = {'first_name': 'John Updated', 'last_name': 'Doe Updated'}
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user1.refresh_from_db()
+        self.assertEqual(self.user1.first_name, 'John Updated')
+
+    def test_update_user_details_as_staff_in_same_org(self):
+        """Test: Staff user should be able to update another user’s details in the same organization."""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user1.id])  # Use reverse here
+        data = {'first_name': 'John Updated By Staff'}
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user1.refresh_from_db()
+        self.assertEqual(self.user1.first_name, 'John Updated By Staff')
+
+    def test_update_user_details_as_staff_in_different_org(self):
+        """Test: Staff user should NOT be able to update user details in a different organization."""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user3.id])  # Use reverse here
+        data = {'first_name': 'Someone Updated'}
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_update_user_details_as_non_owner_and_not_staff(self):
+        """Test: Regular user should NOT be able to update another user's details."""
+        token = self.get_token(self.user1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user2.id])  # Use reverse here
+        data = {'first_name': 'Jane Updated'}
+        response = self.client.put(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_user_as_admin(self):
+        """Test: Admin user should be able to delete a user in the same organization."""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user2.id])  # Use reverse here
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(User.objects.filter(id=self.user2.id).count(), 0)
+
+    def test_delete_user_as_non_admin(self):
+        """Test: Regular user should NOT be able to delete another user."""
+        token = self.get_token(self.user1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user2.id])  # Use reverse here
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_user_as_staff_in_different_org(self):
+        """Test: Staff user should NOT be able to delete a user in a different organization."""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user3.id])  # Use reverse here
+        response = self.client.delete(url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    
+class SignupTestCase(TestCase):
+    def setUp(self):
+        self.signup_url = '/api/signup/'
+        self.valid_payload = {
+            'email': 'test@example.com',
+            'password': 'testpass123',
+            'first_name': 'Test',
+            'last_name': 'User',
+            'phone_number': '1234567890',
+            'registration_code': '12345'
+        }
+        self.org = Org.objects.create(
+            name="Test Organization",
+            reg_code="12345",
+            school="Test School",
+            study_req=10.0,
+            study_goal=20.0
+        )
+
+    def test_valid_signup(self):
+        response = self.client.post(
+            self.signup_url,
+            data=self.valid_payload,
+            format='json'
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(User.objects.count(), 1)
+        self.assertEqual(User.objects.get().email, 'test@example.com')
+
+    def test_invalid_email_signup(self):
+        invalid_payload = self.valid_payload.copy()
+        invalid_payload['email'] = 'invalid-email'
+        response = self.client.post(
+            self.signup_url,
+            data=invalid_payload,
+            format='json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(User.objects.count(), 0)
+
+    def test_duplicate_email_signup(self):
+        # Create first user
+        self.client.post(
+            self.signup_url,
+            data=self.valid_payload,
+            format='json'
+        )
+        # Try to create second user with same email
+        response = self.client.post(
+            self.signup_url,
+            data=self.valid_payload,
+            format='json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_missing_required_fields(self):
+        invalid_payload = {
+            'email': 'test@example.com'
+        }
+        response = self.client.post(
+            self.signup_url,
+            data=invalid_payload,
+            format='json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(User.objects.count(), 0)
 
 class OrganizationTestCase(TestCase):
     
@@ -18,7 +252,7 @@ class OrganizationTestCase(TestCase):
             org=self.org,
             first_name="John",
             last_name="Doe",
-            admin=True,
+            is_staff=True,
             email="john.doe@example.com",
             password="hashedpassword123",  # This should be hashed password in a real use case
             group_id=1,
@@ -30,7 +264,7 @@ class OrganizationTestCase(TestCase):
             org=self.org,
             first_name="Jane",
             last_name="Smith",
-            admin=False,
+            is_staff=False,
             email="jane.smith@example.com",
             password="hashedpassword456",
             group_id=2,
@@ -42,7 +276,7 @@ class OrganizationTestCase(TestCase):
             org=self.org,
             first_name="Alice",
             last_name="Johnson",
-            admin=False,
+            is_staff=False,
             email="alice.johnson@example.com",
             password="hashedpassword789",
             group_id=3,
