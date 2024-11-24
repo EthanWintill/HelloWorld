@@ -1,22 +1,122 @@
 
 from rest_framework import permissions, viewsets, status
 
-from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
 from rest_framework.views import APIView
-from rest_framework.generics import CreateAPIView, ListCreateAPIView, ListAPIView, DestroyAPIView, UpdateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import CreateAPIView, ListCreateAPIView, ListAPIView, DestroyAPIView, UpdateAPIView, RetrieveUpdateDestroyAPIView, RetrieveAPIView
 
 from rest_framework.authtoken.models import Token
 
-from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
+from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission, IsAdminUser
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import User, Org
+from .models import User, Org, Session, Location
 
-from django.http import Http404
+from django.http import Http404 
+from django.utils import timezone
+
+from datetime import timedelta
+
+class GetLocation(RetrieveAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UpdateLocationSerializer
+    queryset = Location.objects.all()
+
+    def get_queryset(self):
+        current_user = self.request.user
+        return Location.objects.filter(org=current_user.org)
+class ModifyLocation(UpdateAPIView, DestroyAPIView):
+    permission_classes = (IsAdminUser,)
+    serializer_class = UpdateLocationSerializer
+    queryset = Location.objects.all()
+class CreateLocation(CreateAPIView):
+    permission_classes = (IsAdminUser,)
+    serializer_class = LocationSerializer
+    queryset = Location.objects.all()
+class ListLocations(ListAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = LocationSerializer
+    queryset = Location.objects.all()
+
+    def get_queryset(self):
+        current_user = self.request.user
+        return Location.objects.filter(org=current_user.org)
+
+class ClockOut(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, format=None):
+        current_user = request.user
+        org = current_user.org
+        if not org:
+            return Response({"detail": "Must be apart of an org to clock in"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        current_time = timezone.now()
+
+        last_session = Session.objects.filter(user=current_user).last()
+        start_time = last_session.start_time
+        if last_session and not last_session.hours:
+            #good to clock out
+            hours = (current_time - start_time).total_seconds() / 3600
+            last_session.hours = hours
+            last_session.save()
+            return Response({"detail": "Successfully clocked out.",
+                        "start_time": last_session.start_time,
+                        "hours": hours}, 
+                        status=status.HTTP_200_OK)
+        else:
+            return Response({"detail": "You are not clocked in"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+class ClockIn(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, format=None):
+        current_user = request.user
+        org = current_user.org
+        if not org:
+            return Response({"detail": "Must be apart of an org to clock in"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        current_time = timezone.now()
+
+        location_id = request.data.get("location_id")
+
+        if not location_id:
+            return Response({"detail": "Location ID is required."}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            location = Location.objects.get(id=location_id)
+            if location.org != org:  # Ensure the location belongs to the user's organization
+                return Response({"detail": "Location does not belong to your organization."}, 
+                                status=status.HTTP_400_BAD_REQUEST)
+        except Location.DoesNotExist:
+            return Response({"detail": "Invalid Location ID."}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+        
+        last_session = Session.objects.filter(user=current_user).last()
+        if last_session and not last_session.hours:
+            return Response({"detail": "Already clocked in.",
+                            "start_time": last_session.start_time}, 
+                            status=status.HTTP_208_ALREADY_REPORTED)
+        
+        session = Session.objects.create(
+            start_time = current_time,
+            user = current_user,
+            org = org,
+            location = location,
+            #BEFORE PIC, AFTER PIC LATER
+        )
+
+        return Response({
+            "detail": "Successfully clocked in.",
+            "start_time": current_time,
+        }, status=status.HTTP_200_OK)
+        
+
+
 
 class IsSuperUser(BasePermission):
 

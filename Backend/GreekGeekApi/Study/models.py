@@ -76,6 +76,9 @@ class Session(models.Model):
     before_pic = models.CharField(max_length=255, blank=True, null=True)  # Optional picture URL
     after_pic = models.CharField(max_length=255, blank=True, null=True)  # Optional picture URL
 
+    class Meta:
+        ordering = ['id']
+        
     def __str__(self):
         return f"Session {self.id} by {self.user.first_name} {self.user.last_name}"
 
@@ -86,6 +89,9 @@ class Location(models.Model):
     gps_lat = models.FloatField()
     gps_long = models.FloatField()
     gps_radius = models.FloatField()  # Radius in meters
+
+    class Meta:
+        ordering = ['org']
 
     def __str__(self):
         return f"{self.name} ({self.gps_lat}, {self.gps_long})"
