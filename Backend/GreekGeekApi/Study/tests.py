@@ -4,6 +4,58 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from django.urls import reverse
 
+class ClockInClockOutTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.inUrl = '/api/clockin/'
+        self.outUrl = '/api/clockout/'
+
+        self.org = Org.objects.create(
+            name="Test Organization",
+            reg_code="12345",
+            school="Test School",
+            study_req=10.0,
+            study_goal=20.0
+        )
+
+        self.user = User.objects.create_user(
+            email="regular@example.com", 
+            password="password123",
+            org=self.org
+        )
+
+        self.location = Location.objects.create(
+            name = "Test Location Org1",
+            org = self.org,
+            gps_lat = 40.0,
+            gps_long = 75.0,
+            gps_radius = 10.0
+        )
+
+    def test_clock_in_out(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(self.inUrl, {"location_id":self.location.id})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Session.objects.count(), 1)
+
+        response = self.client.post(self.inUrl, {"location_id":self.location.id})
+        self.assertEqual(response.status_code, status.HTTP_208_ALREADY_REPORTED)
+        self.assertEqual(Session.objects.count(), 1)
+
+        response = self.client.post(self.outUrl)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Session.objects.count(), 1)
+
+        response = self.client.post(self.outUrl)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Session.objects.count(), 1)
+
+        response = self.client.post(self.inUrl, {"location_id":self.location.id})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Session.objects.count(), 2)
+
+        
 class LocationCrudTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()

@@ -19,6 +19,8 @@ from .models import User, Org, Session, Location
 from django.http import Http404 
 from django.utils import timezone
 
+from datetime import timedelta
+
 class GetLocation(RetrieveAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = UpdateLocationSerializer
@@ -44,7 +46,31 @@ class ListLocations(ListAPIView):
         current_user = self.request.user
         return Location.objects.filter(org=current_user.org)
 
+class ClockOut(APIView):
+    permission_classes = (IsAuthenticated,)
 
+    def post(self, request, format=None):
+        current_user = request.user
+        org = current_user.org
+        if not org:
+            return Response({"detail": "Must be apart of an org to clock in"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+        current_time = timezone.now()
+
+        last_session = Session.objects.filter(user=current_user).last()
+        start_time = last_session.start_time
+        if last_session and not last_session.hours:
+            #good to clock out
+            hours = (current_time - start_time).total_seconds() / 3600
+            last_session.hours = hours
+            last_session.save()
+            return Response({"detail": "Successfully clocked out.",
+                        "start_time": last_session.start_time,
+                        "hours": hours}, 
+                        status=status.HTTP_200_OK)
+        else:
+            return Response({"detail": "You are not clocked in"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
 class ClockIn(APIView):
     permission_classes = (IsAuthenticated,)
 
