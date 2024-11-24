@@ -1,8 +1,37 @@
 
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User, Org
+from .models import User, Org, Location
 
+class LocationSerializer(serializers.ModelSerializer):
+
+    org = serializers.PrimaryKeyRelatedField(queryset=Org.objects.all(), required=False)
+    class Meta:
+        model = Location
+        fields = ('id','name','org','gps_lat','gps_long','gps_radius')
+
+    def create(self, validated_data):
+        
+        current_user = self.context['request'].user
+        if not current_user.org:
+            raise serializers.ValidationError("Not in any valid org.")
+        validated_data['org'] = current_user.org
+        return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
+        current_user = self.context['request'].user
+        if not current_user.org:
+            raise serializers.ValidationError("Not in any valid org.")
+        validated_data['org'] = current_user.org
+        return super().update(instance, validated_data)
+
+class UpdateLocationSerializer(LocationSerializer):
+    name = serializers.CharField(required=False)
+    gps_lat = serializers.FloatField(required=False)
+    gps_long = serializers.FloatField(required=False)
+    gps_radius = serializers.FloatField(required=False)
+
+    
 
 class OrgSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,7 +54,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code')
+        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code')
 
     def create(self, validated_data):
         registration_code = validated_data.pop('registration_code')
