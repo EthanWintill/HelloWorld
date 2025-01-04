@@ -5,14 +5,20 @@ import { images } from "@/constants";
 import FormField from '@/components/FormField';
 import CustomButton from '@/components/CustomButton';
 import { Link } from 'expo-router';
+import axios from 'axios';
 import { API_URL } from '@/constants'
 
 const SignUp = () => {
   const [form, setform] = useState({
     email: '',
     password: '',
+    firstName: '',
+    lastName: '',
+    phoneNumber: '',
+    orgCode: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showForm, setShowForm] = useState(false)
   const submit = () => {
     Alert.alert('API URL', API_URL)
   }
@@ -35,27 +41,90 @@ const SignUp = () => {
 
             <View className="w-full">
               <Text className="text-2xl text-black text-semibold font-psemibold">Find your Organization</Text>
+
               <FormField
-                title="Email"
-                value={form.email}
-                placeholder="Enter your email"
-                handleChangeText={(e: any) => setform({
-                  ...form,
-                  email: e
-                })}
+                title="Organization Code"
+                value={form.orgCode}
+                placeholder="Enter your organization code"
+                handleChangeText={(e: any) => {
+                  setform({
+                    ...form,
+                    orgCode: e
+                  });
+                  setTimeout(() => { 
+                    axios.request({
+                      method: 'GET',
+                      url: `${API_URL}/api/org-by-code/?reg_code=${e}`
+                    }).then((res) => {
+                      console.log(res.data)
+                      setShowForm(true);
+                    }).catch((err) => {
+                      console.log(err.response.data)
+                    })
+                  }, 3000);
+
+                }}
                 otherStyles="mt-7"
-                keyboardType="email-address"
+                keyboardType="default"
               />
-              <FormField
-                title="Password"
-                value={form.password}
-                placeholder="Enter your password"
-                handleChangeText={(e: any) => setform({
-                  ...form,
-                  password: e
-                })}
-                otherStyles="mt-7"
-              />
+              {(showForm &&
+                <>
+                  <View className="flex-row justify-between">
+                    <FormField
+                      title="First Name"
+                      value={form.firstName}
+                      placeholder="Enter your first name"
+                      handleChangeText={(e: any) => setform({
+                        ...form,
+                        firstName: e
+                      })}
+                      otherStyles="mt-7 flex-1 mr-2"
+                    />
+                    <FormField
+                      title="Last Name"
+                      value={form.lastName}
+                      placeholder="Enter your last name"
+                      handleChangeText={(e: any) => setform({
+                        ...form,
+                        lastName: e
+                      })}
+                      otherStyles="mt-7 flex-1 ml-2"
+                    />
+                  </View>
+                  <FormField
+                    title="Phone Number"
+                    value={form.phoneNumber}
+                    placeholder="Enter your phone number"
+                    handleChangeText={(e: any) => setform({
+                      ...form,
+                      phoneNumber: e
+                    })}
+                    otherStyles="mt-7"
+                    keyboardType="phone-pad"
+                  />
+                  <FormField
+                    title="Email"
+                    value={form.email}
+                    placeholder="Enter your email"
+                    handleChangeText={(e: any) => setform({
+                      ...form,
+                      email: e
+                    })}
+                    otherStyles="mt-7"
+                    keyboardType="email-address"
+                  />
+                  <FormField
+                    title="Password"
+                    value={form.password}
+                    placeholder="Enter your password"
+                    handleChangeText={(e: any) => setform({
+                      ...form,
+                      password: e
+                    })}
+                    otherStyles="mt-7"
+                  />
+                </>
+              )}
 
               <CustomButton
                 title="Sign Up"
