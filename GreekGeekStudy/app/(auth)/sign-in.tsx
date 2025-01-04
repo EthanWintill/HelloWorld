@@ -7,6 +7,7 @@ import CustomButton from '@/components/CustomButton';
 import { Link, router } from 'expo-router';
 import { API_URL } from '@/constants'
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
 
 const SignIn = () => {
@@ -20,23 +21,17 @@ const SignIn = () => {
     const submit = async () => {
         setIsSubmitting(true);
         try {
-            const response = await fetch(`${API_URL}api/token/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email: form.email.toLowerCase(),
-                    password: form.password,
-                }),
+            const response = await axios.post(`${API_URL}api/token/`, {
+                email: form.email.toLowerCase(),
+                password: form.password,
             });
 
-            const data = await response.json();
+            const data = response.data;
 
             if (response.status === 200) {
                 await AsyncStorage.setItem('accessToken', data.access);
                 await AsyncStorage.setItem('refreshToken', data.refresh);
-                router.replace('/study')
+                router.replace('/study');
             } else {
                 Alert.alert('Invalid Credentials', 'Please check your email and password.');
             }
@@ -65,7 +60,7 @@ const SignIn = () => {
                     <View className="w-full items-center min-h-[85vh] px-4 my-6">
 
                         <View className="w-full">
-                            <Text className="text-2xl text-black text-semibold font-psemibold">Log in to GreekGeek</Text>
+                            <Text className="text-2xl text-black text-semibold font-psemibold">Sign in to GreekGeek</Text>
                             <FormField
                                 title="Email"
                                 value={form.email}
