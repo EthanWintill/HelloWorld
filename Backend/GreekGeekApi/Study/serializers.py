@@ -63,16 +63,18 @@ class UserSerializer(serializers.ModelSerializer):
         except Org.DoesNotExist:
             raise serializers.ValidationError("Invalid registration code.")
         
-
-        user = User.objects.create_user(
-            email=validated_data['email'],
-            password=validated_data['password'],
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-            phone_number=validated_data.get('phone_number', ''),
-            org = org
-        )
-        return user
+        try:
+            user = User.objects.create_user(
+                email=validated_data['email'],
+                password=validated_data['password'],
+                first_name=validated_data.get('first_name', ''),
+                last_name=validated_data.get('last_name', ''),
+                phone_number=validated_data.get('phone_number', ''),
+                org = org
+            )
+            return user
+        except:
+            raise serializers.ValidationError("Email already in use.")
 
     def update(self, instance, validated_data):
         instance.email = validated_data.get('email', instance.email)
