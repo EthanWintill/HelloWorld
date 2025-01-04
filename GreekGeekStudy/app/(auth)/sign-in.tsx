@@ -26,7 +26,7 @@ const SignIn = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email: form.email,
+                    email: form.email.toLowerCase(),
                     password: form.password,
                 }),
             });
