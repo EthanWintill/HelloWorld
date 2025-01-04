@@ -6,3 +6,7 @@ Backend/.venv
 .DS_Store
 
 .env
+
+GreekGeekStudy/package-lock.json
+
+GreekGeekStudy/package.json
