@@ -1,10 +1,11 @@
-import { View, Text, ScrollView, Image } from 'react-native'
+import { View, Text, ScrollView, Image, Alert } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { images } from "@/constants";
 import FormField from '@/components/FormField';
 import CustomButton from '@/components/CustomButton';
 import { Link } from 'expo-router';
+import { API_URL } from '@/constants'
 
 const SignUp = () => {
   const [form, setform] = useState({
@@ -13,7 +14,7 @@ const SignUp = () => {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const submit = () => {
-
+    Alert.alert('API URL', API_URL)
   }
   return (
     <SafeAreaView className="bg-white h-full">
