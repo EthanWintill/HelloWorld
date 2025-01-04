@@ -138,6 +138,23 @@ class OrgDetail(RetrieveUpdateDestroyAPIView):
     serializer_class = UpdateOrgSerializer
     queryset = Org.objects.all()
 
+class GetOrgByCode(RetrieveAPIView):
+    permission_classes = (AllowAny,)
+    serializer_class = OrgSerializer
+    queryset = Org.objects.all()
+
+    def get(self, request, *args, **kwargs):
+        reg_code = request.query_params.get('reg_code')
+        if not reg_code:
+            raise Http404
+        try:
+            org = Org.objects.get(reg_code=reg_code)
+        except Org.DoesNotExist:
+            raise Http404
+        serializer = self.get_serializer(org)
+        return Response(serializer.data)
+            
+
 
 class UserDetail(APIView):
     permission_classes = (IsAuthenticated,)

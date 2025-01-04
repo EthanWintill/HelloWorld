@@ -1,10 +1,13 @@
-import { View, Text, ScrollView, Image } from 'react-native'
+import { View, Text, ScrollView, Image, Alert } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { images } from "@/constants";
 import FormField from '@/components/FormField';
 import CustomButton from '@/components/CustomButton';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
+import { API_URL } from '@/constants'
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 const SignIn = () => {
     const [form, setform] = useState({
@@ -12,9 +15,38 @@ const SignIn = () => {
         password: '',
     })
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const submit = () => {
 
-    }
+
+    const submit = async () => {
+        setIsSubmitting(true);
+        try {
+            const response = await fetch(`${API_URL}api/token/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: form.email,
+                    password: form.password,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.status === 200) {
+                await AsyncStorage.setItem('accessToken', data.access);
+                await AsyncStorage.setItem('refreshToken', data.refresh);
+                router.replace('/study')
+            } else {
+                Alert.alert('Invalid Credentials', 'Please check your email and password.');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Something went wrong. Please try again later.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     return (
         <SafeAreaView className="bg-white h-full">
             <ScrollView contentContainerStyle={{ height: '100%' }}>
