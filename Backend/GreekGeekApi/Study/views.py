@@ -1,5 +1,4 @@
-
-from rest_framework import permissions, viewsets, status
+from rest_framework import permissions, viewsets, status, exceptions
 
 from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer
 from rest_framework.response import Response
@@ -15,6 +14,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import User, Org, Session, Location
+
 
 from django.http import Http404 
 from django.utils import timezone
@@ -53,8 +53,7 @@ class ClockOut(APIView):
         current_user = request.user
         org = current_user.org
         if not org:
-            return Response({"detail": "Must be apart of an org to clock in"}, 
-                          status=status.HTTP_400_BAD_REQUEST)
+            raise exceptions.ValidationError(detail="Must be apart of an org to clock out")
         current_time = timezone.now()
 
         last_session = Session.objects.filter(user=current_user).last()
@@ -69,8 +68,8 @@ class ClockOut(APIView):
                         "hours": hours}, 
                         status=status.HTTP_200_OK)
         else:
-            return Response({"detail": "You are not clocked in"}, 
-                          status=status.HTTP_400_BAD_REQUEST)
+            raise exceptions.ValidationError(detail="You are not clocked in")
+
 class ClockIn(APIView):
     permission_classes = (IsAuthenticated,)
 
@@ -78,29 +77,23 @@ class ClockIn(APIView):
         current_user = request.user
         org = current_user.org
         if not org:
-            return Response({"detail": "Must be apart of an org to clock in"}, 
-                          status=status.HTTP_400_BAD_REQUEST)
+            raise exceptions.ValidationError(detail="Must be apart of an org to clock in")
         current_time = timezone.now()
 
         location_id = request.data.get("location_id")
 
         if not location_id:
-            return Response({"detail": "Location ID is required."}, 
-                            status=status.HTTP_400_BAD_REQUEST)
+            raise exceptions.ValidationError(detail="Location ID is required")
         try:
             location = Location.objects.get(id=location_id)
             if location.org != org:  # Ensure the location belongs to the user's organization
-                return Response({"detail": "Location does not belong to your organization."}, 
-                                status=status.HTTP_400_BAD_REQUEST)
+                raise exceptions.ValidationError(detail="Location does not belong to your organization")
         except Location.DoesNotExist:
-            return Response({"detail": "Invalid Location ID."}, 
-                            status=status.HTTP_400_BAD_REQUEST)
+            raise exceptions.ValidationError(detail="Invalid Location ID")
         
         last_session = Session.objects.filter(user=current_user).last()
         if last_session and not last_session.hours:
-            return Response({"detail": "Already clocked in.",
-                            "start_time": last_session.start_time}, 
-                            status=status.HTTP_208_ALREADY_REPORTED)
+            raise exceptions.ValidationError(detail="Already clocked in")
         
         session = Session.objects.create(
             start_time = current_time,
@@ -173,8 +166,7 @@ class UserDetail(APIView):
         user = self.get_object(pk)
         current_user = request.user
         if not self.staff_or_same_user(current_user, user):
-            return Response({"detail": "Can only get your user info."}, 
-                          status=status.HTTP_403_FORBIDDEN)
+            raise exceptions.PermissionDenied(detail="Must be staff to view other users")
         serializer = UserSerializer(user)
         return Response(serializer.data)
     
@@ -182,13 +174,12 @@ class UserDetail(APIView):
         user = self.get_object(pk)
         current_user = request.user
         if not self.staff_or_same_user(current_user, user):
-            return Response({"detail": "Can only update your user info."}, 
-                          status=status.HTTP_403_FORBIDDEN)
+            raise exceptions.PermissionDenied(detail="Must be staff to modify other users")
         serializer = UpdateUserSerializer(user, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        raise exceptions.ParseError(detail="Invalid data")
 
     def delete(self, request, pk, format=None):
         current_user = request.user
@@ -198,13 +189,12 @@ class UserDetail(APIView):
             user.delete()
             return Response({"detail": f"Deleted user #{pk}"}, 
                         status=status.HTTP_202_ACCEPTED)
-        return Response({"detail": "Only admins can delete users of their org."}, 
-                          status=status.HTTP_403_FORBIDDEN)
-        
+        raise exceptions.PermissionDenied(detail="Only admins can delete users of their org")
 
 
 
 
 
-    
+
+
 
