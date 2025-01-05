@@ -37,9 +37,14 @@ export default function Index() {
           
             <View className="absolute bottom-20 items-center w-full mb-20">
             <CustomButton
-            title="Find your Organization"
-            handlePress={() =>{router.push('/sign-in')}}
+            title="Register with Code"
+            handlePress={() =>{router.push('/sign-up')}}
             containerStyles="w-full mt-7 mb-1"
+            />
+            <CustomButton
+            title="Sign In"
+            handlePress={() =>{router.push('/sign-in')}}
+            containerStyles="w-full mt-3 mb-2"
             />
             <Link href="https://www.google.com">
             <Text className="text-m font-pregular text-blue-500 underline text-center">Register your organization</Text>

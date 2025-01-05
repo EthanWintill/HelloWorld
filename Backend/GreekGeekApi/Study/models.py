@@ -55,6 +55,14 @@ class User(AbstractBaseUser):
     USERNAME_FIELD = 'email'
 
     objects = UserManager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                models.functions.Lower("email"),
+                name="user_email_ci_uniqueness"
+            )
+        ]
     
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
