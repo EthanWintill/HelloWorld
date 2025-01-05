@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/user/<int:pk>/', views.UserDetail.as_view(), name='user-detail'),
     path('api/orgs/', views.ListOrgs.as_view(), name='list-orgs'),
     path('api/org/<int:pk>/', views.OrgDetail.as_view(), name='org-detail'),
+    path('api/org-by-code/', views.GetOrgByCode.as_view(), name='get-org-by-code'),
     path('api/clockin/', views.ClockIn.as_view(), name='clock-in'),
     path('api/clockout/', views.ClockOut.as_view(), name='clock-out'),
     path('api/locations/', views.ListLocations.as_view(), name='location-list'), 

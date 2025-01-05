@@ -12,8 +12,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sambryant.GreekGeekStudy"
     },
     "android": {
       "adaptiveIcon": {
