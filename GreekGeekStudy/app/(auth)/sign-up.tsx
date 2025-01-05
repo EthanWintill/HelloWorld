@@ -19,6 +19,7 @@ const SignUp = () => {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [organizationName, setOrganizationName] = useState('')
   const submit = () => {
     Alert.alert('API URL', API_URL)
   }
@@ -40,35 +41,44 @@ const SignUp = () => {
           <View className="w-full items-center min-h-[85vh] px-4 my-6">
 
             <View className="w-full">
-              <Text className="text-2xl text-black text-semibold font-psemibold">Find your Organization</Text>
 
-              <FormField
-                title="Organization Code"
-                value={form.orgCode}
-                placeholder="Enter your organization code"
-                handleChangeText={(e: any) => {
-                  setform({
-                    ...form,
-                    orgCode: e
-                  });
-                  setTimeout(() => { 
-                    axios.request({
-                      method: 'GET',
-                      url: `${API_URL}/api/org-by-code/?reg_code=${e}`
-                    }).then((res) => {
-                      console.log(res.data)
-                      setShowForm(true);
-                    }).catch((err) => {
-                      console.log(err.response.data)
-                    })
-                  }, 3000);
+              <Text className="text-2xl text-black text-semibold font-psemibold">{showForm ? "Sign up for Greek Geek" : "Find your Organization"}</Text>
 
-                }}
-                otherStyles="mt-7"
-                keyboardType="default"
-              />
+
+              {(!showForm &&
+                <FormField
+                  title="Organization Code"
+                  value={form.orgCode}
+                  placeholder="Enter your organization code"
+                  handleChangeText={(e: any) => {
+                    setform({
+                      ...form,
+                      orgCode: e
+                    });
+                    setTimeout(() => {
+                      axios.request({
+                        method: 'GET',
+                        url: `${API_URL}/api/org-by-code/?reg_code=${e}`
+                      }).then((res) => {
+                        console.log(res.data)
+                        setOrganizationName(res.data.name)
+                        setShowForm(true);
+                      }).catch((err) => {
+                        console.log(err.response.data)
+                      })
+                    }, 3000);
+
+                  }}
+                  otherStyles="mt-7"
+                  keyboardType="default"
+                />
+
+              )}
               {(showForm &&
                 <>
+                  <Text className="text-2xl text-black text-semibold font-psemibold">
+                    {organizationName}
+                  </Text>
                   <View className="flex-row justify-between">
                     <FormField
                       title="First Name"
