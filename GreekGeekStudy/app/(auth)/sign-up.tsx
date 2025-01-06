@@ -34,12 +34,12 @@ const SignUp = () => {
   const [organizationName, setOrganizationName] = useState('')
 
   const search = async () => {
+    setIsSubmitting(true)
     try {
       let result = await axios.request({
         method: 'GET',
         url: `${API_URL}/api/org-by-code/?reg_code=${form.orgCode}`
       })
-      console.log(result.data)
       if (result.status === 200) {
         setOrganizationName(result.data.name)
         setShowForm(true)
@@ -47,12 +47,11 @@ const SignUp = () => {
       }
     } catch (error: any) {
       if (error.response) {
-        console.log(error.response.data)
         setFormErrors((prevErrors) => ({ ...prevErrors, orgCode: "Organization not found with that code. Please check with your organization administrator." }))
         setShowForm(false)
-      } else {
-        console.log(error.message)
       }
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -81,12 +80,51 @@ const SignUp = () => {
         hasErrors = true;
       }
     }
-    console.log(errors)
     setFormErrors(errors)
+    return hasErrors
 
   }
-  const submit = () => {
-    validateForm()
+  const submit = async () => {
+    if (validateForm()) { return }
+    setIsSubmitting(true)
+    try {
+      let result = await axios.request({
+        method: 'POST',
+        url: `${API_URL}/api/signup/`,
+        data: {
+          email: form.email,
+          password: form.password,
+          first_name: form.firstName,
+          last_name: form.lastName,
+          phone_number: form.phoneNumber,
+          registration_code: form.orgCode
+        }
+      })
+      if (result.status === 201) {
+        Alert.alert("Success", "You have successfully signed up!")
+      }
+    } catch (error: any) {
+      if (error.response && error.response.data.type === "validation_error") {
+        const errors: Partial<Record<keyof FormFields, string>> = {}
+        error.response.data.errors.forEach((err: any) => {
+          const fieldMap: Record<string, keyof FormFields> = {
+            email: 'email',
+            password: 'password',
+            first_name: 'firstName',
+            last_name: 'lastName',
+            phone_number: 'phoneNumber',
+            registration_code: 'orgCode'
+          }
+          const formField = fieldMap[err.attr]
+          if (formField) {
+            errors[formField] = err.detail
+          }
+        })
+        setFormErrors(errors)
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
   return (
     <SafeAreaView className="bg-white h-full">
@@ -218,6 +256,7 @@ const SignUp = () => {
                 title={showForm ? "Sign Up" : "Search"}
                 handlePress={showForm ? submit : search}
                 containerStyles='mt-7'
+                isLoading={isSubmitting}
               />
               <View className="justify-center pt-5 flex-row gap-2">
                 <Text className="text-lg text-gray-600 font-pregular">

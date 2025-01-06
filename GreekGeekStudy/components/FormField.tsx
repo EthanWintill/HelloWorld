@@ -27,12 +27,12 @@ const FormField: React.FC<FormFieldProps> = ({ title, value, placeholder, handle
           placeholder={placeholder}
           placeholderTextColor="#d1d5db"
           onChangeText={handleChangeText}
-          secureTextEntry={title === 'Password' && !showPassword}
+          secureTextEntry={(title === 'Password' || title === 'Confirm Password') && !showPassword}
           keyboardType={title === 'Email' ? 'email-address' : 'default'}
           autoCapitalize="none"
         />
 
-        {title === 'Password' && (
+        {(title === 'Password' || title === 'Confirm Password') && (
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
             <Image source={!showPassword ? icons.eye : icons.eyeHide}
               resizeMode='contain'
