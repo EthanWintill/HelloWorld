@@ -71,6 +71,7 @@ const SignIn = () => {
                                 })}
                                 otherStyles="mt-7"
                                 keyboardType="email-address"
+                                required={false}
                             />
                             <FormField
                                 title="Password"
@@ -81,6 +82,7 @@ const SignIn = () => {
                                     password: e
                                 })}
                                 otherStyles="mt-7"
+                                required={false}
                             />
 
                             <CustomButton

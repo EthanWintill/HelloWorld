@@ -185,6 +185,9 @@ class UserDetail(APIView):
         current_user = request.user
         user = self.get_object(pk)
         same_org = user.org is not None and user.org == current_user.org
+        same_user = current_user.id == user.id
+        if same_user:
+            raise exceptions.PermissionDenied(detail="You can not delete yourself")
         if current_user.is_staff and same_org:
             user.delete()
             return Response({"detail": f"Deleted user #{pk}"}, 
