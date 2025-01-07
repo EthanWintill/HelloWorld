@@ -31,7 +31,7 @@ const SignUp = () => {
   })
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormFields, string>>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(true)
   const [organizationName, setOrganizationName] = useState('')
 
   const search = async () => {
@@ -61,7 +61,8 @@ const SignUp = () => {
     let hasErrors = false
     for (const [key, value] of Object.entries(form)) {
       if (key === 'phoneNumber') {
-        if (value && !/^\d{10}$/.test(value)) {
+        const patt = /^(\+?\d{1,3}[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}$/;
+        if (value && !patt.test(value)) {
           errors[key] = 'Enter a valid phone number';
           hasErrors = true;
         }

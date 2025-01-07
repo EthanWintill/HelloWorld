@@ -30,6 +30,7 @@ const FormField: React.FC<FormFieldProps> = ({ title, value, placeholder, handle
           secureTextEntry={(title === 'Password' || title === 'Confirm Password') && !showPassword}
           keyboardType={title === 'Email' ? 'email-address' : 'default'}
           autoCapitalize="none"
+          autoCorrect={false}
         />
 
         {(title === 'Password' || title === 'Confirm Password') && (
