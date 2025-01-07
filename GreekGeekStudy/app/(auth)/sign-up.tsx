@@ -4,9 +4,10 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { images } from "@/constants";
 import FormField from '@/components/FormField';
 import CustomButton from '@/components/CustomButton';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import axios from 'axios';
 import { API_URL } from '@/constants'
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type FormFields = {
   email: string;
@@ -101,7 +102,22 @@ const SignUp = () => {
         }
       })
       if (result.status === 201) {
-        Alert.alert("Success", "You have successfully signed up!")
+        try {
+          const response = await axios.post(`${API_URL}api/token/`, {
+            email: form.email.toLowerCase(),
+            password: form.password,
+          });
+
+          const data = response.data;
+
+          if (response.status === 200) {
+            await AsyncStorage.setItem('accessToken', data.access);
+            await AsyncStorage.setItem('refreshToken', data.refresh);
+            router.replace('/study');
+          }
+        } catch (error: any) {
+          router.replace('/sign-in')
+        }
       }
     } catch (error: any) {
       if (error.response && error.response.data.type === "validation_error") {
