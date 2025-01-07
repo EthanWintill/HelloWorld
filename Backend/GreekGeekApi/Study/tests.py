@@ -40,7 +40,7 @@ class ClockInClockOutTestCase(TestCase):
         self.assertEqual(Session.objects.count(), 1)
 
         response = self.client.post(self.inUrl, {"location_id":self.location.id})
-        self.assertEqual(response.status_code, status.HTTP_208_ALREADY_REPORTED)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Session.objects.count(), 1)
 
         response = self.client.post(self.outUrl)
