@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { SplashScreen, Stack } from 'expo-router'
+import { SplashScreen, Stack, useRouter } from 'expo-router'
 import React from 'react'
 import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
@@ -11,6 +12,7 @@ import "../global.css";
 SplashScreen.preventAutoHideAsync();
 
 export default function _layout() {
+  const router = useRouter();
   const [fontsLoaded, error] = useFonts({
     "Poppins-Black": require("../assets/fonts/Poppins-Black.ttf"),
     "Poppins-Bold": require("../assets/fonts/Poppins-Bold.ttf"),
@@ -24,10 +26,33 @@ export default function _layout() {
   });
 
   useEffect(() => {
-    if (error) throw error;
+    const checkAuthAndNavigate = async () => {
+      if (!fontsLoaded) return;
+      
+      try {
+        const keys = await AsyncStorage.getAllKeys();
+        const items = await AsyncStorage.multiGet(keys);
+        console.log('All AsyncStorage Items:', items);
+        
+        const accessToken = await AsyncStorage.getItem('accessToken');
+        console.log('AccessToken:', accessToken);
+        
+        if (accessToken) {
+          router.replace('/(tabs)/study');
+        }
+        
+        // Hide splash screen after checking auth
+        SplashScreen.hideAsync();
+        
+      } catch (error) {
+        console.error('Error reading AsyncStorage:', error);
+        SplashScreen.hideAsync();
+      }
+    };
 
-    if (fontsLoaded) SplashScreen.hideAsync()
-  }, [fontsLoaded, error])
+    if (error) throw error;
+    checkAuthAndNavigate();
+  }, [fontsLoaded, error, router]);
 
   if (!fontsLoaded && !error) return null;
   return (
