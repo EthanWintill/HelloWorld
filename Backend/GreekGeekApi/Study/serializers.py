@@ -1,7 +1,8 @@
-
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User, Org, Location
+from .models import User, Org, Location, Session
+
+  
 
 class LocationSerializer(serializers.ModelSerializer):
 
@@ -96,8 +97,22 @@ class UpdateUserSerializer(UserSerializer):
     password = serializers.CharField(min_length=8, write_only=True, required=False)
     registration_code = serializers.CharField(write_only=True, required=False)
 
+class SessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Session
+        fields = ('id', 'start_time', 'hours', 'user', 'org', 'location', 'before_pic', 'after_pic')
+        read_only_fields = ('id',)
 
+class UserDashboardSerializer(serializers.ModelSerializer):
+    org = OrgSerializer(read_only=True)
+    org_locations = LocationSerializer(source='org.locations', many=True, read_only=True)
+    org_users = UserSerializer(source='org.users', many=True, read_only=True)
+    user_sessions = SessionSerializer(source='sessions', many=True, read_only=True)
 
-    
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'first_name', 'last_name', 'phone_number', 
+                 'is_staff', 'org', 'org_locations', 'org_users', 
+                 'user_sessions')
 
 

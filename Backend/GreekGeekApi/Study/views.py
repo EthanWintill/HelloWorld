@@ -1,6 +1,6 @@
 from rest_framework import permissions, viewsets, status, exceptions
 
-from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
@@ -20,6 +20,17 @@ from django.http import Http404
 from django.utils import timezone
 
 from datetime import timedelta
+
+class UserDashboard(RetrieveAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserDashboardSerializer
+
+    def get_object(self):
+        return User.objects.select_related('org').prefetch_related(
+            'sessions',
+            'org__locations',
+            'org__users'
+        ).get(id=self.request.user.id)
 
 class GetLocation(RetrieveAPIView):
     permission_classes = (IsAuthenticated,)

@@ -3,6 +3,228 @@ from .models import Org, User, Group, Location, Session
 from rest_framework import status
 from rest_framework.test import APIClient
 from django.urls import reverse
+from datetime import datetime, timedelta
+from django.utils import timezone
+
+
+class UserDashboardTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        
+        # Create two organizations
+        self.org1 = Org.objects.create(
+            name="Test Organization 1",
+            reg_code="12345",
+            school="Test School 1",
+            study_req=10.0,
+            study_goal=20.0
+        )
+        
+        self.org2 = Org.objects.create(
+            name="Test Organization 2",
+            reg_code="67890",
+            school="Test School 2",
+            study_req=15.0,
+            study_goal=25.0
+        )
+        
+        # Create locations for each org
+        self.location1_org1 = Location.objects.create(
+            name="Location 1 Org1",
+            org=self.org1,
+            gps_lat=40.0,
+            gps_long=75.0,
+            gps_radius=10.0
+        )
+        
+        self.location2_org1 = Location.objects.create(
+            name="Location 2 Org1",
+            org=self.org1,
+            gps_lat=41.0,
+            gps_long=76.0,
+            gps_radius=10.0
+        )
+        
+        self.location_org2 = Location.objects.create(
+            name="Location Org2",
+            org=self.org2,
+            gps_lat=42.0,
+            gps_long=77.0,
+            gps_radius=10.0
+        )
+        
+        # Create users for each org
+        self.user1_org1 = User.objects.create_user(
+            email="user1@org1.com",
+            password="password123",
+            first_name="User1",
+            last_name="Org1",
+            org=self.org1
+        )
+        
+        self.user2_org1 = User.objects.create_user(
+            email="user2@org1.com",
+            password="password123",
+            first_name="User2",
+            last_name="Org1",
+            org=self.org1
+        )
+        
+        self.user_org2 = User.objects.create_user(
+            email="user@org2.com",
+            password="password123",
+            first_name="User",
+            last_name="Org2",
+            org=self.org2
+        )
+        
+        # Create sessions for users
+        self.session1_user1 = Session.objects.create(
+            start_time=timezone.now() - timedelta(hours=2),
+            hours=2.0,
+            user=self.user1_org1,
+            org=self.org1,
+            location=self.location1_org1
+        )
+        
+        self.session2_user1 = Session.objects.create(
+            start_time=timezone.now() - timedelta(hours=4),
+            hours=1.5,
+            user=self.user1_org1,
+            org=self.org1,
+            location=self.location2_org1
+        )
+        
+        self.session_user2 = Session.objects.create(
+            start_time=timezone.now() - timedelta(hours=3),
+            hours=3.0,
+            user=self.user2_org1,
+            org=self.org1,
+            location=self.location1_org1
+        )
+        
+        self.session_user_org2 = Session.objects.create(
+            start_time=timezone.now() - timedelta(hours=1),
+            hours=1.0,
+            user=self.user_org2,
+            org=self.org2,
+            location=self.location_org2
+        )
+
+    def test_dashboard_authentication_required(self):
+        """Test that unauthenticated users cannot access the dashboard"""
+        url = reverse('dashboard')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_dashboard_data_user1(self):
+        """Test that user1 gets correct data from their org and only their sessions"""
+        self.client.force_authenticate(user=self.user1_org1)
+        url = reverse('dashboard')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Check org data
+        self.assertEqual(response.data['org']['id'], self.org1.id)
+        self.assertEqual(response.data['org']['name'], self.org1.name)
+        
+        # Check locations (should only see org1 locations)
+        locations = response.data['org_locations']
+        self.assertEqual(len(locations), 2)
+        location_names = {loc['name'] for loc in locations}
+        self.assertEqual(location_names, {'Location 1 Org1', 'Location 2 Org1'})
+        
+        # Check users (should only see org1 users)
+        users = response.data['org_users']
+        self.assertEqual(len(users), 2)
+        user_emails = {user['email'] for user in users}
+        self.assertEqual(user_emails, {'user1@org1.com', 'user2@org1.com'})
+        
+        # Check sessions (should only see user1's sessions)
+        sessions = response.data['user_sessions']
+        self.assertEqual(len(sessions), 2)
+        session_hours = {session['hours'] for session in sessions}
+        self.assertEqual(session_hours, {2.0, 1.5})
+
+    def test_dashboard_data_user2(self):
+        """Test that user2 gets correct data from their org and only their sessions"""
+        self.client.force_authenticate(user=self.user2_org1)
+        url = reverse('dashboard')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Check sessions (should only see user2's session)
+        sessions = response.data['user_sessions']
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(sessions[0]['hours'], 3.0)
+
+    def test_dashboard_data_org2_user(self):
+        """Test that org2 user gets correct data from their org"""
+        self.client.force_authenticate(user=self.user_org2)
+        url = reverse('dashboard')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Check org data
+        self.assertEqual(response.data['org']['id'], self.org2.id)
+        
+        # Check locations (should only see org2 location)
+        locations = response.data['org_locations']
+        self.assertEqual(len(locations), 1)
+        self.assertEqual(locations[0]['name'], 'Location Org2')
+        
+        # Check users (should only see org2 users)
+        users = response.data['org_users']
+        self.assertEqual(len(users), 1)
+        self.assertEqual(users[0]['email'], 'user@org2.com')
+        
+        # Check sessions (should only see org2 user's session)
+        sessions = response.data['user_sessions']
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(sessions[0]['hours'], 1.0)
+
+    def test_dashboard_data_completeness(self):
+        """Test that all required fields are present in the response"""
+        self.client.force_authenticate(user=self.user1_org1)
+        url = reverse('dashboard')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Check user data
+        self.assertIn('id', response.data)
+        self.assertIn('email', response.data)
+        self.assertIn('first_name', response.data)
+        self.assertIn('last_name', response.data)
+        
+        # Check org data
+        self.assertIn('org', response.data)
+        org_data = response.data['org']
+        self.assertIn('name', org_data)
+        self.assertIn('reg_code', org_data)
+        self.assertIn('school', org_data)
+        self.assertIn('study_req', org_data)
+        self.assertIn('study_goal', org_data)
+        
+        # Check location data
+        self.assertIn('org_locations', response.data)
+        if response.data['org_locations']:
+            location = response.data['org_locations'][0]
+            self.assertIn('name', location)
+            self.assertIn('gps_lat', location)
+            self.assertIn('gps_long', location)
+            self.assertIn('gps_radius', location)
+        
+        # Check session data
+        self.assertIn('user_sessions', response.data)
+        if response.data['user_sessions']:
+            session = response.data['user_sessions'][0]
+            self.assertIn('start_time', session)
+            self.assertIn('hours', session)
+            self.assertIn('location', session)
 
 class ClockInClockOutTestCase(TestCase):
     def setUp(self):
@@ -603,4 +825,6 @@ class OrganizationTestCase(TestCase):
         # Verify that the location is correctly assigned
         self.assertEqual(self.user1.last_location, location)
         self.assertEqual(self.user1.last_location.name, "Test Location")
+
+
 

@@ -3,6 +3,7 @@ import React from 'react'
 import { Tabs, Redirect } from 'expo-router'
 
 import { icons } from '../../constants'
+import { DashboardProvider } from '../../context/DashboardContext'
 
 interface TabIconProps {
     icon: any;
@@ -29,8 +30,8 @@ const TabIcon: React.FC<TabIconProps> = ({icon, color, name, focused}) => {
 
 const TabsLayout = () => {
   return (
-    <>
-        <Tabs
+    <DashboardProvider>
+      <Tabs
             screenOptions={
                 {
                     tabBarShowLabel: false,
@@ -106,7 +107,7 @@ const TabsLayout = () => {
                 }}
             />
         </Tabs>
-    </>
+    </DashboardProvider>
   )
 }
 

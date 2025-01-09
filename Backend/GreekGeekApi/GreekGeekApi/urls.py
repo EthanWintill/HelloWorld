@@ -27,7 +27,8 @@ urlpatterns = [
     path('api/locations/', views.ListLocations.as_view(), name='location-list'), 
     path('api/locations/create/', views.CreateLocation.as_view(), name='location-create'),
     path('api/location/<int:pk>/modify', views.ModifyLocation.as_view(), name='location-modify'),
-    path('api/location/<int:pk>/', views.GetLocation.as_view(), name='location-detail')
+    path('api/location/<int:pk>/', views.GetLocation.as_view(), name='location-detail'),
+    path('api/dashboard/', views.UserDashboard.as_view(), name='dashboard')
 
     
 ]
