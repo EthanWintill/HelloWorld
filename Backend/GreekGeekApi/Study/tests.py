@@ -537,7 +537,10 @@ class UserDetailTestCase(TestCase):
         
         # API client to simulate requests
         self.client = APIClient()
-    
+        
+        # Add staff management URL
+        self.staff_management_url = '/api/users/{}/staff-status/'
+
     def get_token(self, user):
         """Helper function to get JWT token for a user."""
         url = self.token_url
@@ -643,6 +646,70 @@ class UserDetailTestCase(TestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_user_details_includes_staff_status(self):
+        """Test: User details response should include is_staff field"""
+        token = self.get_token(self.user1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user1.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('is_staff', response.data)
+        self.assertEqual(response.data['is_staff'], False)
+
+    def test_staff_promotion_by_admin_same_org(self):
+        """Test: Admin can promote a user to staff in the same org"""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = self.staff_management_url.format(self.user1.id)
+        response = self.client.patch(url, {'is_staff': True}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user1.refresh_from_db()
+        self.assertTrue(self.user1.is_staff)
+
+    def test_staff_demotion_by_admin_same_org(self):
+        """Test: Admin can demote a staff user in the same org"""
+        # First promote a user to staff
+        self.user1.is_staff = True
+        self.user1.save()
+        
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = self.staff_management_url.format(self.user1.id)
+        response = self.client.patch(url, {'is_staff': False}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user1.refresh_from_db()
+        self.assertFalse(self.user1.is_staff)
+
+    def test_staff_promotion_by_admin_different_org(self):
+        """Test: Admin cannot promote a user in a different org"""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = self.staff_management_url.format(self.user3.id)
+        response = self.client.patch(url, {'is_staff': True}, format='json')
+        self.assertNotEqual(response.status_code, status.HTTP_200_OK)
+        self.user3.refresh_from_db()
+        self.assertFalse(self.user3.is_staff)
+
+    def test_staff_promotion_by_non_admin(self):
+        """Test: Non-admin users cannot promote others to staff"""
+        token = self.get_token(self.user1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = self.staff_management_url.format(self.user2.id)
+        response = self.client.patch(url, {'is_staff': True}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.user2.refresh_from_db()
+        self.assertFalse(self.user2.is_staff)
+
+    def test_admin_cannot_modify_own_staff_status(self):
+        """Test: Admin cannot modify their own staff status"""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = self.staff_management_url.format(self.staff_user.id)
+        response = self.client.patch(url, {'is_staff': False}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.staff_user.refresh_from_db()
+        self.assertTrue(self.staff_user.is_staff)
+
     
 class SignupTestCase(TestCase):
     def setUp(self):
@@ -711,6 +778,17 @@ class SignupTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(User.objects.count(), 0)
+
+    def test_new_user_not_staff(self):
+        """Test that newly registered users are not staff by default"""
+        response = self.client.post(
+            self.signup_url,
+            data=self.valid_payload,
+            format='json'
+        )
+        self.assertEqual(response.status_code, 201)
+        user = User.objects.get(email=self.valid_payload['email'])
+        self.assertFalse(user.is_staff)
 
 class OrganizationTestCase(TestCase):
     

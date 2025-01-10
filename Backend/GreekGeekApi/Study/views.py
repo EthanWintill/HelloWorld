@@ -1,6 +1,6 @@
 from rest_framework import permissions, viewsets, status, exceptions
 
-from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
@@ -204,6 +204,23 @@ class UserDetail(APIView):
             return Response({"detail": f"Deleted user #{pk}"}, 
                         status=status.HTTP_202_ACCEPTED)
         raise exceptions.PermissionDenied(detail="Only admins can delete users of their org")
+
+class ManageStaffStatus(UpdateAPIView):
+    permission_classes = (IsAdminUser,)
+    serializer_class = StaffStatusSerializer
+    queryset = User.objects.all()
+
+    def get_queryset(self):
+        return User.objects.filter(org=self.request.user.org)
+
+    def update(self, request, *args, **kwargs):
+        user = self.get_object()
+        if user == request.user:
+            raise exceptions.ValidationError(detail="You cannot modify your own staff status")
+        if user.org != request.user.org:
+            raise exceptions.PermissionDenied(detail="You can only modify users in your organization")
+        
+        return super().update(request, *args, **kwargs)
 
 
 

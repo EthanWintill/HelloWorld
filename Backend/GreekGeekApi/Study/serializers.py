@@ -55,7 +55,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code')
+        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code', 'is_staff')
+        read_only_fields = ('is_staff',)
 
     def create(self, validated_data):
         registration_code = validated_data.pop('registration_code')
@@ -114,5 +115,10 @@ class UserDashboardSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'first_name', 'last_name', 'phone_number', 
                  'is_staff', 'org', 'org_locations', 'org_users', 
                  'user_sessions')
+
+class StaffStatusSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('is_staff',)
 
 
