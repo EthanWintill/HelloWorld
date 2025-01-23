@@ -31,7 +31,7 @@ const SignUp = () => {
   })
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormFields, string>>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showForm, setShowForm] = useState(true)
+  const [showForm, setShowForm] = useState(false)
   const [organizationName, setOrganizationName] = useState('')
 
   const search = async () => {
