@@ -7,10 +7,70 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import numberToWords from 'number-to-words';
 import ClockButton from '@/components/ClockButton'
 import { useStopWatch } from '@/hooks/useStopwatch'
+import { API_URL } from '@/constants';
+import axios, { AxiosError } from 'axios'
 
 const Study = () => {
-  const { dashboardState, refreshDashboard, checkIsStudying } = useDashboard()
+  const { dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
+
+  const [isStudying, setIsStudying] = useState(false)
+
+  /*
+        TODO:
+        -clock in can currently be bypassed with airplane mode since
+        the server just takes a call for clock in and clock out and trusts
+        it. If the app cannot make the clock out call, it will keep racking up hours.
+        Fix: store locally if they leave location, or go airplane, then add a backend
+        call to manually fix the hours on clock out so they cant rack up hours like that
+
+        -Fix dashboard loading state, Instead of not rendering anything lets put a loading circle on stuff
+        -Add loading state for clock in/ out requests, put loading circle on button.
+
+        -obviously we need location, it is currently manually set to location_id 1 in the clock in function
+        
+        -Design stuff? Maybe org name at the top,  maybe some sort of menu on the top for stuff?
+
+        -Admin stuff, add/modify locations, admin menu?
+  */
+
+  const clockIn = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('No access token found');
+                      //GET LOCATION ID FROM GPS INSTEAD OF THIS ->>>>>\/\/\/\/\
+      const response = await axios.post(API_URL + 'api/clockin/', {"location_id":1}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+    } catch (error) {
+      console.log(error)
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        await handleUnauthorized()
+      }
+    }
+  }
+
+  const clockOut = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('No access token found');
+                      //GET LOCATION ID FROM GPS INSTEAD OF THIS ->>>>>\/\/\/\/\
+      const response = await axios.post(API_URL + 'api/clockout/', {}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+    } catch (error) {
+      console.log(error)
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        await handleUnauthorized()
+      }
+    }
+  }
 
   const {
     time,
@@ -52,9 +112,22 @@ const Study = () => {
   const handleClock = () => {
     console.log("HANDLE CLOCKY")
     if (!checkIsStudying()){
-      start(0)
+      clockIn().then(() => {
+        // set loading state
+      }).finally(() => {
+        refreshDashboard().finally(() =>{
+          refreshClock()
+        })
+      })
+      
     } else {
-      stop()
+      clockOut().then(() => {
+        // loading state
+      }).finally(() => {
+        refreshDashboard().finally(() => {
+          refreshClock()
+        })
+      })
     }
     
   }
@@ -74,12 +147,16 @@ const Study = () => {
 
   const refreshClock = () => {
     console.log("REFRESHYYYYY")
-    const starter = getClockTime()
+    
     if (checkIsStudying()) {
+      const starter = getClockTime()
+      setIsStudying(true)
       start(starter)
-    } else if (isRunning) {
+      
+    } else {setIsStudying(false)
       reset()
       stop()
+      
     }
   }
 
@@ -110,11 +187,12 @@ const Study = () => {
       <ScrollView contentContainerStyle={{height: '100%'}}>
       <View className='h-[33vh] w-full justify-center items-center px-4'>
         <ClockButton
-        title={!checkIsStudying() ? "Start" : "Stop"}
+        title={!isStudying ? "Start" : "Stop"}
         handlePress={handleClock}
-        isStarted={checkIsStudying()}
+        isStarted={isStudying}
         percentComplete={50}
         time={time}
+        
 
         />
         <Text>{time}</Text>

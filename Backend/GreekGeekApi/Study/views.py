@@ -74,6 +74,8 @@ class ClockOut(APIView):
             hours = (current_time - start_time).total_seconds() / 3600
             last_session.hours = hours
             last_session.save()
+            current_user.live = False
+            current_user.save()
             return Response({"detail": "Successfully clocked out.",
                         "start_time": last_session.start_time,
                         "hours": hours}, 
@@ -113,6 +115,9 @@ class ClockIn(APIView):
             location = location,
             #BEFORE PIC, AFTER PIC LATER
         )
+
+        current_user.live = True
+        current_user.save()
 
         return Response({
             "detail": "Successfully clocked in.",

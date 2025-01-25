@@ -23,7 +23,7 @@ const formatMs = (milliseconds: number) => {
   // divide the milliseconds by 10 to get the tenths of a second. 543 -> 54
   const ms = Math.floor((milliseconds % 1000) / 10)
 
-  let str = `${padStart(minutes)}:${padStart(seconds)}.${padStart(ms)}`
+  let str = `${padStart(minutes)}:${padStart(seconds)}`
 
   if (hours > 0) {
     str = `${padStart(hours)}:${str}`

@@ -14,6 +14,7 @@ type DashboardContextType = {
   dashboardState: DashboardState;
   refreshDashboard: () => Promise<void>;
   checkIsStudying: () => boolean;
+  handleUnauthorized: () => Promise<void>;
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -91,7 +92,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   return (
-    <DashboardContext.Provider value={{ dashboardState, refreshDashboard, checkIsStudying }}>
+    <DashboardContext.Provider value={{ dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized }}>
       {children}
     </DashboardContext.Provider>
   );
