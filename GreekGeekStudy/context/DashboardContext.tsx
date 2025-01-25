@@ -13,6 +13,7 @@ type DashboardState = {
 type DashboardContextType = {
   dashboardState: DashboardState;
   refreshDashboard: () => Promise<void>;
+  checkIsStudying: () => boolean;
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -73,12 +74,24 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     await fetchDashboardData();
   };
 
+  const checkIsStudying = (): boolean => {
+    const { data } = dashboardState;
+    if (data && data.user_sessions && data.user_sessions.length > 0) {
+      const lastSession = data.user_sessions[data.user_sessions.length - 1];
+      console.log(lastSession)
+      console.log(lastSession.hours === null)
+      return lastSession.hours === null;
+    }
+    return false;
+  };
+
   useEffect(() => {
+    console.log("refresh!!!!!!!")
     fetchDashboardData();
   }, []);
 
   return (
-    <DashboardContext.Provider value={{ dashboardState, refreshDashboard }}>
+    <DashboardContext.Provider value={{ dashboardState, refreshDashboard, checkIsStudying }}>
       {children}
     </DashboardContext.Provider>
   );
