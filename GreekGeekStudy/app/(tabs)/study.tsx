@@ -1,15 +1,36 @@
 import { View, Text, ScrollView } from 'react-native'
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import numberToWords from 'number-to-words';
+import Geolocation from 'react-native-geolocation-service';
+import { PERMISSIONS, RESULTS, check, request } from 'react-native-permissions'
+
 
 const Study = () => {
-  const { dashboardState } = useDashboard()
+  const {startInterval, stopInterval, dashboardState } = useDashboard()
   const { isLoading, error, data } = dashboardState
+  const [locationGranted, setLocationGranted] = useState('UNKNOWN');
+  const handleLocationPermission = async () => {
+    const res = await check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+    if (res === RESULTS.GRANTED) {
+      setLocationGranted('GRANTED');
+    } else if (res === RESULTS.BLOCKED) {
+      setLocationGranted('BLOCKED');
+    } else if (res === RESULTS.DENIED) {
+      const res2 = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
+      res2 === RESULTS.GRANTED ? setLocationGranted('GRANTED') : setLocationGranted('DENIED');
+    }
+  };
 
+  const startStudying = () => {
+    startInterval('kkk');
+    setTimeout(() => {
+      stopInterval();
+    }, 10000);
+  }
   const getAllAsyncStorageData = async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
@@ -33,8 +54,10 @@ const Study = () => {
     const hoursSoFar = data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0);
     return numberToWords.toWords(data['org']['study_req'] - hoursSoFar);
   }
+
   useEffect(() => {
     getAllAsyncStorageData(); // Log all storage data
+    //handleLocationPermission();
   }, []);
 
   if (isLoading) {
@@ -51,16 +74,17 @@ const Study = () => {
   }
 
   return (
-    // <ScrollView className="flex-1 p-4">
-    //   <Text className="text-lg font-bold mb-2">Dashboard Data:</Text>
-    //   <Text className="font-mono">{JSON.stringify(data, null, 2)}</Text>
-      
-    //   <Text className="text-lg font-bold mt-4 mb-2">Full Dashboard State:</Text>
-    //   <Text className="font-mono">{JSON.stringify(dashboardState, null, 2)}</Text>
-    // </ScrollView>
     <SafeAreaView className="flex-1 flex-col">
       <View className='basis-2/3'>
-        {/* TODO ADD START STUDY SESSION BUTTON HERE */}
+      <View className="flex-1 justify-center items-center">
+        <View className="w-16 h-16 bg-gray-500 rounded-full justify-center items-center" onTouchEnd={() => {startStudying()}}>
+          {locationGranted==='GRANTED' || locationGranted==='DENIED' ? (
+            <Text className="text-white text-lg">Start</Text>
+          ) : (
+            <Text className="text-white text-lg">Please enable locations</Text>
+          )}
+        </View>
+      </View>
       </View>
       <View className='basis-1/3'>
         <Text className="text-center text-xl">
