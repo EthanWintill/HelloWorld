@@ -1,4 +1,4 @@
-import { View, Text, ScrollView } from 'react-native'
+import { View, Text, ScrollView, Image } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -9,6 +9,7 @@ import ClockButton from '@/components/ClockButton'
 import { useStopWatch } from '@/hooks/useStopwatch'
 import { API_URL } from '@/constants';
 import axios, { AxiosError } from 'axios'
+import { images } from "@/constants";
 
 const Study = () => {
   const { dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
@@ -232,43 +233,65 @@ const Study = () => {
 
   return (
     <SafeAreaView className="bg-white h-full">
+      {/* New Header Bar */}
+      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
+        <View className="flex-row items-center">
+          <Image
+              source={images.logoSmall}
+              className="w-10 h-10" // Increased the size of the logo
+              resizeMode="contain"
+          />
+          <Text className="font-psemibold text-lg ml-1">
+            {data?.org?.name || 'Organization'}
+          </Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <Text className="font-psemibold text-gray-600, text-lg">
+            {data?.first_name} {data?.last_name?.[0]}.
+          </Text>
+          <Text className="font-psemibold text-green-600 text-2xl">
+            {Math.round(hoursStudied())}h
+          </Text>
+        </View>
+      </View>
+
       <ScrollView contentContainerStyle={{height: '100%'}}>
-      <View className='h-[33vh] w-full justify-center items-center px-4'>
-        <ClockButton
-        title={!isStudying ? "Start Studying" : "Stop"}
-        secondaryTitle={!isStudying ? "Alkek Library" : undefined}
-        handlePress={handleClock}
-        isStarted={isStudying}
-        percentComplete={calculatePercentComplete()}
-        time={time}
-        isLoading={isLoading}
-        />
-      </View>
-      <View className='basis-1/3'>
-        <Text className="font-pregular text-center text-xl">
-          {!data ? "Loading..." : (
-            studyHoursLeft() === 0 || requiredHours() === 0 ? (
-              <>
-                <Text className="font-bold text-green-600">
-                  {hoursStudied().toFixed(2)}
-                </Text>
-                {' hours studied'}
-              </>
-            ) : (
-              <>
-                <Text className="font-bold text-green-600">
-                  {studyHoursLeft().toFixed(2)}
-                </Text>
-                {` hour${studyHoursLeft() !== 1 ? 's' : ''} left to reach goal of `}
-                <Text className="font-bold text-green-600">
-                  {requiredHours()}
-                </Text>
-                {' hours'}
-              </>
-            )
-          )}
-        </Text>
-      </View>
+        <View className='h-[33vh] w-full justify-center items-center px-4'>
+          <ClockButton
+          title={!isStudying ? "Start Studying" : "Stop"}
+          secondaryTitle={!isStudying ? "Alkek Library" : undefined}
+          handlePress={handleClock}
+          isStarted={isStudying}
+          percentComplete={calculatePercentComplete()}
+          time={time}
+          isLoading={isLoading}
+          />
+        </View>
+        <View className='basis-1/3'>
+          <Text className="font-pregular text-center text-xl">
+            {!data ? "Loading..." : (
+              studyHoursLeft() === 0 || requiredHours() === 0 ? (
+                <>
+                  <Text className="font-bold text-green-600">
+                    {hoursStudied().toFixed(2)}
+                  </Text>
+                  {' hours studied'}
+                </>
+              ) : (
+                <>
+                  <Text className="font-bold text-green-600">
+                    {studyHoursLeft().toFixed(2)}
+                  </Text>
+                  {` hour${studyHoursLeft() !== 1 ? 's' : ''} left to reach goal of `}
+                  <Text className="font-bold text-green-600">
+                    {requiredHours()}
+                  </Text>
+                  {' hours'}
+                </>
+              )
+            )}
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   )

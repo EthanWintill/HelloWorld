@@ -2,6 +2,7 @@ import { Text, TouchableOpacity, Dimensions, View, ActivityIndicator } from 'rea
 import React from 'react'
 import { StyleSheet } from 'react-native';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
+import { Ionicons } from '@expo/vector-icons';
 
 interface ClockButtonProps {
   title: string;
@@ -34,6 +35,7 @@ const ClockButton: React.FC<ClockButtonProps> = ({ title, secondaryTitle, handle
         activeOpacity={0.7}
         disabled={isLoading}
         className={`border-5 rounded-full justify-center items-center ${isStarted ? 'border-red-500' : 'border-green-500'} ${containerStyles}`}>
+          
         {isLoading ? (
           <ActivityIndicator size="large" color="#FFA001" />
         ) : (
@@ -86,6 +88,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 5,
     position: 'absolute',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
   },
   progressContainer: {
     position: 'absolute',
