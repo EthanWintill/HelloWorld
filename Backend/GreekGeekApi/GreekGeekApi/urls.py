@@ -40,4 +40,5 @@ urlpatterns = [
         'delete': 'destroy'
     }), name='period-setting-detail'),
     path('api/latest-period/', views.GetLatestPeriodInstance.as_view(), name='latest-period'),
+    path('api/deactivate-periods/', views.DeactivateOrgPeriods.as_view(), name='deactivate-periods'),
 ]
