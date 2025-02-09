@@ -13,6 +13,8 @@ type DashboardState = {
 type DashboardContextType = {
   dashboardState: DashboardState;
   refreshDashboard: () => Promise<void>;
+  checkIsStudying: () => boolean;
+  handleUnauthorized: () => Promise<void>;
   startInterval: (orgId: string) => void;
   stopInterval: () => void;
 };
@@ -69,36 +71,52 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       await AsyncStorage.setItem('dashboardData', JSON.stringify(response.data));
       
-      setDashboardState({
+      setDashboardState(prev => ({
         isLoading: false,
         error: null,
         data: response.data,
-      });
+      }));
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 401) {
         console.log(error.response)
         await handleUnauthorized();
       }
       
-      setDashboardState({
+      setDashboardState(prev => ({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch dashboard data',
-        data: null,
-      });
+        data: prev.data,
+      }));
     }
   };
 
   const refreshDashboard = async () => {
-    setDashboardState(prev => ({ ...prev, isLoading: true }));
+    setDashboardState(prev => ({ 
+      ...prev, 
+      isLoading: true,
+    }));
     await fetchDashboardData();
   };
 
+  const checkIsStudying = (): boolean => {
+    const { data } = dashboardState;
+    if (data && data.user_sessions && data.user_sessions.length > 0) {
+      const lastSession = data.user_sessions[data.user_sessions.length - 1];
+      console.log(lastSession)
+      console.log(lastSession.hours === null)
+      return lastSession.hours === null;
+    }
+    return false;
+  };
+
   useEffect(() => {
+    console.log("refresh!!!!!!!")
     fetchDashboardData();
   }, []);
 
   return (
     <DashboardContext.Provider value={{startInterval, stopInterval, dashboardState, refreshDashboard }}>
+    <DashboardContext.Provider value={{ dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized }}>
       {children}
     </DashboardContext.Provider>
   );

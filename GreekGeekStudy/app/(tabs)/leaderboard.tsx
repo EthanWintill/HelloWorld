@@ -9,6 +9,7 @@ interface User {
   last_name: string;
   email: string;
   is_staff: boolean;
+  live: boolean;
 }
 
 const Leaderboard = () => {
@@ -45,6 +46,10 @@ const Leaderboard = () => {
             {user.is_staff && (
               <Text className="text-blue-600">Staff Member</Text>
             )}
+            {user.live && (
+              <Text className="text-green-500 text-sm">LIVE!</Text>
+            )}
+            
           </View>
         ))}
       </ScrollView>

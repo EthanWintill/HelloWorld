@@ -1,8 +1,19 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User, Org, Location, Session
+from .models import User, Org, Location, Session, PeriodSetting, PeriodInstance
+from django.utils import timezone
+from .utils import get_or_create_period_instance
 
-  
+
+class PeriodSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PeriodSetting
+        fields = '__all__'
+
+class PeriodInstanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PeriodInstance
+        fields = '__all__'
 
 class LocationSerializer(serializers.ModelSerializer):
 
@@ -55,8 +66,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code', 'is_staff')
-        read_only_fields = ('is_staff',)
+        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code', 'is_staff', 'live')
+        read_only_fields = ('is_staff', 'live')
 
     def create(self, validated_data):
         registration_code = validated_data.pop('registration_code')
@@ -99,9 +110,12 @@ class UpdateUserSerializer(UserSerializer):
     registration_code = serializers.CharField(write_only=True, required=False)
 
 class SessionSerializer(serializers.ModelSerializer):
+    period_instance = PeriodInstanceSerializer(read_only=True)
+    
     class Meta:
         model = Session
-        fields = ('id', 'start_time', 'hours', 'user', 'org', 'location', 'before_pic', 'after_pic')
+        fields = ('id', 'start_time', 'hours', 'user', 'org', 'location', 
+                 'before_pic', 'after_pic', 'period_instance')
         read_only_fields = ('id',)
 
 class UserDashboardSerializer(serializers.ModelSerializer):
@@ -109,12 +123,36 @@ class UserDashboardSerializer(serializers.ModelSerializer):
     org_locations = LocationSerializer(source='org.locations', many=True, read_only=True)
     org_users = UserSerializer(source='org.users', many=True, read_only=True)
     user_sessions = SessionSerializer(source='sessions', many=True, read_only=True)
+    org_period_instances = serializers.SerializerMethodField()
+    active_period_setting = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ('id', 'email', 'first_name', 'last_name', 'phone_number', 
-                 'is_staff', 'org', 'org_locations', 'org_users', 
-                 'user_sessions')
+                 'is_staff', 'live', 'org', 'org_locations', 'org_users', 
+                 'user_sessions', 'org_period_instances', 'active_period_setting')
+
+    def get_org_period_instances(self, obj):
+        if obj.org:
+            # First ensure the current period instance exists
+            current_time = timezone.now()
+            get_or_create_period_instance(obj, current_time)
+            
+            # Then get all instances
+            instances = PeriodInstance.objects.filter(
+                period_setting__org=obj.org
+            ).order_by('-start_date')
+            return PeriodInstanceSerializer(instances, many=True).data
+        return None
+
+    def get_active_period_setting(self, obj):
+        if obj.org:
+            try:
+                setting = PeriodSetting.objects.get(org=obj.org, is_active=True)
+                return PeriodSettingSerializer(setting).data
+            except PeriodSetting.DoesNotExist:
+                return None
+        return None
 
 class StaffStatusSerializer(serializers.ModelSerializer):
     class Meta:

@@ -30,6 +30,14 @@ urlpatterns = [
     path('api/location/<int:pk>/', views.GetLocation.as_view(), name='location-detail'),
     path('api/dashboard/', views.UserDashboard.as_view(), name='dashboard'),
     path('api/users/<int:pk>/staff-status/', views.ManageStaffStatus.as_view(), name='manage-staff-status'),
-
     
+    # Period-related URLs
+    path('api/period-settings/', views.PeriodSettingViewSet.as_view({'get': 'list', 'post': 'create'}), name='period-settings'),
+    path('api/period-settings/<int:pk>/', views.PeriodSettingViewSet.as_view({
+        'get': 'retrieve',
+        'put': 'update',
+        'patch': 'partial_update',
+        'delete': 'destroy'
+    }), name='period-setting-detail'),
+    path('api/latest-period/', views.GetLatestPeriodInstance.as_view(), name='latest-period'),
 ]

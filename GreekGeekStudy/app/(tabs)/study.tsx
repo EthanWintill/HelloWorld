@@ -7,10 +7,15 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import numberToWords from 'number-to-words';
 import Geolocation from 'react-native-geolocation-service';
 import { PERMISSIONS, RESULTS, check, request } from 'react-native-permissions'
+import ClockButton from '@/components/ClockButton'
+import { useStopWatch } from '@/hooks/useStopwatch'
+import { API_URL } from '@/constants';
+import axios, { AxiosError } from 'axios'
 
 
 const Study = () => {
   const {startInterval, stopInterval, dashboardState } = useDashboard()
+  const { dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
   const [locationGranted, setLocationGranted] = useState('UNKNOWN');
   const handleLocationPermission = async () => {
@@ -31,6 +36,78 @@ const Study = () => {
       stopInterval();
     }, 10000);
   }
+  const [isStudying, setIsStudying] = useState(false)
+
+  /*
+        TODO:
+        -clock in can currently be bypassed with airplane mode since
+        the server just takes a call for clock in and clock out and trusts
+        it. If the app cannot make the clock out call, it will keep racking up hours.
+        Fix: store locally if they leave location, or go airplane, then add a backend
+        call to manually fix the hours on clock out so they cant rack up hours like that
+
+        -Fix dashboard loading state, Instead of not rendering anything lets put a loading circle on stuff
+        -Add loading state for clock in/ out requests, put loading circle on button.
+
+        -obviously we need location, it is currently manually set to location_id 1 in the clock in function
+        
+        -Design stuff? Maybe org name at the top,  maybe some sort of menu on the top for stuff?
+
+        -Admin stuff, add/modify locations, admin menu?
+  */
+
+  const clockIn = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('No access token found');
+                      //GET LOCATION ID FROM GPS INSTEAD OF THIS ->>>>>\/\/\/\/\
+      const response = await axios.post(API_URL + 'api/clockin/', {"location_id":1}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+    } catch (error) {
+      console.log(error)
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        await handleUnauthorized()
+      }
+    }
+  }
+
+  const clockOut = async () => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('No access token found');
+                      //GET LOCATION ID FROM GPS INSTEAD OF THIS ->>>>>\/\/\/\/\
+      const response = await axios.post(API_URL + 'api/clockout/', {}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+    } catch (error) {
+      console.log(error)
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        await handleUnauthorized()
+      }
+    }
+  }
+
+  const {
+    time,
+    isRunning,
+    start,
+    stop,
+    reset,
+    lap,
+    laps,
+    currentLapTime,
+    hasStarted,
+    slowestLapTime,
+    fastestLapTime,
+  } = useStopWatch();
+
   const getAllAsyncStorageData = async () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
@@ -52,17 +129,73 @@ const Study = () => {
   };
   const studyHoursLeft = () => {
     const hoursSoFar = data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0);
-    return numberToWords.toWords(data['org']['study_req'] - hoursSoFar);
+    return data['org']['study_req'] - hoursSoFar;
   }
 
   useEffect(() => {
     getAllAsyncStorageData(); // Log all storage data
     //handleLocationPermission();
   }, []);
-
-  if (isLoading) {
-    return <LoadingScreen />
+  const handleClock = () => {
+    console.log("HANDLE CLOCKY")
+    if (!checkIsStudying()){
+      clockIn().then(() => {
+        // set loading state
+      }).finally(() => {
+        refreshDashboard().finally(() =>{
+          refreshClock()
+        })
+      })
+      
+    } else {
+      clockOut().then(() => {
+        // loading state
+      }).finally(() => {
+        refreshDashboard().finally(() => {
+          refreshClock()
+        })
+      })
+    }
+    
   }
+
+  const getClockTime = () => {
+    console.log("HELLOOOOOOOO")
+    if (!checkIsStudying()){return 0}
+    
+    const lastSession = data.user_sessions[data.user_sessions.length - 1];
+
+    const startTime = lastSession.start_time
+    const startTimeMillis = new Date(startTime).getTime()
+    console.log("START TIME")
+    console.log(startTimeMillis)
+    return startTimeMillis
+  }
+
+  const refreshClock = () => {
+    console.log("REFRESHYYYYY")
+    
+    if (checkIsStudying()) {
+      const starter = getClockTime()
+      setIsStudying(true)
+      start(starter)
+      
+    } else {setIsStudying(false)
+      reset()
+      stop()
+      
+    }
+  }
+
+  useEffect(() => {
+    
+    //getAllAsyncStorageData(); // Log all storage data
+    refreshClock()
+  }, [isLoading]);
+
+  
+
+ 
 
   if (error) {
     return (
@@ -74,23 +207,48 @@ const Study = () => {
   }
 
   return (
-    <SafeAreaView className="flex-1 flex-col">
-      <View className='basis-2/3'>
-      <View className="flex-1 justify-center items-center">
-        <View className="w-16 h-16 bg-gray-500 rounded-full justify-center items-center" onTouchEnd={() => {startStudying()}}>
+    <SafeAreaView className="bg-white h-full">
+      <ScrollView contentContainerStyle={{height: '100%'}}>
+      <View className='h-[33vh] w-full justify-center items-center px-4'>
+        <ClockButton
+        title={!isStudying ? "Start Studying" : "Stop"}
+        secondaryTitle={!isStudying ? "Alkek Library" : undefined}
+        handlePress={handleClock}
+        isStarted={isStudying}
+        percentComplete={50}
+        time={time}
+        isLoading={isLoading}
+        />
           {locationGranted==='GRANTED' || locationGranted==='DENIED' ? (
             <Text className="text-white text-lg">Start</Text>
           ) : (
             <Text className="text-white text-lg">Please enable locations</Text>
           )}
-        </View>
       </View>
       </View>
       <View className='basis-1/3'>
-        <Text className="text-center text-xl">
-          <Text className="font-bold underline text-green-600">{studyHoursLeft()}</Text> more hours to reach goal of <Text className="font-bold underline text-green-600">{numberToWords.toWords(data['org']['study_req'])}</Text> hours per week
+        <Text className="font-pregular text-center text-xl">
+          {!data ? (
+            "Loading..."
+          ) : studyHoursLeft() > 0 ? (
+            <>
+              <Text className="font-bold text-green-600">
+                {numberToWords.toWords(studyHoursLeft()).charAt(0).toUpperCase() + numberToWords.toWords(studyHoursLeft()).slice(1)}
+              </Text> hour{studyHoursLeft() > 1 ? 's' : ''} left to reach study goal of  
+              <Text className="font-bold text-green-600">
+                {" " + numberToWords.toWords(data['org']['study_req'])}
+              </Text> hours.
+            </>
+          ) : (
+            <>
+            <Text className="font-bold text-green-600">
+              {numberToWords.toWords(data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0)).charAt(0).toUpperCase() + numberToWords.toWords(data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0)).slice(1)}
+            </Text> hours studied so far.
+            </>
+          )}
         </Text>
       </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }
