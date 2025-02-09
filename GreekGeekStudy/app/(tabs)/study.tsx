@@ -209,13 +209,63 @@ const Study = () => {
     }
   }
 
-  useEffect(() => {
+  const getActivePeriodInfo = () => {
+    if (!data?.active_period_setting || !data?.org_period_instances) return null;
     
-    //getAllAsyncStorageData(); // Log all storage data
-    refreshClock()
+    const activePeriodInstance = data.org_period_instances.find(
+      (instance: any) => instance.is_active
+    );
+    
+    if (!activePeriodInstance) return null;
 
+    const endDate = new Date(activePeriodInstance.end_date);
+    const now = new Date();
+    const hoursRemaining = Math.max(0, (endDate.getTime() - now.getTime()) / (1000 * 60 * 60));
+    const daysRemaining = hoursRemaining / 24;
+
+    // Show days only if we have 24 or more hours
+    const shouldShowDays = daysRemaining >= 1;
+
+    const periodSetting = data.active_period_setting;
+    let periodDescription = '';
+    
+    switch (periodSetting.period_type) {
+      case 'weekly':
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        periodDescription = `Weekly period (Due ${days[periodSetting.due_day_of_week]})`;
+        break;
+      case 'monthly':
+        periodDescription = 'Monthly period';
+        break;
+      case 'custom':
+        periodDescription = `${periodSetting.custom_days}-day period`;
+        break;
+    }
+
+    return {
+      description: periodDescription,
+      shouldShowDays,
+      daysRemaining: Math.floor(daysRemaining),
+      hoursRemaining: Math.round(hoursRemaining),
+      endDate
+    };
+  };
+
+  const clearAsyncStorage = async () => {
+    try {
+      await AsyncStorage.clear();
+      console.log('AsyncStorage has been cleared!');
+    } catch (error) {
+      console.error('Error clearing AsyncStorage:', error);
+    }
+  };
+
+  useEffect(() => {
+    // Uncomment the next line when you want to clear storage
+    //clearAsyncStorage();
+    
+    refreshClock();
     console.log("Dashboard Data:", JSON.stringify(data, null, 2));
-
   }, [isLoading]);
 
   
@@ -255,44 +305,91 @@ const Study = () => {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{height: '100%'}}>
-        <View className='h-[33vh] w-full justify-center items-center px-4'>
-          <ClockButton
-          title={!isStudying ? "Start Studying" : "Stop"}
-          secondaryTitle={!isStudying ? "Alkek Library" : undefined}
-          handlePress={handleClock}
-          isStarted={isStudying}
-          percentComplete={calculatePercentComplete()}
-          time={time}
-          isLoading={isLoading}
-          />
-        </View>
-        <View className='basis-1/3'>
-          <Text className="font-pregular text-center text-xl">
-            {!data ? "Loading..." : (
-              studyHoursLeft() === 0 || requiredHours() === 0 ? (
+      {/* Main content */}
+      <View className="flex-1 flex-col justify-between">
+        <ScrollView>
+          <View className='h-[33vh] w-full justify-center items-center px-4'>
+            <ClockButton
+              title={!isStudying ? "Start Studying" : "Stop"}
+              secondaryTitle={!isStudying ? "Alkek Library" : undefined}
+              handlePress={handleClock}
+              isStarted={isStudying}
+              percentComplete={calculatePercentComplete()}
+              time={time}
+              isLoading={isLoading}
+            />
+          </View>
+          <View className='basis-1/3'>
+            <Text className="font-pregular text-center text-xl">
+              {!data ? "Loading..." : (
+                studyHoursLeft() === 0 || requiredHours() === 0 ? (
+                  <>
+                    <Text className="font-bold text-green-600">
+                      {hoursStudied().toFixed(2)}
+                    </Text>
+                    {' hours studied'}
+                  </>
+                ) : (
+                  <>
+                    <Text className="font-bold text-green-600">
+                      {studyHoursLeft().toFixed(2)}
+                    </Text>
+                    {` hour${studyHoursLeft() !== 1 ? 's' : ''} left to reach goal of `}
+                    <Text className="font-bold text-green-600">
+                      {requiredHours()}
+                    </Text>
+                    {' hours'}
+                  </>
+                )
+              )}
+            </Text>
+          </View>
+        </ScrollView>
+
+        {/* Period info section - now outside ScrollView */}
+        {data?.active_period_setting && (
+          <View className="px-4 py-6 bg-gray-50">
+            <Text className="font-psemibold text-center mb-2">
+              Current Study Period
+            </Text>
+            {(() => {
+              const periodInfo = getActivePeriodInfo();
+              if (!periodInfo) return null;
+              
+              return (
                 <>
-                  <Text className="font-bold text-green-600">
-                    {hoursStudied().toFixed(2)}
+                  <Text className="font-pregular text-center text-gray-600 mb-1">
+                    {periodInfo.description}
                   </Text>
-                  {' hours studied'}
+                  <Text className="font-pregular text-center text-gray-600">
+                    {periodInfo.shouldShowDays ? (
+                      <>
+                        <Text className="font-bold text-green-600">
+                          {periodInfo.daysRemaining} day{periodInfo.daysRemaining !== 1 ? 's' : ''}
+                        </Text>
+                        {' remaining'}
+                      </>
+                    ) : periodInfo.hoursRemaining > 0 ? (
+                      <>
+                        <Text className="font-bold text-red-600">
+                          {periodInfo.hoursRemaining} hour{periodInfo.hoursRemaining !== 1 ? 's' : ''}
+                        </Text>
+                        {' remaining'}
+                      </>
+                    ) : (
+                      'Due now'
+                    )}
+                  </Text>
+                  <Text className="font-pregular text-center text-gray-500 text-sm mt-1">
+                    Due {periodInfo.endDate.toLocaleDateString()} at{' '}
+                    {periodInfo.endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  </Text>
                 </>
-              ) : (
-                <>
-                  <Text className="font-bold text-green-600">
-                    {studyHoursLeft().toFixed(2)}
-                  </Text>
-                  {` hour${studyHoursLeft() !== 1 ? 's' : ''} left to reach goal of `}
-                  <Text className="font-bold text-green-600">
-                    {requiredHours()}
-                  </Text>
-                  {' hours'}
-                </>
-              )
-            )}
-          </Text>
-        </View>
-      </ScrollView>
+              );
+            })()}
+          </View>
+        )}
+      </View>
     </SafeAreaView>
   )
 }
