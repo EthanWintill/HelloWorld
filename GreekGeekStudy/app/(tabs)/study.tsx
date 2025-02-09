@@ -14,8 +14,7 @@ import axios, { AxiosError } from 'axios'
 
 
 const Study = () => {
-  const {startInterval, stopInterval, dashboardState } = useDashboard()
-  const { dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
+  const { startInterval, stopInterval, dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
   const [locationGranted, setLocationGranted] = useState('UNKNOWN');
   const handleLocationPermission = async () => {
@@ -60,8 +59,8 @@ const Study = () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
-                      //GET LOCATION ID FROM GPS INSTEAD OF THIS ->>>>>\/\/\/\/\
-      const response = await axios.post(API_URL + 'api/clockin/', {"location_id":1}, {
+      //GET LOCATION ID FROM GPS INSTEAD OF THIS ->>>>>\/\/\/\/\
+      const response = await axios.post(API_URL + 'api/clockin/', { "location_id": 1 }, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -79,7 +78,7 @@ const Study = () => {
     try {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
-                      //GET LOCATION ID FROM GPS INSTEAD OF THIS ->>>>>\/\/\/\/\
+      //GET LOCATION ID FROM GPS INSTEAD OF THIS ->>>>>\/\/\/\/\
       const response = await axios.post(API_URL + 'api/clockout/', {}, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -112,16 +111,16 @@ const Study = () => {
     try {
       const keys = await AsyncStorage.getAllKeys();
       const items = await AsyncStorage.multiGet(keys);
-      
+
       console.log('All AsyncStorage Data:');
       console.log('--------------------');
       items.forEach(([key, value]) => {
         console.log(`${key}:`, value);
       });
       console.log('--------------------');
-      
+
       return items;
-      
+
     } catch (error) {
       console.error('Error getting AsyncStorage data:', error);
       return [];
@@ -138,15 +137,15 @@ const Study = () => {
   }, []);
   const handleClock = () => {
     console.log("HANDLE CLOCKY")
-    if (!checkIsStudying()){
+    if (!checkIsStudying()) {
       clockIn().then(() => {
         // set loading state
       }).finally(() => {
-        refreshDashboard().finally(() =>{
+        refreshDashboard().finally(() => {
           refreshClock()
         })
       })
-      
+
     } else {
       clockOut().then(() => {
         // loading state
@@ -156,13 +155,13 @@ const Study = () => {
         })
       })
     }
-    
+
   }
 
   const getClockTime = () => {
     console.log("HELLOOOOOOOO")
-    if (!checkIsStudying()){return 0}
-    
+    if (!checkIsStudying()) { return 0 }
+
     const lastSession = data.user_sessions[data.user_sessions.length - 1];
 
     const startTime = lastSession.start_time
@@ -174,28 +173,29 @@ const Study = () => {
 
   const refreshClock = () => {
     console.log("REFRESHYYYYY")
-    
+
     if (checkIsStudying()) {
       const starter = getClockTime()
       setIsStudying(true)
       start(starter)
-      
-    } else {setIsStudying(false)
+
+    } else {
+      setIsStudying(false)
       reset()
       stop()
-      
+
     }
   }
 
   useEffect(() => {
-    
+
     //getAllAsyncStorageData(); // Log all storage data
     refreshClock()
   }, [isLoading]);
 
-  
 
- 
+
+
 
   if (error) {
     return (
@@ -208,46 +208,51 @@ const Study = () => {
 
   return (
     <SafeAreaView className="bg-white h-full">
-      <ScrollView contentContainerStyle={{height: '100%'}}>
-      <View className='h-[33vh] w-full justify-center items-center px-4'>
-        <ClockButton
-        title={!isStudying ? "Start Studying" : "Stop"}
-        secondaryTitle={!isStudying ? "Alkek Library" : undefined}
-        handlePress={handleClock}
-        isStarted={isStudying}
-        percentComplete={50}
-        time={time}
-        isLoading={isLoading}
-        />
-          {locationGranted==='GRANTED' || locationGranted==='DENIED' ? (
-            <Text className="text-white text-lg">Start</Text>
+      <ScrollView contentContainerStyle={{ height: '100%' }}>
+        <View className='h-[33vh] w-full justify-center items-center px-4'>
+          {locationGranted === 'GRANTED' || locationGranted === 'DENIED' ? (
+            <ClockButton
+              title={!isStudying ? "Start Studying" : "Stop"}
+              secondaryTitle={!isStudying ? "Alkek Library" : undefined}
+              handlePress={handleClock}
+              isStarted={isStudying}
+              percentComplete={50}
+              time={time}
+              isLoading={isLoading}
+            />
           ) : (
-            <Text className="text-white text-lg">Please enable locations</Text>
-          )}
-      </View>
-      </View>
-      <View className='basis-1/3'>
-        <Text className="font-pregular text-center text-xl">
-          {!data ? (
-            "Loading..."
-          ) : studyHoursLeft() > 0 ? (
-            <>
-              <Text className="font-bold text-green-600">
-                {numberToWords.toWords(studyHoursLeft()).charAt(0).toUpperCase() + numberToWords.toWords(studyHoursLeft()).slice(1)}
-              </Text> hour{studyHoursLeft() > 1 ? 's' : ''} left to reach study goal of  
-              <Text className="font-bold text-green-600">
-                {" " + numberToWords.toWords(data['org']['study_req'])}
-              </Text> hours.
-            </>
-          ) : (
-            <>
-            <Text className="font-bold text-green-600">
-              {numberToWords.toWords(data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0)).charAt(0).toUpperCase() + numberToWords.toWords(data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0)).slice(1)}
-            </Text> hours studied so far.
-            </>
-          )}
-        </Text>
-      </View>
+            <ClockButton
+              title="Enable Location"
+              secondaryTitle="You must enable location to clock in"
+              handlePress={handleClock}
+              isStarted={isStudying}
+              percentComplete={100}
+              time={time}
+              isLoading={isLoading}
+            />)}
+        </View>
+        <View className='basis-1/3'>
+          <Text className="font-pregular text-center text-xl">
+            {!data ? (
+              "Loading..."
+            ) : studyHoursLeft() > 0 ? (
+              <>
+                <Text className="font-bold text-green-600">
+                  {numberToWords.toWords(studyHoursLeft()).charAt(0).toUpperCase() + numberToWords.toWords(studyHoursLeft()).slice(1)}
+                </Text> hour{studyHoursLeft() > 1 ? 's' : ''} left to reach study goal of
+                <Text className="font-bold text-green-600">
+                  {" " + numberToWords.toWords(data['org']['study_req'])}
+                </Text> hours.
+              </>
+            ) : (
+              <>
+                <Text className="font-bold text-green-600">
+                  {numberToWords.toWords(data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0)).charAt(0).toUpperCase() + numberToWords.toWords(data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0)).slice(1)}
+                </Text> hours studied so far.
+              </>
+            )}
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   )
