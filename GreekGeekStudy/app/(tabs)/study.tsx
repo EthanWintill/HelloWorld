@@ -1,5 +1,4 @@
-import { View, Text, ScrollView, Image } from 'react-native'
-import { View, Text, ScrollView, Alert, Linking } from 'react-native'
+import { View, Text, ScrollView, Alert, Linking, Image } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -411,6 +410,7 @@ const showSettingsAlert = () => {
       <View className="flex-1 flex-col justify-between">
         <ScrollView>
           <View className='h-[33vh] w-full justify-center items-center px-4'>
+          {locationGranted === 'GRANTED' || locationGranted === 'DENIED' ? (
             <ClockButton
               title={!isStudying ? "Start Studying" : "Stop"}
               secondaryTitle={!isStudying ? "Alkek Library" : undefined}
@@ -420,6 +420,10 @@ const showSettingsAlert = () => {
               time={time}
               isLoading={isLoading}
             />
+          ) : (
+            <PermissionButton
+              handlePress={handleLocationPermission}/>
+            )}
           </View>
           <View className='basis-1/3'>
             <Text className="font-pregular text-center text-xl">
@@ -492,11 +496,6 @@ const showSettingsAlert = () => {
           </View>
         )}
       </View>
-          {locationGranted === 'GRANTED' || locationGranted === 'DENIED' ? (
-          ) : (
-            <PermissionButton
-              handlePress={handleLocationPermission}/>
-            )}
     </SafeAreaView>
   )
 }
