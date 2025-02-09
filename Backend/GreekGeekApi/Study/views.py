@@ -107,13 +107,9 @@ class ClockOut(APIView):
         last_session = Session.objects.filter(user=current_user).last()
         start_time = last_session.start_time
         if last_session and not last_session.hours:
-            # Get or create period instance
-            period_instance = get_or_create_period_instance(current_user, start_time)
-            
             # Clock out logic
             hours = (current_time - start_time).total_seconds() / 3600
             last_session.hours = hours
-            last_session.period_instance = period_instance
             last_session.save()
             current_user.live = False
             current_user.save()
@@ -150,11 +146,15 @@ class ClockIn(APIView):
         if last_session and not last_session.hours:
             raise exceptions.ValidationError(detail="Already clocked in")
         
+        # Get or create period instance
+        period_instance = get_or_create_period_instance(current_user, current_time)
+        
         session = Session.objects.create(
             start_time = current_time,
             user = current_user,
             org = org,
             location = location,
+            period_instance = period_instance,
             #BEFORE PIC, AFTER PIC LATER
         )
 
@@ -286,6 +286,28 @@ class GetLatestPeriodInstance(APIView):
             return Response({
                 "detail": "No period settings found for your organization"
             }, status=status.HTTP_404_NOT_FOUND)
+
+class DeactivateOrgPeriods(APIView):
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request, format=None):
+        current_user = request.user
+        org = current_user.org
+        
+        if not org:
+            raise exceptions.ValidationError(detail="Must be apart of an org to manage periods")
+
+        # Deactivate all period settings for this org
+        PeriodSetting.objects.filter(org=org).update(is_active=False)
+        
+        # Deactivate all period instances associated with this org
+        PeriodInstance.objects.filter(
+            period_setting__org=org
+        ).update(is_active=False)
+
+        return Response({
+            "detail": "Successfully deactivated all periods for organization."
+        }, status=status.HTTP_200_OK)
 
 
 

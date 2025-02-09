@@ -105,10 +105,58 @@ const Study = () => {
       return [];
     }
   };
-  const studyHoursLeft = () => {
-    const hoursSoFar = data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0);
-    return data['org']['study_req'] - hoursSoFar;
+  const requiredHours = () => {
+    if (!data?.active_period_setting) return 0;
+    return Math.round(data.active_period_setting.required_hours);
   }
+
+  const getActivePeriodInstance = () => {
+    if (!data?.org_period_instances) return null;
+    return data.org_period_instances.find(
+      (instance: any) => instance.is_active
+    );
+  }
+
+  const hoursStudied = () => {
+    if (!data?.user_sessions) return 0;
+
+    const activePeriodInstance = getActivePeriodInstance();
+    
+    // If no active period, sum all sessions
+    if (!activePeriodInstance) {
+      return data.user_sessions.reduce(
+        (acc: number, session: any) => acc + (session.hours || 0), 
+        0
+      );
+    }
+
+    // Filter and sum sessions for active period
+    const periodSessions = data.user_sessions.filter(
+      (session: any) => 
+        session.period_instance?.id === activePeriodInstance.id
+    );
+
+    return periodSessions.reduce(
+      (acc: number, session: any) => acc + (session.hours || 0),
+      0
+    );
+  }
+
+  const studyHoursLeft = () => {
+    const required = requiredHours();
+    const studied = hoursStudied();
+    return Math.max(0, required - studied);
+  }
+
+  const calculatePercentComplete = () => {
+    const required = requiredHours();
+    if (required === 0) return 0;
+    
+    const studied = hoursStudied();
+    const percentage = (studied / required) * 100;
+    return Math.min(Math.round(percentage), 100);
+  }
+
   const handleClock = () => {
     console.log("HANDLE CLOCKY")
     if (!checkIsStudying()){
@@ -191,30 +239,33 @@ const Study = () => {
         secondaryTitle={!isStudying ? "Alkek Library" : undefined}
         handlePress={handleClock}
         isStarted={isStudying}
-        percentComplete={50}
+        percentComplete={calculatePercentComplete()}
         time={time}
         isLoading={isLoading}
         />
       </View>
       <View className='basis-1/3'>
         <Text className="font-pregular text-center text-xl">
-          {!data ? (
-            "Loading..."
-          ) : studyHoursLeft() > 0 ? (
-            <>
-              <Text className="font-bold text-green-600">
-                {numberToWords.toWords(studyHoursLeft()).charAt(0).toUpperCase() + numberToWords.toWords(studyHoursLeft()).slice(1)}
-              </Text> hour{studyHoursLeft() > 1 ? 's' : ''} left to reach study goal of  
-              <Text className="font-bold text-green-600">
-                {" " + numberToWords.toWords(data['org']['study_req'])}
-              </Text> hours.
-            </>
-          ) : (
-            <>
-            <Text className="font-bold text-green-600">
-              {numberToWords.toWords(data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0)).charAt(0).toUpperCase() + numberToWords.toWords(data['user_sessions'].reduce((acc: number, session: any) => acc + session['hours'], 0)).slice(1)}
-            </Text> hours studied so far.
-            </>
+          {!data ? "Loading..." : (
+            studyHoursLeft() === 0 || requiredHours() === 0 ? (
+              <>
+                <Text className="font-bold text-green-600">
+                  {hoursStudied().toFixed(2)}
+                </Text>
+                {' hours studied'}
+              </>
+            ) : (
+              <>
+                <Text className="font-bold text-green-600">
+                  {studyHoursLeft().toFixed(2)}
+                </Text>
+                {` hour${studyHoursLeft() !== 1 ? 's' : ''} left to reach goal of `}
+                <Text className="font-bold text-green-600">
+                  {requiredHours()}
+                </Text>
+                {' hours'}
+              </>
+            )
           )}
         </Text>
       </View>

@@ -41,31 +41,63 @@ const History = () => {
   const groupSessionsByPeriod = () => {
     if (!data?.user_sessions) return []
 
-    // Sort sessions by start_time in descending order
+    // Sort all sessions by start_time in descending order
     const sortedSessions = [...data.user_sessions].sort((a, b) => 
       new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
     )
 
-    // Group sessions by period_instance
-    const grouped = sortedSessions.reduce((acc: any[], session) => {
-      if (!session.period_instance) {
-        if (!acc.find(g => g.period === null)) {
-          acc.push({ period: null, sessions: [] })
+    // Initialize groups array
+    const grouped: any[] = []
+    
+    // Helper function to check if a date falls within a period
+    const isDateInPeriod = (date: Date, period: any) => {
+      const sessionDate = date.getTime()
+      const periodStart = new Date(period.start_date).getTime()
+      const periodEnd = new Date(period.end_date).getTime()
+      return sessionDate >= periodStart && sessionDate <= periodEnd
+    }
+
+    // Get all unique periods
+    const allPeriods = data.user_sessions
+      .filter(s => s.period_instance)
+      .map(s => s.period_instance)
+      .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
+      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+
+    // Process each session
+    sortedSessions.forEach(session => {
+      const sessionDate = new Date(session.start_time)
+      
+      // Find the period this session belongs to based on its date
+      const matchingPeriod = allPeriods.find(period => 
+        isDateInPeriod(sessionDate, period)
+      )
+
+      if (matchingPeriod) {
+        // Find or create group for this period
+        let periodGroup = grouped.find(g => g.period?.id === matchingPeriod.id)
+        if (!periodGroup) {
+          periodGroup = { period: matchingPeriod, sessions: [] }
+          grouped.push(periodGroup)
         }
-        acc.find(g => g.period === null).sessions.push(session)
+        periodGroup.sessions.push(session)
       } else {
-        const existingGroup = acc.find(g => g.period?.id === session.period_instance.id)
-        if (existingGroup) {
-          existingGroup.sessions.push(session)
-        } else {
-          acc.push({
-            period: session.period_instance,
-            sessions: [session]
-          })
+        // Handle sessions without a matching period
+        let otherGroup = grouped.find(g => g.period === null)
+        if (!otherGroup) {
+          otherGroup = { period: null, sessions: [] }
+          grouped.push(otherGroup)
         }
+        otherGroup.sessions.push(session)
       }
-      return acc
-    }, [])
+    })
+
+    // Sort sessions within each group by date
+    grouped.forEach(group => {
+      group.sessions.sort((a: Session, b: Session) => 
+        new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+      )
+    })
 
     return grouped
   }

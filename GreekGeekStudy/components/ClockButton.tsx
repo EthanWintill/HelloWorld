@@ -1,6 +1,7 @@
 import { Text, TouchableOpacity, Dimensions, View, ActivityIndicator } from 'react-native'
 import React from 'react'
 import { StyleSheet } from 'react-native';
+import { AnimatedCircularProgress } from 'react-native-circular-progress';
 
 interface ClockButtonProps {
   title: string;
@@ -21,52 +22,70 @@ const ClockButton: React.FC<ClockButtonProps> = ({ title, secondaryTitle, handle
   const titleWords = title.split(' ');
   
   return (
-    <TouchableOpacity
+    <View style={styles.container}>
+      
+      <TouchableOpacity
         style={[
           styles.button,
-          { backgroundColor: isStarted ? 'rgba(239, 68, 68, 0.1)' : 'rgba(22, 163, 74, 0.1)' }
+          { backgroundColor: isStarted ? 'rgba(239, 68, 68, 0.1)' : 'rgba(22, 163, 74, 0.1)',
+            zIndex: 1 }
         ]}
-      onPress={handlePress}
-      activeOpacity={0.7}
-      disabled={isLoading}
-      className={`border-5 rounded-full justify-center items-center ${isStarted ? 'border-red-500' : 'border-green-500'} ${containerStyles}`}>
+        onPress={handlePress}
+        activeOpacity={0.7}
+        disabled={isLoading}
+        className={`border-5 rounded-full justify-center items-center ${isStarted ? 'border-red-500' : 'border-green-500'} ${containerStyles}`}>
+        {isLoading ? (
+          <ActivityIndicator size="large" color="#FFA001" />
+        ) : (
+          <>
+            <View className="items-center">
+              {titleWords.map((word, index) => (
+                <Text 
+                  key={index}
+                  style={styles.title} 
+                  className={`text-black text-4xl font-plight ${textStyles}`}
+                >
+                  {word}
+                </Text>
+              ))}
+              {secondaryTitle && (
+                <Text className="text-gray-400 text-lg font-plight mt-1">
+                  {secondaryTitle}
+                </Text>
+              )}
+            </View>
+            {isStarted && <Text style={styles.timer} className="text-gray-400 text-2xl font-plight">{time}</Text>}
+          </>
+        )}
+      </TouchableOpacity>
+      <AnimatedCircularProgress
+        size={screen.width / 2}
+        width={12}
+        fill={percentComplete}
+        tintColor="blue"
+        rotation={0}
+        dashedTint={{width:3, gap:10}}
+        backgroundColor='rgba(0,0,0,0.1)'
+      />
       
-      {isLoading ? (
-        <ActivityIndicator size="large" color="#FFA001" />
-      ) : (
-        <>
-          <View className="items-center">
-            {titleWords.map((word, index) => (
-              <Text 
-                key={index}
-                style={styles.title} 
-                className={`text-black text-4xl font-plight ${textStyles}`}
-              >
-                {word}
-              </Text>
-            ))}
-            {secondaryTitle && (
-              <Text className="text-gray-400 text-lg font-plight mt-1">
-                {secondaryTitle}
-              </Text>
-            )}
-          </View>
-          {isStarted && <Text style={styles.timer} className="text-gray-400 text-2xl font-plight">{time}</Text>}
-        </>
-      )}
-    </TouchableOpacity>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   button: {
-    width:screen.width / 2,
-    height:screen.width / 2,
+    width: screen.width / 2,
+    height: screen.width / 2,
     borderRadius: screen.width / 2,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 5,
-    position: 'relative',
+    position: 'absolute',
   },
   progressContainer: {
     position: 'absolute',
@@ -87,6 +106,10 @@ const styles = StyleSheet.create({
   },
   timer: {
   },
+  progressCircle: {
+    position: 'absolute',
+    zIndex: 0
+  }
 })
 
 export default ClockButton

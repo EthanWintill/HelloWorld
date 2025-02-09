@@ -37,6 +37,8 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.5",
+    "react-native-circular-progress": "^1.4.1",
+    "react-native-circular-progress-indicator": "^4.4.2",
     "react-native-geolocation-service": "^5.3.1",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-permissions": "^5.2.4",
