@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import numberToWords from 'number-to-words';
 import Geolocation from 'react-native-geolocation-service';
-import { PERMISSIONS, RESULTS, check, request } from 'react-native-permissions'
+import * as Location from 'expo-location'
 import ClockButton from '@/components/ClockButton'
 import { useStopWatch } from '@/hooks/useStopwatch'
 import { API_URL } from '@/constants';
@@ -17,19 +17,22 @@ const Study = () => {
   const { startInterval, stopInterval, dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
   const [locationGranted, setLocationGranted] = useState('UNKNOWN');
+
+
   const handleLocationPermission = async () => {
-    const res = await check(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-    if (res === RESULTS.GRANTED) {
+    const res = await Location.requestForegroundPermissionsAsync();
+    console.log('Location Permission:', res);
+    if (res.status === 'granted') {
       setLocationGranted('GRANTED');
-    } else if (res === RESULTS.BLOCKED) {
+    } else if (!res.canAskAgain){
       setLocationGranted('BLOCKED');
-    } else if (res === RESULTS.DENIED) {
-      const res2 = await request(PERMISSIONS.IOS.LOCATION_WHEN_IN_USE);
-      res2 === RESULTS.GRANTED ? setLocationGranted('GRANTED') : setLocationGranted('DENIED');
+    } else {
+      setLocationGranted('DENIED');
     }
   };
 
   const startStudying = () => {
+    handleLocationPermission();
     startInterval('kkk');
     setTimeout(() => {
       stopInterval();
@@ -133,7 +136,7 @@ const Study = () => {
 
   useEffect(() => {
     getAllAsyncStorageData(); // Log all storage data
-    //handleLocationPermission();
+    handleLocationPermission();
   }, []);
   const handleClock = () => {
     console.log("HANDLE CLOCKY")

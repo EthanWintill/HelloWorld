@@ -32,7 +32,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const startInterval = (orgId: string) => {
     if (!intervalId) {
       const id = setInterval(() => {
-        
+        console.log(orgId);
       }, 3000);
       setIntervalId(id);
     }
