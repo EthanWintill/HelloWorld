@@ -93,7 +93,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   return (
-    <DashboardContext.Provider value={{ dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized }}>
+    <DashboardContext.Provider value={{dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized }}>
       {children}
     </DashboardContext.Provider>
   );
