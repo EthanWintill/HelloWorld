@@ -15,7 +15,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sambryant.GreekGeekStudy"
+      "bundleIdentifier": "com.sambryant.GreekGeekStudy",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "gimme dat shi"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +32,15 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "react-native-permissions",
+        {
+          "iosPermissions": [
+            "LocationWhenInUse"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
