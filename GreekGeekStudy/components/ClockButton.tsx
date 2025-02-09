@@ -1,9 +1,10 @@
-import { Text, TouchableOpacity, Dimensions, View } from 'react-native'
+import { Text, TouchableOpacity, Dimensions, View, ActivityIndicator } from 'react-native'
 import React from 'react'
 import { StyleSheet } from 'react-native';
 
 interface ClockButtonProps {
   title: string;
+  secondaryTitle?: string;
   handlePress: () => void;
   containerStyles?: string;
   textStyles?: string;
@@ -15,18 +16,44 @@ interface ClockButtonProps {
 
 const screen = Dimensions.get('window')
 
-const ClockButton: React.FC<ClockButtonProps> = ({ title, handlePress, containerStyles, textStyles, isLoading, isStarted, percentComplete, time}) => {
+const ClockButton: React.FC<ClockButtonProps> = ({ title, secondaryTitle, handlePress, containerStyles, textStyles, isLoading, isStarted, percentComplete, time}) => {
+  // Split the title into words and render each on its own line
+  const titleWords = title.split(' ');
+  
   return (
-
     <TouchableOpacity
-        style={styles.button}
+        style={[
+          styles.button,
+          { backgroundColor: isStarted ? 'rgba(239, 68, 68, 0.1)' : 'rgba(22, 163, 74, 0.1)' }
+        ]}
       onPress={handlePress}
       activeOpacity={0.7}
       disabled={isLoading}
       className={`border-5 rounded-full justify-center items-center ${isStarted ? 'border-red-500' : 'border-green-500'} ${containerStyles}`}>
       
-      <Text style={styles.title}className={`text-black text-4xl font-plight ${textStyles}`}>{title}</Text>
-      {isStarted && <Text style={styles.timer} className="text-gray-400 text-2xl font-plight">{time}</Text>}
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#FFA001" />
+      ) : (
+        <>
+          <View className="items-center">
+            {titleWords.map((word, index) => (
+              <Text 
+                key={index}
+                style={styles.title} 
+                className={`text-black text-4xl font-plight ${textStyles}`}
+              >
+                {word}
+              </Text>
+            ))}
+            {secondaryTitle && (
+              <Text className="text-gray-400 text-lg font-plight mt-1">
+                {secondaryTitle}
+              </Text>
+            )}
+          </View>
+          {isStarted && <Text style={styles.timer} className="text-gray-400 text-2xl font-plight">{time}</Text>}
+        </>
+      )}
     </TouchableOpacity>
   )
 }

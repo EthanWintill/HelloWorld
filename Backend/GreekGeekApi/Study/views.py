@@ -1,8 +1,8 @@
 from rest_framework import permissions, viewsets, status, exceptions
 
-from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, action
 
 from rest_framework.views import APIView
 from rest_framework.generics import CreateAPIView, ListCreateAPIView, ListAPIView, DestroyAPIView, UpdateAPIView, RetrieveUpdateDestroyAPIView, RetrieveAPIView
@@ -13,13 +13,50 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import User, Org, Session, Location
-
+from .models import User, Org, Session, Location, PeriodSetting, PeriodInstance
 
 from django.http import Http404 
 from django.utils import timezone
 
 from datetime import timedelta
+
+from .utils import get_or_create_period_instance
+
+class PeriodSettingViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAdminUser,)
+    serializer_class = PeriodSettingSerializer
+    
+    def get_queryset(self):
+        return PeriodSetting.objects.filter(org=self.request.user.org)
+
+    def perform_create(self, serializer):
+        # Deactivate existing period settings for this org
+        PeriodSetting.objects.filter(org=self.request.user.org, is_active=True).update(is_active=False)
+        
+        # Deactivate existing active period instances
+        PeriodInstance.objects.filter(
+            period_setting__org=self.request.user.org,
+            is_active=True
+        ).update(is_active=False)
+        
+        # Create new period setting
+        period_setting = serializer.save(org=self.request.user.org, is_active=True)
+        
+        # Create first period instance
+        start_date = period_setting.start_date
+        end_date = period_setting.get_next_due_date()
+        if end_date:
+            PeriodInstance.objects.create(
+                period_setting=period_setting,
+                start_date=start_date,
+                end_date=end_date,
+                is_active=True
+            )
+
+class PeriodInstanceViewSet(viewsets.ModelViewSet):
+    permission_classes = (IsAdminUser,)
+    serializer_class = PeriodInstanceSerializer
+    queryset = PeriodInstance.objects.all()
 
 class UserDashboard(RetrieveAPIView):
     permission_classes = (IsAuthenticated,)
@@ -70,16 +107,21 @@ class ClockOut(APIView):
         last_session = Session.objects.filter(user=current_user).last()
         start_time = last_session.start_time
         if last_session and not last_session.hours:
-            #good to clock out
+            # Get or create period instance
+            period_instance = get_or_create_period_instance(current_user, start_time)
+            
+            # Clock out logic
             hours = (current_time - start_time).total_seconds() / 3600
             last_session.hours = hours
+            last_session.period_instance = period_instance
             last_session.save()
             current_user.live = False
             current_user.save()
-            return Response({"detail": "Successfully clocked out.",
-                        "start_time": last_session.start_time,
-                        "hours": hours}, 
-                        status=status.HTTP_200_OK)
+            return Response({
+                "detail": "Successfully clocked out.",
+                "start_time": last_session.start_time,
+                "hours": hours
+            }, status=status.HTTP_200_OK)
         else:
             raise exceptions.ValidationError(detail="You are not clocked in")
 
@@ -226,6 +268,24 @@ class ManageStaffStatus(UpdateAPIView):
             raise exceptions.PermissionDenied(detail="You can only modify users in your organization")
         
         return super().update(request, *args, **kwargs)
+
+class GetLatestPeriodInstance(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request, format=None):
+        current_user = request.user
+        current_time = timezone.now()
+        
+        # Use the helper function to get or create period instance
+        period_instance = get_or_create_period_instance(current_user, current_time)
+        
+        if period_instance:
+            serializer = PeriodInstanceSerializer(period_instance)
+            return Response(serializer.data)
+        else:
+            return Response({
+                "detail": "No period settings found for your organization"
+            }, status=status.HTTP_404_NOT_FOUND)
 
 
 

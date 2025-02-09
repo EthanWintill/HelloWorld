@@ -168,9 +168,7 @@ const Study = () => {
 
   
 
-  if (isLoading) {
-    return <LoadingScreen />
-  }
+ 
 
   if (error) {
     return (
@@ -182,24 +180,24 @@ const Study = () => {
   }
 
   return (
-    
     <SafeAreaView className="bg-white h-full">
       <ScrollView contentContainerStyle={{height: '100%'}}>
       <View className='h-[33vh] w-full justify-center items-center px-4'>
         <ClockButton
-        title={!isStudying ? "Start" : "Stop"}
+        title={!isStudying ? "Start Studying" : "Stop"}
+        secondaryTitle={!isStudying ? "Alkek Library" : undefined}
         handlePress={handleClock}
         isStarted={isStudying}
         percentComplete={50}
         time={time}
-        
-
+        isLoading={isLoading}
         />
-        <Text>{time}</Text>
       </View>
       <View className='basis-1/3'>
         <Text className="font-pregular text-center text-xl">
-          {studyHoursLeft() > 0 ? (
+          {!data ? (
+            "Loading..."
+          ) : studyHoursLeft() > 0 ? (
             <>
               <Text className="font-bold text-green-600">
                 {numberToWords.toWords(studyHoursLeft()).charAt(0).toUpperCase() + numberToWords.toWords(studyHoursLeft()).slice(1)}

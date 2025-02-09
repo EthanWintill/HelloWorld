@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+from django.utils.timezone import now
+from datetime import timedelta
+import uuid
 
 # Organization Model
 class Org(models.Model):
@@ -23,6 +26,52 @@ class Period(models.Model):
 
     def __str__(self):
         return f"{self.start} - {self.end} for {self.org.name}"
+    
+from django.db import models
+from django.utils.timezone import now
+from datetime import timedelta
+import uuid
+
+class PeriodSetting(models.Model):
+    PERIOD_CHOICES = [
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('custom', 'Custom')
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    org = models.ForeignKey('Org', on_delete=models.CASCADE, related_name="period_settings")  # Organization-specific settings
+    period_type = models.CharField(max_length=10, choices=PERIOD_CHOICES)
+    custom_days = models.PositiveIntegerField(null=True, blank=True, help_text="Days for custom period")
+    required_hours = models.FloatField(help_text="Required action hours per period")  # Matches org's study_req
+    start_date = models.DateTimeField(default=now)
+    due_day_of_week = models.IntegerField(null=True, blank=True, help_text="0=Monday, 6=Sunday for weekly cycles")
+    is_active = models.BooleanField(default=True)  # New field
+
+    def get_next_due_date(self, from_date=None):
+        """Calculate the next due date based on the period type."""
+        from_date = from_date or self.start_date
+        if self.period_type == "weekly":
+            return from_date + timedelta(days=(7 - from_date.weekday() + self.due_day_of_week) % 7)
+        elif self.period_type == "monthly":
+            return from_date.replace(month=from_date.month + 1)
+        elif self.period_type == "custom" and self.custom_days:
+            return from_date + timedelta(days=self.custom_days)
+        return None
+
+    def __str__(self):
+        return f"{self.org.name} - {self.period_type} period"
+
+class PeriodInstance(models.Model):
+    """Each individual period cycle (e.g., 'Week 1 of Jan 2025')"""
+    period_setting = models.ForeignKey(PeriodSetting, on_delete=models.CASCADE, related_name="instances")
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.period_setting.period_type} ({self.start_date.date()} - {self.end_date.date()})"
+
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password, **extra_fields):
@@ -83,6 +132,8 @@ class Session(models.Model):
     location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True, related_name="sessions")
     before_pic = models.CharField(max_length=255, blank=True, null=True)  # Optional picture URL
     after_pic = models.CharField(max_length=255, blank=True, null=True)  # Optional picture URL
+
+    period_instance = models.ForeignKey(PeriodInstance, on_delete=models.CASCADE, related_name="sessions", null=True, blank=True)
 
     class Meta:
         ordering = ['id']

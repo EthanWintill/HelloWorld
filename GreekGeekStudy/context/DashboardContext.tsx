@@ -51,27 +51,30 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       await AsyncStorage.setItem('dashboardData', JSON.stringify(response.data));
       
-      setDashboardState({
+      setDashboardState(prev => ({
         isLoading: false,
         error: null,
         data: response.data,
-      });
+      }));
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 401) {
         console.log(error.response)
         await handleUnauthorized();
       }
       
-      setDashboardState({
+      setDashboardState(prev => ({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch dashboard data',
-        data: null,
-      });
+        data: prev.data,
+      }));
     }
   };
 
   const refreshDashboard = async () => {
-    setDashboardState(prev => ({ ...prev, isLoading: true }));
+    setDashboardState(prev => ({ 
+      ...prev, 
+      isLoading: true,
+    }));
     await fetchDashboardData();
   };
 
