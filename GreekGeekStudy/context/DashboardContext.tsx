@@ -48,8 +48,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           Authorization: `Bearer ${token}`,
         },
       });
-
-      await AsyncStorage.setItem('dashboardData', JSON.stringify(response.data));
       
       setDashboardState(prev => ({
         isLoading: false,

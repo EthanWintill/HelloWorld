@@ -164,6 +164,9 @@ const Study = () => {
     
     //getAllAsyncStorageData(); // Log all storage data
     refreshClock()
+
+    console.log("Dashboard Data:", JSON.stringify(data, null, 2));
+
   }, [isLoading]);
 
   

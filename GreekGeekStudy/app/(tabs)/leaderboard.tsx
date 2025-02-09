@@ -36,7 +36,7 @@ const Leaderboard = () => {
   return (
     <SafeAreaView className="flex-1">
       <ScrollView className="p-4">
-        <Text className="text-xl font-bold mb-4">Organization Members</Text>
+        <Text className="text-xl font-bold mb-4">{data.org ? data.org.name : "Organization"} Leaderboard</Text>
         {otherUsers.map((user: User) => (
           <View key={user.id} className="bg-white p-4 mb-2 rounded-lg shadow">
             <Text className="font-bold">
