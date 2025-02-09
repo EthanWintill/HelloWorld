@@ -15,8 +15,6 @@ type DashboardContextType = {
   refreshDashboard: () => Promise<void>;
   checkIsStudying: () => boolean;
   handleUnauthorized: () => Promise<void>;
-  startInterval: (orgId: string) => void;
-  stopInterval: () => void;
 };
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
@@ -27,24 +25,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     error: null,
     data: null,
   });
-  const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
-
-  const startInterval = (orgId: string) => {
-    if (!intervalId) {
-      const id = setInterval(() => {
-        console.log(orgId);
-      }, 3000);
-      setIntervalId(id);
-    }
-  };
-
-  // Function to stop the interval
-  const stopInterval = () => {
-    if (intervalId) {
-      clearInterval(intervalId);
-      setIntervalId(null);
-    }
-  };
 
   const handleUnauthorized = async () => {
     try {
@@ -115,7 +95,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, []);
 
   return (
-    <DashboardContext.Provider value={{startInterval, stopInterval, dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized }}>
+    <DashboardContext.Provider value={{dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized }}>
       {children}
     </DashboardContext.Provider>
   );
