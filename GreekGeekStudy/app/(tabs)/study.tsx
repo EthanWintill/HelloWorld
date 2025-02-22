@@ -13,10 +13,15 @@ import { useStopWatch } from '@/hooks/useStopwatch'
 import { API_URL } from '@/constants';
 import axios, { AxiosError } from 'axios'
 import { images } from "@/constants";
-import { GEOFENCE_TASK } from '@/geofenceTask'
 import haversine from 'haversine-distance'
-import eventBus, { GEOFENCE_EXIT } from '@/helpers/eventBus';
+import * as TaskManager from 'expo-task-manager';
 
+const GEOFENCE_TASK = 'GEOFENCE_TASK';
+
+interface GeofencingEvent {
+  eventType: Location.GeofencingEventType;
+  region: Location.LocationRegion;
+}
 
 const Study = () => {
   // --- Hooks and State ---
@@ -317,9 +322,31 @@ const Study = () => {
       clockOutAndRefresh();
     };
 
-    eventBus.on(GEOFENCE_EXIT, exitHandler);
+    TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
+      if (error) {
+        console.error(error);
+        return;
+      }
+      const { eventType, region } = data as GeofencingEvent;
+      let timeoutId: NodeJS.Timeout | null = null;
+
+      if (eventType === Location.GeofencingEventType.Enter) {
+        console.log('You have entered the geofence');
+        console.log('timeoutId:', timeoutId);
+        if(timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      } else if (eventType === Location.GeofencingEventType.Exit) {
+        Alert.alert('Please enter the geofence to continue studying, you have 5 minutes to do so.');
+        timeoutId = setTimeout(() => {
+          exitHandler();
+        }, 15000);
+        console.log('Timeout id:', timeoutId);
+      }
+    });
+
     return () => {
-      eventBus.off(GEOFENCE_EXIT, exitHandler);
+      TaskManager.unregisterTaskAsync(GEOFENCE_TASK);
     };
   }, []);
 
