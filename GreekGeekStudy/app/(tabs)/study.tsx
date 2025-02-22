@@ -18,6 +18,36 @@ import * as TaskManager from 'expo-task-manager';
 
 const GEOFENCE_TASK = 'GEOFENCE_TASK';
 
+let timeoutId: NodeJS.Timeout | null = null;
+
+    TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
+      if (error) {
+        console.error(error);
+        return;
+      }
+      console.log('Background task executed with data:', data);
+
+      const { eventType } = data as GeofencingEvent;
+
+      if (eventType === Location.GeofencingEventType.Enter) {
+        console.log('You have entered the geofence');
+        console.log('timeoutId:', timeoutId);
+        if(timeoutId) {
+          clearTimeout(timeoutId);
+        }
+      } else if (eventType === Location.GeofencingEventType.Exit) {
+        console.log('You have exited the geofence');
+        Alert.alert('Please enter the geofence to continue studying, you have 5 minutes to do so.');
+        timeoutId = setTimeout(() => {
+          console.log('5 minutes have passed');
+          Alert.alert('You have been clocked out for not entering the geofence in time.');
+          //clockOutAndRefresh();
+        }, 15000);
+        console.log('Timeout id:', timeoutId);
+      }
+    });
+
+
 interface GeofencingEvent {
   eventType: Location.GeofencingEventType;
   region: Location.LocationRegion;
@@ -322,28 +352,6 @@ const Study = () => {
       clockOutAndRefresh();
     };
 
-    TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
-      if (error) {
-        console.error(error);
-        return;
-      }
-      const { eventType, region } = data as GeofencingEvent;
-      let timeoutId: NodeJS.Timeout | null = null;
-
-      if (eventType === Location.GeofencingEventType.Enter) {
-        console.log('You have entered the geofence');
-        console.log('timeoutId:', timeoutId);
-        if(timeoutId) {
-          clearTimeout(timeoutId);
-        }
-      } else if (eventType === Location.GeofencingEventType.Exit) {
-        Alert.alert('Please enter the geofence to continue studying, you have 5 minutes to do so.');
-        timeoutId = setTimeout(() => {
-          exitHandler();
-        }, 15000);
-        console.log('Timeout id:', timeoutId);
-      }
-    });
 
     return () => {
       TaskManager.unregisterTaskAsync(GEOFENCE_TASK);
