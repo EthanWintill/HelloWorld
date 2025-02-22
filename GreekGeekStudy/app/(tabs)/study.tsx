@@ -27,6 +27,9 @@ const Study = () => {
   // --- Hooks and State ---
   const { dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
+
+  const [backgroundStatus, backgroundRequestPermission] = Location.useBackgroundPermissions();
+
   const [locationGranted, setLocationGranted] = useState('UNKNOWN');
   const [isStudying, setIsStudying] = useState(false)
   const {
@@ -56,42 +59,56 @@ const Study = () => {
   };
 
   const handleLocationPermission = async () => {
-    const res = await Location.requestBackgroundPermissionsAsync();
+    let res = backgroundStatus
     console.log('Location Permission:', res);
-    if (res.status === 'granted') {
+
+    if (!res) {
+      res = await backgroundRequestPermission();
+      console.log('Location Permission:', res);
+    }
+
+    while (!res.granted && res.canAskAgain) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      res = await backgroundRequestPermission();
+      console.log('Location Permission:', res);
+    }
+
+    if (!res.granted && !res.canAskAgain) {
+      setLocationGranted('BLOCKED')
+      showSettingsAlert()
+    }
+
+    if (res.granted) {
       setLocationGranted('GRANTED');
-    } else if (!res.canAskAgain){
-      setLocationGranted('BLOCKED');
-      showSettingsAlert();
+    
     } else {
       setLocationGranted('DENIED');
     }
   };
 
+  const getStudyLocationGPS = async () => {
+    await handleLocationPermission();
+    if (locationGranted !== 'GRANTED') return null;
+    const location = await Location.getCurrentPositionAsync();
+    const studyLocations = dashboardState.data['org_locations'];
+    for (const studyLocation of studyLocations) {
+      const distance = haversine(
+        { latitude: location.coords.latitude, longitude: location.coords.longitude },
+        { latitude: studyLocation['gps_lat'], longitude: studyLocation['gps_long'] }
+      )
+      if (distance < studyLocation['gps_radius']) {
+        return studyLocation;
+      }
+    }
+    return null;
+  }
+
   // --- Clock Related Functions ---
   const clockIn = async () => {
     try {
-      let currentStudyLocation;
+      let currentStudyLocation = await getStudyLocationGPS();
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
-
-      // Get the current location of the user
-      const location = await Location.getCurrentPositionAsync();
-      console.log('Current location: ', location.coords);
-
-      // Find the study location within the allowed radius
-      const studyLocations = dashboardState.data['org_locations'];
-      for (const studyLocation of studyLocations) {
-        const distance = haversine(
-          { latitude: location.coords.latitude, longitude: location.coords.longitude },
-          { latitude: studyLocation['gps_lat'], longitude: studyLocation['gps_long'] }
-        )
-        console.log('Distance to', studyLocation['name'], ':', distance);
-        if (distance < studyLocation['gps_radius']) {
-          currentStudyLocation = studyLocation;
-          break;
-        }
-      }
 
       //If no location found, alert the user
       if (!currentStudyLocation) {
