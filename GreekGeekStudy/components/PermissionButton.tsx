@@ -19,7 +19,6 @@ const PermissionButton: React.FC<PermissionButtonProps> = ({ handlePress, contai
       onPress={handlePress}
       activeOpacity={0.7}
       className={`border-5 rounded-full justify-center items-center border-gray-500 ${containerStyles}`}> 
-      
       <View className="items-center">
         <Text 
           style={styles.title} 
