@@ -52,7 +52,12 @@ class PeriodSetting(models.Model):
         """Calculate the next due date based on the period type."""
         from_date = from_date or self.start_date
         if self.period_type == "weekly":
-            return from_date + timedelta(days=(7 - from_date.weekday() + self.due_day_of_week) % 7)
+            # Calculate days until next due date
+            days_until_due = (self.due_day_of_week - from_date.weekday()) % 7
+            # If we're on the due day, add 7 days to get next week
+            if days_until_due == 0:
+                days_until_due = 7
+            return from_date + timedelta(days=days_until_due)
         elif self.period_type == "monthly":
             return from_date.replace(month=from_date.month + 1)
         elif self.period_type == "custom" and self.custom_days:
