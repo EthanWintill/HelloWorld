@@ -11,9 +11,28 @@ def calculate_period_start_date(period_setting, session_time):
         return start_date
         
     if period_setting.period_type == "weekly":
-        days_since_start = (session_time - start_date).days
-        weeks_passed = math.floor(days_since_start / 7)
-        return start_date + timedelta(weeks=weeks_passed)
+        due_day = period_setting.due_day_of_week  # 0-6 (Monday-Sunday)
+        current_day = session_time.weekday()  # 0-6 (Monday-Sunday)
+        period_start = start_date.weekday()
+
+        first_due_date = period_setting.get_next_due_date()
+        if first_due_date > session_time:
+            return start_date
+        
+        current_start = first_due_date
+        current_end = period_setting.get_next_due_date(from_date=current_start)
+
+        while current_end < session_time:
+            current_start = current_end
+            current_end = period_setting.get_next_due_date(from_date=current_start) 
+        
+        return current_start
+
+        
+        
+        
+        
+        
         
     elif period_setting.period_type == "monthly":
         months_passed = (session_time.year - start_date.year) * 12 + (session_time.month - start_date.month)
@@ -35,15 +54,20 @@ def get_or_create_period_instance(user, session_time):
     try:
         period_setting = PeriodSetting.objects.get(org=user.org, is_active=True)
         
-        # Try to find an active period instance that contains this time
-        instance = PeriodInstance.objects.filter(
+        # Try to find an active period instance
+        active_instance = PeriodInstance.objects.filter(
             period_setting=period_setting,
-            start_date__lte=session_time,
-            end_date__gte=session_time,
             is_active=True
         ).first()
         
-        if not instance:
+        # Check if we need a new instance (no active instance or active instance is outdated)
+        needs_new_instance = (
+            not active_instance or 
+            active_instance.end_date < session_time or 
+            active_instance.start_date > session_time
+        )
+        
+        if needs_new_instance:
             with transaction.atomic():
                 # Lock only periods for this org's active period setting
                 PeriodInstance.objects.select_for_update().filter(
@@ -51,11 +75,12 @@ def get_or_create_period_instance(user, session_time):
                     period_setting__is_active=True
                 ).exists()  # Execute the query to acquire the lock
                 
-                # Double-check if instance was created while we were processing
+                # Double-check if appropriate instance was created while we were processing
                 instance = PeriodInstance.objects.filter(
                     period_setting=period_setting,
                     start_date__lte=session_time,
                     end_date__gte=session_time,
+                    is_active=True
                 ).first()
                 
                 if not instance:
@@ -79,6 +104,8 @@ def get_or_create_period_instance(user, session_time):
                         end_date=end_date,
                         is_active=True
                     )
+        else:
+            instance = active_instance
         
         return instance
         
