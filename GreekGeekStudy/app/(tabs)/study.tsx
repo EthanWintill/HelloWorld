@@ -19,23 +19,33 @@ import eventBus, { GEOFENCE_EXIT } from '@/helpers/eventBus';
 
 
 const Study = () => {
+  // --- Hooks and State ---
   const { dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
   const [locationGranted, setLocationGranted] = useState('UNKNOWN');
+  const [isStudying, setIsStudying] = useState(false)
+  const {
+    time,
+    isRunning,
+    start,
+    stop,
+    reset,
+    lap,
+    laps,
+    currentLapTime,
+    hasStarted,
+    slowestLapTime,
+    fastestLapTime,
+  } = useStopWatch();
 
-const showSettingsAlert = () => {
+  // --- Location Related Functions ---
+  const showSettingsAlert = () => {
     Alert.alert(
       "Permission Required",
       "You must enable location sharing to use this app. Please go to settings to enable it.",
       [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Settings",
-          onPress: () => Linking.openSettings()
-        }
+        { text: "Cancel", style: "cancel" },
+        { text: "Settings", onPress: () => Linking.openSettings() }
       ]
     );
   };
@@ -53,27 +63,7 @@ const showSettingsAlert = () => {
     }
   };
 
-  
-  const [isStudying, setIsStudying] = useState(false)
-
-  /*
-        TODO:
-        -clock in can currently be bypassed with airplane mode since
-        the server just takes a call for clock in and clock out and trusts
-        it. If the app cannot make the clock out call, it will keep racking up hours.
-        Fix: store locally if they leave location, or go airplane, then add a backend
-        call to manually fix the hours on clock out so they cant rack up hours like that
-
-        -Fix dashboard loading state, Instead of not rendering anything lets put a loading circle on stuff
-        -Add loading state for clock in/ out requests, put loading circle on button.
-
-        -obviously we need location, it is currently manually set to location_id 1 in the clock in function
-        
-        -Design stuff? Maybe org name at the top,  maybe some sort of menu on the top for stuff?
-
-        -Admin stuff, add/modify locations, admin menu?
-  */
-
+  // --- Clock Related Functions ---
   const clockIn = async () => {
     try {
       let currentStudyLocation;
@@ -148,39 +138,46 @@ const showSettingsAlert = () => {
     }
   }
 
-  const {
-    time,
-    isRunning,
-    start,
-    stop,
-    reset,
-    lap,
-    laps,
-    currentLapTime,
-    hasStarted,
-    slowestLapTime,
-    fastestLapTime,
-  } = useStopWatch();
+  const clockOutAndRefresh = () => {
+    clockOut()
+      .then(() => {})
+      .finally(() => {
+        refreshDashboard().finally(() => refreshClock())
+      })
+  }
 
-  const getAllAsyncStorageData = async () => {
-    try {
-      const keys = await AsyncStorage.getAllKeys();
-      const items = await AsyncStorage.multiGet(keys);
-
-      console.log('All AsyncStorage Data:');
-      console.log('--------------------');
-      items.forEach(([key, value]) => {
-        console.log(`${key}:`, value);
-      });
-      console.log('--------------------');
-
-      return items;
-
-    } catch (error) {
-      console.error('Error getting AsyncStorage data:', error);
-      return [];
+  const handleClock = () => {
+    if (!checkIsStudying()) {
+      clockIn()
+        .then(() => {})
+        .finally(() => {
+          refreshDashboard().finally(() => refreshClock())
+        })
+    } else {
+      clockOutAndRefresh()
     }
-  };
+  }
+
+  const getClockTime = () => {
+    if (!checkIsStudying()) return 0
+
+    const lastSession = data.user_sessions[data.user_sessions.length - 1];
+    return new Date(lastSession.start_time).getTime()
+  }
+
+  const refreshClock = () => {
+    if (checkIsStudying()) {
+      const starter = getClockTime()
+      setIsStudying(true)
+      start(starter)
+    } else {
+      setIsStudying(false)
+      reset()
+      stop()
+    }
+  }
+
+  // --- Study Hours Calculation Functions ---
   const requiredHours = () => {
     if (!data?.active_period_setting) return 0;
     return Math.round(data.active_period_setting.required_hours);
@@ -229,76 +226,7 @@ const showSettingsAlert = () => {
     if (required === 0) return 0;
     
     const studied = hoursStudied();
-    const percentage = (studied / required) * 100;
-    return Math.min(Math.round(percentage), 100);
-  }
-
-
-  useEffect(() => {
-    getAllAsyncStorageData(); // Log all storage data
-    handleLocationPermission();
-  }, []);
-
-  const clockOutAndRefresh = () => {
-    clockOut().then(() => {
-      // loading state
-    }).finally(() => {
-      refreshDashboard().finally(() => {
-        refreshClock()
-      })
-    })
-  }
-
-  const handleClock = () => {
-    console.log("HANDLE CLOCKY")
-    if (!checkIsStudying()) {
-      clockIn().then(() => {
-        // set loading state
-      }).finally(() => {
-        refreshDashboard().finally(() => {
-          refreshClock()
-        })
-      })
-
-    } else {
-      clockOut().then(() => {
-        // loading state
-      }).finally(() => {
-        refreshDashboard().finally(() => {
-          refreshClock()
-        })
-      })
-    }
-
-  }
-
-  const getClockTime = () => {
-    console.log("HELLOOOOOOOO")
-    if (!checkIsStudying()) { return 0 }
-
-    const lastSession = data.user_sessions[data.user_sessions.length - 1];
-
-    const startTime = lastSession.start_time
-    const startTimeMillis = new Date(startTime).getTime()
-    console.log("START TIME")
-    console.log(startTimeMillis)
-    return startTimeMillis
-  }
-
-  const refreshClock = () => {
-    console.log("REFRESHYYYYY")
-
-    if (checkIsStudying()) {
-      const starter = getClockTime()
-      setIsStudying(true)
-      start(starter)
-
-    } else {
-      setIsStudying(false)
-      reset()
-      stop()
-
-    }
+    return Math.min(Math.round((studied / required) * 100), 100);
   }
 
   const getActivePeriodInfo = () => {
@@ -343,6 +271,27 @@ const showSettingsAlert = () => {
     };
   };
 
+  // --- Storage Utilities ---
+  const getAllAsyncStorageData = async () => {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const items = await AsyncStorage.multiGet(keys);
+
+      console.log('All AsyncStorage Data:');
+      console.log('--------------------');
+      items.forEach(([key, value]) => {
+        console.log(`${key}:`, value);
+      });
+      console.log('--------------------');
+
+      return items;
+
+    } catch (error) {
+      console.error('Error getting AsyncStorage data:', error);
+      return [];
+    }
+  };
+
   const clearAsyncStorage = async () => {
     try {
       await AsyncStorage.clear();
@@ -352,7 +301,10 @@ const showSettingsAlert = () => {
     }
   };
 
+  // --- Effects ---
   useEffect(() => {
+    getAllAsyncStorageData();
+    handleLocationPermission();
     // Uncomment the next line when you want to clear storage
     //clearAsyncStorage();
     
@@ -366,12 +318,10 @@ const showSettingsAlert = () => {
     };
 
     eventBus.on(GEOFENCE_EXIT, exitHandler);
-
     return () => {
       eventBus.off(GEOFENCE_EXIT, exitHandler);
     };
   }, []);
-
 
   if (error) {
     return (
