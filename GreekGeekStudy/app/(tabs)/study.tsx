@@ -59,6 +59,7 @@ const Study = () => {
   const { isLoading, error, data } = dashboardState
 
   const [backgroundStatus, backgroundRequestPermission] = Location.useBackgroundPermissions();
+  const [foregroundStatus, foregroundRequestPermission] = Location.useForegroundPermissions();
 
   const [locationGranted, setLocationGranted] = useState('UNKNOWN');
   const [isStudying, setIsStudying] = useState(false)
@@ -88,7 +89,35 @@ const Study = () => {
     );
   };
 
+  const handleForegroundLocationPermission = async () => {
+    let res = foregroundStatus
+    console.log('Foreground Location Permission:', res);
+
+    if (!res) {
+      res = await foregroundRequestPermission();
+      console.log('Foreground Location Permission:', res);
+    } 
+
+    while (!res.granted && res.canAskAgain) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      res = await foregroundRequestPermission();
+      console.log('Foreground Location Permission:', res);
+    }
+
+    if (!res.granted && !res.canAskAgain) {
+      setLocationGranted('BLOCKED')
+      showSettingsAlert()
+    }
+
+    if (res.granted) {
+      setLocationGranted('GRANTED');
+    } else {
+      setLocationGranted('DENIED');
+    }
+
+  } 
   const handleLocationPermission = async () => {
+    await handleForegroundLocationPermission();
     let res = backgroundStatus
     console.log('Location Permission:', res);
 
@@ -329,13 +358,6 @@ const Study = () => {
       const keys = await AsyncStorage.getAllKeys();
       const items = await AsyncStorage.multiGet(keys);
 
-      console.log('All AsyncStorage Data:');
-      console.log('--------------------');
-      items.forEach(([key, value]) => {
-        console.log(`${key}:`, value);
-      });
-      console.log('--------------------');
-
       return items;
 
     } catch (error) {
@@ -361,7 +383,7 @@ const Study = () => {
     //clearAsyncStorage();
     
     refreshClock();
-    console.log("Dashboard Data:", JSON.stringify(data, null, 2));
+    //console.log("Dashboard Data:", JSON.stringify(data, null, 2));
   }, [isLoading]);
 
   useEffect(() => {

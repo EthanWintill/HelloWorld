@@ -40,7 +40,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
 
-      console.log("TOKEN ", token)
+      
 
 
       const response = await axios.get(API_URL + 'api/dashboard/', {
@@ -80,15 +80,14 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const { data } = dashboardState;
     if (data && data.user_sessions && data.user_sessions.length > 0) {
       const lastSession = data.user_sessions[data.user_sessions.length - 1];
-      console.log(lastSession)
-      console.log(lastSession.hours === null)
+      
       return lastSession.hours === null;
     }
     return false;
   };
 
   useEffect(() => {
-    console.log("refresh!!!!!!!")
+   
     fetchDashboardData();
   }, []);
 
