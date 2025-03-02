@@ -22,6 +22,7 @@ urlpatterns = [
     path('api/orgs/', views.ListOrgs.as_view(), name='list-orgs'),
     path('api/org/<int:pk>/', views.OrgDetail.as_view(), name='org-detail'),
     path('api/org-by-code/', views.GetOrgByCode.as_view(), name='get-org-by-code'),
+    path('api/my-org/', views.ModifyOrgDetails.as_view(), name='modify-my-org'),
     path('api/clockin/', views.ClockIn.as_view(), name='clock-in'),
     path('api/clockout/', views.ClockOut.as_view(), name='clock-out'),
     path('api/locations/', views.ListLocations.as_view(), name='location-list'), 
@@ -41,4 +42,5 @@ urlpatterns = [
     }), name='period-setting-detail'),
     path('api/latest-period/', views.GetLatestPeriodInstance.as_view(), name='latest-period'),
     path('api/deactivate-periods/', views.DeactivateOrgPeriods.as_view(), name='deactivate-periods'),
+    path('api/users/<int:user_id>/sessions/', views.UserSessionsView.as_view(), name='user-sessions'),
 ]

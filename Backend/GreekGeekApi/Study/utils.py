@@ -1,6 +1,6 @@
-from .models import PeriodSetting, PeriodInstance
+from .models import PeriodSetting, PeriodInstance, Session
 from datetime import datetime, timedelta
-from django.db import transaction
+from django.db import transaction, models
 import math
 
 def calculate_period_start_date(period_setting, session_time):
@@ -111,3 +111,27 @@ def get_or_create_period_instance(user, session_time):
         
     except PeriodSetting.DoesNotExist:
         return None 
+
+def calculate_user_hours(user, period_instance=None):
+    """
+    Calculate the total hours a user has completed in a given period instance.
+    If period_instance is None, calculates total hours across all completed sessions.
+    
+    Args:
+        user: The User object
+        period_instance: Optional PeriodInstance object to filter sessions
+        
+    Returns:
+        float: Total hours completed
+    """
+    # Start with sessions that have hours recorded (completed sessions)
+    query = Session.objects.filter(user=user, hours__isnull=False)
+    
+    # If period instance is provided, filter by it
+    if period_instance:
+        query = query.filter(period_instance=period_instance)
+    
+    # Sum the hours
+    total_hours = query.aggregate(total=models.Sum('hours'))['total'] or 0.0
+    
+    return total_hours 

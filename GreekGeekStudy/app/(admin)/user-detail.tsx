@@ -1,9 +1,12 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Switch } from 'react-native'
-import React, { useState, useEffect } from 'react'
+import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Switch, FlatList } from 'react-native'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { Ionicons } from '@expo/vector-icons'
-import { useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
+import { API_URL } from '@/constants'
+import axios from 'axios'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 // Mock data for user sessions
 const MOCK_SESSIONS = [
@@ -75,7 +78,7 @@ const MOCK_USERS = [
 ]
 
 const UserDetail = () => {
-  const { dashboardState } = useDashboard()
+  const { dashboardState, refreshDashboard, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
   const params = useLocalSearchParams()
   const userId = params.id ? parseInt(params.id as string) : null
@@ -83,39 +86,242 @@ const UserDetail = () => {
   const [user, setUser] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editedUser, setEditedUser] = useState<any>(null)
+  const [updateLoading, setUpdateLoading] = useState(false)
+  const [sessions, setSessions] = useState<any[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [currentPeriod, setCurrentPeriod] = useState<any>(null)
 
-  // Find user by ID
+  // Find user by ID from actual data
   useEffect(() => {
-    if (userId) {
-      const foundUser = MOCK_USERS.find(u => u.id === userId)
+    if (userId && data && data.org_users) {
+      const foundUser = data.org_users.find((u: any) => u.id === userId)
       setUser(foundUser || null)
       setEditedUser(foundUser ? {...foundUser} : null)
     }
-  }, [userId])
+  }, [userId, data])
 
-  const handleSave = () => {
-    if (!editedUser) return
-    
-    // This would normally call an API to update the user
-    setUser({...editedUser})
-    setIsEditing(false)
-    
-    Alert.alert(
-      "Success",
-      "User information has been updated.",
-      [{ text: "OK" }]
-    )
-  }
+  // Find current active period instance
+  useEffect(() => {
+    if (data && data.org_period_instances && data.org_period_instances.length > 0) {
+      // Sort by start date (newest first) and find the first active one
+      const activePeriods = [...data.org_period_instances]
+        .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+        .filter(p => p.is_active)
+      
+      if (activePeriods.length > 0) {
+        setCurrentPeriod(activePeriods[0])
+      }
+    }
+  }, [data])
 
+  // Fetch user sessions when user is available
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!userId) return
+      
+      setSessionsLoading(true)
+      try {
+        const token = await AsyncStorage.getItem('accessToken')
+        if (!token) throw new Error('No access token found')
+
+        const response = await axios.get(
+          `${API_URL}api/users/${userId}/sessions/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            }
+          }
+        )
+        
+        setSessions(response.data)
+      } catch (error) {
+        console.error('Error fetching user sessions:', error)
+        
+        if (error.response?.status === 401) {
+          await handleUnauthorized()
+        }
+      } finally {
+        setSessionsLoading(false)
+      }
+    }
+
+    fetchSessions()
+  }, [userId, handleUnauthorized])
+
+  // Filter sessions based on current period timeframe
+  const filteredSessions = useMemo(() => {
+    if (!sessions.length || !currentPeriod) return []
+    
+    const periodStart = new Date(currentPeriod.start_date).getTime()
+    const periodEnd = new Date(currentPeriod.end_date).getTime()
+    
+    return sessions.filter(session => {
+      const sessionTime = new Date(session.start_time).getTime()
+      return sessionTime >= periodStart && sessionTime <= periodEnd
+    })
+  }, [sessions, currentPeriod])
+
+  // Format date for session display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
+  // Format duration for session display
   const formatDuration = (hours: number) => {
     const h = Math.floor(hours)
     const m = Math.round((hours - h) * 60)
     return `${h}h ${m}m`
+  }
+
+  // Get location name from location ID
+  const getLocationName = useCallback((locationId) => {
+    if (!locationId || !data || !data.org_locations) return 'No location'
+    
+    const location = data.org_locations.find(loc => loc.id === locationId)
+    return location ? location.name : 'Unknown location'
+  }, [data])
+
+  const handleSave = async () => {
+    if (!editedUser || !userId) return
+    
+    setUpdateLoading(true)
+    try {
+      const token = await AsyncStorage.getItem('accessToken')
+      if (!token) throw new Error('No access token found')
+
+      const response = await axios.put(
+        `${API_URL}api/user/${userId}/`, 
+        editedUser,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      
+      await refreshDashboard()
+      setUser(response.data)
+      setIsEditing(false)
+      
+      Alert.alert(
+        "Success",
+        "User information has been updated.",
+        [{ text: "OK" }]
+      )
+    } catch (error) {
+      console.error('Error updating user:', error)
+      
+      if (error.response?.status === 401) {
+        await handleUnauthorized()
+      } else {
+        Alert.alert(
+          "Error",
+          "Failed to update user information. Please try again.",
+          [{ text: "OK" }]
+        )
+      }
+    } finally {
+      setUpdateLoading(false)
+    }
+  }
+
+  const handleDeleteUser = async () => {
+    Alert.alert(
+      "Confirm Deletion",
+      "Are you sure you want to delete this user? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('accessToken')
+              if (!token) throw new Error('No access token found')
+
+              await axios.delete(
+                `${API_URL}api/user/${userId}/`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              )
+              
+              await refreshDashboard()
+              Alert.alert(
+                "Success",
+                "User has been deleted.",
+                [{ 
+                  text: "OK",
+                  onPress: () => router.back()
+                }]
+              )
+            } catch (error) {
+              console.error('Error deleting user:', error)
+              
+              if (error.response?.status === 401) {
+                await handleUnauthorized()
+              } else {
+                Alert.alert(
+                  "Error",
+                  "Failed to delete user. Please try again.",
+                  [{ text: "OK" }]
+                )
+              }
+            }
+          }
+        }
+      ]
+    )
+  }
+
+  const handleResetPassword = async () => {
+    Alert.alert(
+      "Confirm Password Reset",
+      "Are you sure you want to reset this user's password? They will receive an email with instructions.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Reset", 
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('accessToken')
+              if (!token) throw new Error('No access token found')
+
+              await axios.post(
+                `${API_URL}api/user/${userId}/reset-password/`,
+                {},
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              )
+              
+              Alert.alert(
+                "Success",
+                "Password reset email has been sent to the user.",
+                [{ text: "OK" }]
+              )
+            } catch (error) {
+              console.error('Error resetting password:', error)
+              
+              if (error.response?.status === 401) {
+                await handleUnauthorized()
+              } else {
+                Alert.alert(
+                  "Error",
+                  "Failed to reset password. Please try again.",
+                  [{ text: "OK" }]
+                )
+              }
+            }
+          }
+        }
+      ]
+    )
   }
 
   if (isLoading) {
@@ -154,7 +360,7 @@ const UserDetail = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView className="flex-1 p-4">
+      <View className="flex-1 p-4">
         <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-xl font-psemibold">User Information</Text>
@@ -168,9 +374,12 @@ const UserDetail = () => {
             ) : (
               <TouchableOpacity 
                 onPress={handleSave}
-                className="bg-green-600 px-4 py-2 rounded-lg"
+                disabled={updateLoading}
+                className={`bg-green-600 px-4 py-2 rounded-lg ${updateLoading ? 'opacity-70' : ''}`}
               >
-                <Text className="text-white font-psemibold">Save</Text>
+                <Text className="text-white font-psemibold">
+                  {updateLoading ? 'Saving...' : 'Save'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -266,48 +475,68 @@ const UserDetail = () => {
           </View>
         </View>
 
-        <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <Text className="text-xl font-psemibold mb-4">Study Sessions</Text>
-          
-          <View className="flex-row justify-between items-center mb-2">
-            <Text className="font-psemibold">Total Hours</Text>
-            <Text className="text-lg text-green-600 font-psemibold">{user.hours_studied}h</Text>
+        {/* Sessions section */}
+        <View className="bg-white rounded-lg shadow-sm p-4 mb-4 flex-1">
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-xl font-psemibold">Study Sessions</Text>
+            <View className="bg-green-100 px-3 py-1 rounded-lg">
+              <Text className="text-green-600 font-psemibold">
+                {sessionsLoading ? '...' : filteredSessions.reduce((total, session) => total + (session.hours || 0), 0).toFixed(1)}h
+              </Text>
+            </View>
           </View>
           
-          {user.sessions.length === 0 ? (
-            <Text className="text-gray-500 italic text-center py-4">No study sessions recorded</Text>
+          {currentPeriod && (
+            <Text className="text-gray-600 mb-2">
+              Current Period: {new Date(currentPeriod.start_date).toLocaleDateString()} - {new Date(currentPeriod.end_date).toLocaleDateString()}
+            </Text>
+          )}
+          
+          {sessionsLoading ? (
+            <View className="py-4 items-center">
+              <Text className="text-gray-500">Loading sessions...</Text>
+            </View>
+          ) : filteredSessions.length === 0 ? (
+            <Text className="text-gray-500 italic text-center py-4">No study sessions recorded for this period</Text>
           ) : (
-            user.sessions.map((session: any) => (
-              <View 
-                key={session.id}
-                className="p-3 bg-gray-100 rounded-lg mb-2"
-              >
-                <View className="flex-row justify-between items-center">
-                  <Text className="font-psemibold">{formatDate(session.start_time)}</Text>
-                  <Text className="text-green-600 font-psemibold">{formatDuration(session.hours)}</Text>
+            <FlatList
+              data={filteredSessions}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item: session }) => (
+                <View 
+                  className="p-3 bg-gray-100 rounded-lg mb-2"
+                >
+                  <View className="flex-row justify-between items-center">
+                    <Text className="font-psemibold">{formatDate(session.start_time)}</Text>
+                    <Text className="text-green-600 font-psemibold">{formatDuration(session.hours)}</Text>
+                  </View>
+                  <Text className="text-gray-600 text-sm">
+                    {getLocationName(session.location)}
+                  </Text>
                 </View>
-                <Text className="text-gray-600 text-sm">
-                  {session.location} • Ended: {formatDate(session.end_time)}
-                </Text>
-              </View>
-            ))
+              )}
+              style={{ flexGrow: 0 }}
+              contentContainerStyle={{ flexGrow: 1 }}
+            />
           )}
         </View>
 
         <View className="flex-row justify-between mb-4">
           <TouchableOpacity 
+            onPress={handleDeleteUser}
             className="bg-red-500 p-3 rounded-lg flex-1 mr-2 items-center"
           >
             <Text className="text-white font-psemibold">Delete User</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
+            onPress={handleResetPassword}
             className="bg-blue-500 p-3 rounded-lg flex-1 ml-2 items-center"
           >
             <Text className="text-white font-psemibold">Reset Password</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   )
 }

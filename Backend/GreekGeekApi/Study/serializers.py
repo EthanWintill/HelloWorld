@@ -6,6 +6,8 @@ from .utils import get_or_create_period_instance
 
 
 class PeriodSettingSerializer(serializers.ModelSerializer):
+    org = serializers.PrimaryKeyRelatedField(queryset=Org.objects.all(), required=False)
+    
     class Meta:
         model = PeriodSetting
         fields = '__all__'
@@ -63,11 +65,12 @@ class UserSerializer(serializers.ModelSerializer):
     )
     password = serializers.CharField(min_length=8, write_only=True, required=True)
     registration_code = serializers.CharField(write_only=True, required=True)
+    last_location = LocationSerializer(read_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code', 'is_staff', 'live')
-        read_only_fields = ('is_staff', 'live')
+        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code', 'is_staff', 'live', 'last_location')
+        read_only_fields = ('is_staff', 'live', 'last_location')
 
     def create(self, validated_data):
         registration_code = validated_data.pop('registration_code')
@@ -121,16 +124,58 @@ class SessionSerializer(serializers.ModelSerializer):
 class UserDashboardSerializer(serializers.ModelSerializer):
     org = OrgSerializer(read_only=True)
     org_locations = LocationSerializer(source='org.locations', many=True, read_only=True)
-    org_users = UserSerializer(source='org.users', many=True, read_only=True)
+    org_users = serializers.SerializerMethodField()
     user_sessions = SessionSerializer(source='sessions', many=True, read_only=True)
     org_period_instances = serializers.SerializerMethodField()
     active_period_setting = serializers.SerializerMethodField()
+    last_location = LocationSerializer(read_only=True)
+    total_hours = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ('id', 'email', 'first_name', 'last_name', 'phone_number', 
                  'is_staff', 'live', 'org', 'org_locations', 'org_users', 
-                 'user_sessions', 'org_period_instances', 'active_period_setting')
+                 'user_sessions', 'org_period_instances', 'active_period_setting',
+                 'last_location', 'total_hours')
+
+    def get_org_users(self, obj):
+        from .utils import calculate_user_hours, get_or_create_period_instance
+        
+        if obj.org:
+            users = User.objects.filter(org=obj.org)
+            user_data = []
+            
+            # Get current period instance if available
+            current_time = timezone.now()
+            period_instance = get_or_create_period_instance(obj, current_time)
+            
+            for user in users:
+                # Get base user data
+                serialized_user = UserSerializer(user).data
+                
+                # Add total hours
+                if period_instance:
+                    serialized_user['total_hours'] = calculate_user_hours(user, period_instance)
+                else:
+                    serialized_user['total_hours'] = calculate_user_hours(user)
+                
+                user_data.append(serialized_user)
+                
+            return user_data
+        return []
+
+    def get_total_hours(self, obj):
+        from .utils import calculate_user_hours, get_or_create_period_instance
+        
+        # Get current period instance if available
+        current_time = timezone.now()
+        period_instance = get_or_create_period_instance(obj, current_time)
+        
+        # Calculate hours based on period instance or total if no active period
+        if period_instance:
+            return calculate_user_hours(obj, period_instance)
+        else:
+            return calculate_user_hours(obj)
 
     def get_org_period_instances(self, obj):
         if obj.org:

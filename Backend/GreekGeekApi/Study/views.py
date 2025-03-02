@@ -1,6 +1,6 @@
 from rest_framework import permissions, viewsets, status, exceptions
 
-from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 
@@ -63,10 +63,15 @@ class UserDashboard(RetrieveAPIView):
     serializer_class = UserDashboardSerializer
 
     def get_object(self):
-        return User.objects.select_related('org').prefetch_related(
+        return User.objects.select_related(
+            'org',
+            'last_location'
+        ).prefetch_related(
             'sessions',
             'org__locations',
-            'org__users'
+            'org__users',
+            'org__users__last_location',
+            'org__period_settings'
         ).get(id=self.request.user.id)
 
 class GetLocation(RetrieveAPIView):
@@ -159,6 +164,7 @@ class ClockIn(APIView):
         )
 
         current_user.live = True
+        current_user.last_location = location
         current_user.save()
 
         return Response({
@@ -308,6 +314,87 @@ class DeactivateOrgPeriods(APIView):
         return Response({
             "detail": "Successfully deactivated all periods for organization."
         }, status=status.HTTP_200_OK)
+
+class ModifyOrgDetails(UpdateAPIView):
+    """
+    View for admin users to modify their organization's details.
+    Only allows modification of the organization the admin user belongs to.
+    """
+    permission_classes = (IsAdminUser,)
+    serializer_class = UpdateOrgSerializer
+    
+    def get_object(self):
+        user = self.request.user
+        if not user.org:
+            raise exceptions.ValidationError(detail="You are not associated with any organization")
+        return user.org
+    
+    def get(self, request, *args, **kwargs):
+        org = self.get_object()
+        serializer = self.get_serializer(org)
+        return Response(serializer.data)
+    
+    def update(self, request, *args, **kwargs):
+        org = self.get_object()
+        serializer = self.get_serializer(org, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserSessionsView(ListAPIView):
+    """
+    View for admin users to retrieve all sessions for a specific user.
+    Only allows access to sessions of users in the same organization as the admin.
+    """
+    permission_classes = (IsAdminUser,)
+    serializer_class = SessionSerializer
+    
+    def get_queryset(self):
+        admin_user = self.request.user
+        user_id = self.kwargs.get('user_id')
+        
+        # Verify the admin user has an organization
+        if not admin_user.org:
+            return Session.objects.none()
+        
+        try:
+            # Get the target user and verify they belong to the same org
+            target_user = User.objects.get(id=user_id)
+            if target_user.org != admin_user.org:
+                return Session.objects.none()
+                
+            # Return all sessions for the target user
+            return Session.objects.filter(user=target_user).select_related(
+                'user', 'org', 'location', 'period_instance'
+            ).order_by('-start_time')
+            
+        except User.DoesNotExist:
+            return Session.objects.none()
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        
+        # If queryset is empty due to permission issues
+        if not queryset.exists() and User.objects.filter(id=self.kwargs.get('user_id')).exists():
+            user = User.objects.get(id=self.kwargs.get('user_id'))
+            if user.org != request.user.org:
+                return Response(
+                    {"detail": "You can only view sessions for users in your organization"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        # If user doesn't exist
+        if not User.objects.filter(id=self.kwargs.get('user_id')).exists():
+            return Response(
+                {"detail": "User not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        # Normal flow
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 

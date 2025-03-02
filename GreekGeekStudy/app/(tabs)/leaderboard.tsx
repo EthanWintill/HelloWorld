@@ -11,7 +11,10 @@ interface User {
   email: string;
   is_staff: boolean;
   live: boolean;
-  hours?: number;
+  total_hours?: number;
+  last_location?: {
+    name: string;
+  };
 }
 
 const Leaderboard = () => {
@@ -72,15 +75,10 @@ const Leaderboard = () => {
   };
 
   // Add placeholder hours for other users
-  const otherUsersWithHours = data?.org_users
-    ?.filter((user: User) => user.id !== data.id)
-    .map((user: User, index: number) => ({
-      ...user,
-      hours: 10 - (index * 1.5) // Placeholder hours that decrease with index
-    })) || [];
+  
 
   // Combine current user with others and sort by hours
-  const allUsers = [currentUser, ...otherUsersWithHours];
+  const allUsers = data?.org_users
   
   // Separate live and non-live users
   const liveUsers = allUsers
@@ -141,7 +139,7 @@ const Leaderboard = () => {
                         <Text className="text-gray-500 ml-1">(You)</Text>
                       )}
                       <Text className="text-green-600 font-bold text-lg ml-2">
-                        {(user.hours || 0).toFixed(1)}h
+                        {(user.total_hours || 0).toFixed(1)}h
                       </Text>
                     </View>
                     <Text className="text-gray-600">{user.email}</Text>
@@ -155,9 +153,7 @@ const Leaderboard = () => {
                       <Text className="text-green-600 font-bold text-base">LIVE</Text>
                     </View>
                     <Text className="text-gray-600 text-sm mt-1 text-right">
-                      {index % 3 === 0 ? "Alkek Library" : 
-                       index % 3 === 1 ? "Student Center" : 
-                       "UAC Building"}
+                      {user.last_location?.name}
                     </Text>
                   </View>
                 </View>
@@ -191,7 +187,7 @@ const Leaderboard = () => {
                     <Text className="text-gray-500 ml-1">(You)</Text>
                   )}
                   <Text className="text-green-600 font-bold text-lg ml-2">
-                    {(user.hours || 0).toFixed(1)}h
+                    {(user.total_hours || 0).toFixed(1)}h
                   </Text>
                 </View>
                 <Text className="text-gray-600">{user.email}</Text>
