@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sambryant.GreekGeekStudy",
@@ -15,12 +15,8 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-    "android": {
-      "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
-      ]
-    },
+    "owner": "greekgeek",
+    "android": {},
     "web": {
       "bundler": "metro",
       "output": "static"
