@@ -474,51 +474,51 @@ const Study = () => {
               )}
             </Text>
           </View>
+          
+          {/* Period info section - moved inside ScrollView */}
+          {data?.active_period_setting && (
+            <View className="px-4 py-6 bg-gray-50 mt-4">
+              <Text className="font-psemibold text-center mb-2">
+                Current Study Period
+              </Text>
+              {(() => {
+                const periodInfo = getActivePeriodInfo();
+                if (!periodInfo) return null;
+                
+                return (
+                  <>
+                    <Text className="font-pregular text-center text-gray-600 mb-1">
+                      {periodInfo.description}
+                    </Text>
+                    <Text className="font-pregular text-center text-gray-600">
+                      {periodInfo.shouldShowDays ? (
+                        <>
+                          <Text className="font-bold text-green-600">
+                            {periodInfo.daysRemaining} day{periodInfo.daysRemaining !== 1 ? 's' : ''}
+                          </Text>
+                          {' remaining'}
+                        </>
+                      ) : periodInfo.hoursRemaining > 0 ? (
+                        <>
+                          <Text className="font-bold text-red-600">
+                            {periodInfo.hoursRemaining} hour{periodInfo.hoursRemaining !== 1 ? 's' : ''}
+                          </Text>
+                          {' remaining'}
+                        </>
+                      ) : (
+                        'Due now'
+                      )}
+                    </Text>
+                    <Text className="font-pregular text-center text-gray-500 text-sm mt-1">
+                      Due {periodInfo.endDate.toLocaleDateString()} at{' '}
+                      {periodInfo.endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    </Text>
+                  </>
+                );
+              })()}
+            </View>
+          )}
         </ScrollView>
-
-        {/* Period info section - now outside ScrollView */}
-        {data?.active_period_setting && (
-          <View className="px-4 py-6 bg-gray-50">
-            <Text className="font-psemibold text-center mb-2">
-              Current Study Period
-            </Text>
-            {(() => {
-              const periodInfo = getActivePeriodInfo();
-              if (!periodInfo) return null;
-              
-              return (
-                <>
-                  <Text className="font-pregular text-center text-gray-600 mb-1">
-                    {periodInfo.description}
-                  </Text>
-                  <Text className="font-pregular text-center text-gray-600">
-                    {periodInfo.shouldShowDays ? (
-                      <>
-                        <Text className="font-bold text-green-600">
-                          {periodInfo.daysRemaining} day{periodInfo.daysRemaining !== 1 ? 's' : ''}
-                        </Text>
-                        {' remaining'}
-                      </>
-                    ) : periodInfo.hoursRemaining > 0 ? (
-                      <>
-                        <Text className="font-bold text-red-600">
-                          {periodInfo.hoursRemaining} hour{periodInfo.hoursRemaining !== 1 ? 's' : ''}
-                        </Text>
-                        {' remaining'}
-                      </>
-                    ) : (
-                      'Due now'
-                    )}
-                  </Text>
-                  <Text className="font-pregular text-center text-gray-500 text-sm mt-1">
-                    Due {periodInfo.endDate.toLocaleDateString()} at{' '}
-                    {periodInfo.endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                  </Text>
-                </>
-              );
-            })()}
-          </View>
-        )}
       </View>
     </SafeAreaView>
   )

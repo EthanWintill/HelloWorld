@@ -456,23 +456,7 @@ const UserDetail = () => {
             )}
           </View>
 
-          <View className="mb-4 flex-row justify-between items-center">
-            <Text className="text-gray-600">Active Status</Text>
-            {isEditing ? (
-              <Switch
-                value={editedUser.is_active}
-                onValueChange={(value) => setEditedUser({...editedUser, is_active: value})}
-                trackColor={{ false: "#767577", true: "#16A34A" }}
-                thumbColor="#f4f3f4"
-              />
-            ) : (
-              <View className={`px-3 py-1 rounded-full ${user.is_active ? 'bg-green-100' : 'bg-red-100'}`}>
-                <Text className={user.is_active ? 'text-green-600' : 'text-red-600'}>
-                  {user.is_active ? 'Active' : 'Inactive'}
-                </Text>
-              </View>
-            )}
-          </View>
+          
         </View>
 
         {/* Sessions section */}
