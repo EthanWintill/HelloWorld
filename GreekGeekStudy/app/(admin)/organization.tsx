@@ -344,11 +344,11 @@ const OrganizationManagement = () => {
                 />
               </View>
             </View>
-            {/* {mapRegion && (
+            {mapRegion && (
               <Text className="text-gray-600 text-sm mt-2 mb-2">
                 Radius: {calculateRadiusInMeters(mapRegion)}m
               </Text>
-            )} */}
+            )}
             <TouchableOpacity
               onPress={() => setModalVisible(!modalVisible)}
               className="bg-green-600 p-2 rounded-lg"
