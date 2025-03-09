@@ -1,13 +1,20 @@
-import { Text, View, ScrollView } from "react-native";
+import { Text, View, ScrollView, StyleSheet } from "react-native";
 import { Link, Redirect, router } from 'expo-router'
 import { SafeAreaView } from "react-native-safe-area-context";
 import { images } from "@/constants";
 import { Image } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import CustomButton from "@/components/CustomButton";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 export default function Index() {
+  const { expoPushToken, notification } = usePushNotifications();
+  const data = JSON.stringify(notification, undefined, 2);
   return (
     <SafeAreaView className="bg-white h-full">
+      <View style={styles.container}>
+      <Text>Token: {expoPushToken?.data ?? ""}</Text>
+      <Text>Notification: {data}</Text>
+    </View>
       <ScrollView contentContainerStyle={{height: '100%'}}>
       <View className="w-full justify-center items-center px-4">
 
@@ -30,7 +37,7 @@ export default function Index() {
               Welcome to your chapter's
               <Text className="text-green-500"> Study Scorecard</Text>
             </Text>
-            
+
           </View>
 
           <Text className="text-sm font-pregular text-gray-700 mt-7 text-center">Where academics meet accountability: Discover how your organization can achieve and exceed GPA requirements with GreekGeek.</Text>
@@ -60,3 +67,13 @@ export default function Index() {
     </SafeAreaView>
   );
 }
+
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
