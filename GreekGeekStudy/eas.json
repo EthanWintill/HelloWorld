@@ -3,16 +3,6 @@
     "version": ">= 15.0.12"
   },
   "build": {
-    "development": {
-      "distribution": "internal",
-      "android": {
-        "gradleCommand": ":app:assembleDebug"
-      },
-      "ios": {
-        "simulator": true,
-        "buildConfiguration": "Debug"
-      }
-    },
     "development-simulator": {
       "developmentClient": true,
       "distribution": "internal",
