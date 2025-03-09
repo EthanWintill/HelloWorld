@@ -68,26 +68,17 @@ const Leaderboard = () => {
     )
   }
 
-  // Create current user object with hours
-  const currentUser = {
-    ...data,
-    hours: hoursStudied()
-  };
-
-  // Add placeholder hours for other users
+  // Get all users and sort by total_hours
+  const allUsers = data?.org_users || [];
   
-
-  // Combine current user with others and sort by hours
-  const allUsers = data?.org_users
-  
-  // Separate live and non-live users
+  // Separate live and non-live users and sort by total_hours (highest first)
   const liveUsers = allUsers
-    .filter(user => user.live)
-    .sort((a: User, b: User) => (b.hours || 0) - (a.hours || 0));
+    .filter((user: User) => user.live)
+    .sort((a: User, b: User) => (b.total_hours || 0) - (a.total_hours || 0));
     
   const nonLiveUsers = allUsers
-    .filter(user => !user.live)
-    .sort((a: User, b: User) => (b.hours || 0) - (a.hours || 0));
+    .filter((user: User) => !user.live)
+    .sort((a: User, b: User) => (b.total_hours || 0) - (a.total_hours || 0));
 
   return (
     <SafeAreaView className="bg-white flex-1">
@@ -122,7 +113,7 @@ const Leaderboard = () => {
         {/* Live users section */}
         {liveUsers.length > 0 && (
           <>
-            
+            <Text className="font-bold text-lg mb-2">Currently Studying</Text>
             
             {liveUsers.map((user: User, index: number) => (
               <View 
@@ -166,7 +157,7 @@ const Leaderboard = () => {
         {liveUsers.length > 0 && nonLiveUsers.length > 0 && (
           <View className="flex-row items-center my-4">
             <View className="flex-1 h-px bg-gray-200" />
-            
+            <Text className="mx-4 text-gray-500 font-medium">Not Currently Studying</Text>
             <View className="flex-1 h-px bg-gray-200" />
           </View>
         )}
