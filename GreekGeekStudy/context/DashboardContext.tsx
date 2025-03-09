@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios, { AxiosError } from 'axios';
 import { router } from 'expo-router';
 import { API_URL } from '@/constants';
+import eventEmitter, { EVENTS } from '@/services/EventEmitter';
 
 type DashboardState = {
   isLoading: boolean;
@@ -39,9 +40,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
-
-      
-
 
       const response = await axios.get(API_URL + 'api/dashboard/', {
         headers: {
@@ -87,8 +85,19 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   useEffect(() => {
-   
+    // Initial data fetch
     fetchDashboardData();
+    
+    // Subscribe to dashboard refresh events
+    const unsubscribe = eventEmitter.subscribe(EVENTS.DASHBOARD_REFRESH, () => {
+      console.log('Dashboard refresh event received');
+      refreshDashboard();
+    });
+    
+    // Clean up subscription when component unmounts
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   return (

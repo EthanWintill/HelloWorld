@@ -13,10 +13,9 @@ import axios, { AxiosError } from 'axios'
 import { images } from "@/constants";
 import haversine from 'haversine-distance'
 import * as TaskManager from 'expo-task-manager';
+import eventEmitter, { EVENTS } from '@/services/EventEmitter';
 
 const GEOFENCE_TASK = 'GEOFENCE_TASK';
-
-
 
 TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
   if (error) {
@@ -29,25 +28,26 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
 
   if (eventType === Location.GeofencingEventType.Enter) {
     console.log('You have entered the geofence');
-
     
   } else if (eventType === Location.GeofencingEventType.Exit) {
     console.log('You have exited the geofence');
     const token = await AsyncStorage.getItem('accessToken');
-      if (!token) throw new Error('No access token found');
-      try{
-        const response = await axios.post(API_URL + 'api/clockout/', {}, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-      }catch(error){
-        console.log(error)
-      }
-
+    if (!token) throw new Error('No access token found');
+    try {
+      const response = await axios.post(API_URL + 'api/clockout/', {}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      // Emit event to refresh dashboard after clock out
+      eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
+      eventEmitter.emit(EVENTS.CLOCK_OUT);
+    } catch(error) {
+      console.log(error);
+    }
   }
 });
-
 
 interface GeofencingEvent {
   eventType: Location.GeofencingEventType;
@@ -188,6 +188,10 @@ const Study = () => {
         },
       });
 
+      // Emit event to refresh dashboard after clock in
+      eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
+      eventEmitter.emit(EVENTS.CLOCK_IN);
+
     } catch (error) {
       console.log(error);
       if (error instanceof AxiosError && error.response?.status === 401) {
@@ -207,6 +211,10 @@ const Study = () => {
       })
       await Location.stopGeofencingAsync(GEOFENCE_TASK);
       console.log('Geofence stopped');
+      
+      // Emit event to refresh dashboard after clock out
+      eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
+      eventEmitter.emit(EVENTS.CLOCK_OUT);
     } catch (error) {
       console.log(error)
       if (error instanceof AxiosError && error.response?.status === 401) {
@@ -218,9 +226,8 @@ const Study = () => {
   const clockOutAndRefresh = () => {
     clockOut()
       .then(() => { })
-      .finally(() => {
-        refreshDashboard().finally(() => refreshClock())
-      })
+      // No need to call refreshDashboard here as the event will handle it
+      .finally(() => refreshClock())
   }
 
   const handleClock = () => {
@@ -228,7 +235,8 @@ const Study = () => {
       clockIn()
         .then(() => { })
         .finally(() => {
-          refreshDashboard().finally(() => refreshClock())
+          // No need to call refreshDashboard here as the event will handle it
+          refreshClock()
         })
     } else {
       clockOutAndRefresh()
