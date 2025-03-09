@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Modal } from 'react-native'
 import React, { useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -6,11 +6,15 @@ import { Ionicons } from '@expo/vector-icons'
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_URL } from '@/constants'
+import MapView, { Marker, Region } from 'react-native-maps';
+import * as Location from 'expo-location';
+import { LocationObject } from 'expo-location';
+
 
 const OrganizationManagement = () => {
   const { dashboardState, refreshDashboard, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
-  
+
   const [orgName, setOrgName] = useState('')
   const [school, setSchool] = useState('')
   const [regCode, setRegCode] = useState('')
@@ -18,6 +22,33 @@ const OrganizationManagement = () => {
   const [isEditingRegCode, setIsEditingRegCode] = useState(false)
   const [isSavingDetails, setIsSavingDetails] = useState(false)
   const [isSavingRegCode, setIsSavingRegCode] = useState(false)
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<LocationObject['coords'] | null>(null);
+  const [mapRegion, setMapRegion] = useState<Region | null>(null);
+  const VISUAL_CIRCLE_SIZE = 100; // diameter in pixels
+
+  const calculateRadiusInMeters = (region: Region) => {
+    const { longitudeDelta, latitude } = region;
+    const metersPerDegree = 111319.9;
+    const metersPerLongitudeDegree = Math.cos(latitude * (Math.PI / 180)) * metersPerDegree;
+    const mapWidthInMeters = longitudeDelta * metersPerLongitudeDegree;
+    const mapWidthInPixels = 400; // Approximate width of MapView
+    const metersPerPixel = mapWidthInMeters / mapWidthInPixels;
+    return Math.round((VISUAL_CIRCLE_SIZE / 2) * metersPerPixel);
+  };
+
+  const newLocationPopup = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status == 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        setCurrentLocation(location.coords);
+      }
+      setModalVisible(true);
+    } catch (error) {
+      console.error('Error getting location:', error);
+    }
+  };
 
   // Load organization data when component mounts or data changes
   React.useEffect(() => {
@@ -35,7 +66,7 @@ const OrganizationManagement = () => {
       if (!token) throw new Error('No access token found')
 
       await axios.put(
-        `${API_URL}api/my-org/`, 
+        `${API_URL}api/my-org/`,
         {
           name: orgName,
           school: school,
@@ -57,8 +88,8 @@ const OrganizationManagement = () => {
       )
     } catch (error) {
       console.error('Error updating organization details:', error)
-      
-      if (error.response?.status === 401) {
+
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
         await handleUnauthorized()
       } else {
         Alert.alert(
@@ -79,7 +110,7 @@ const OrganizationManagement = () => {
       if (!token) throw new Error('No access token found')
 
       await axios.put(
-        `${API_URL}api/my-org/`, 
+        `${API_URL}api/my-org/`,
         {
           name: data?.org?.name || '',
           school: data?.org?.school || '',
@@ -101,8 +132,8 @@ const OrganizationManagement = () => {
       )
     } catch (error) {
       console.error('Error updating registration code:', error)
-      
-      if (error.response?.status === 401) {
+
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
         await handleUnauthorized()
       } else {
         Alert.alert(
@@ -152,14 +183,14 @@ const OrganizationManagement = () => {
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-xl font-psemibold">Organization Details</Text>
             {!isEditingDetails ? (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setIsEditingDetails(true)}
                 className="bg-green-100 p-2 rounded-full"
               >
                 <Ionicons name="pencil" size={20} color="#16A34A" />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handleSaveDetails}
                 disabled={isSavingDetails}
                 className={`${isSavingDetails ? 'bg-gray-400' : 'bg-green-600'} px-4 py-2 rounded-lg`}
@@ -204,14 +235,14 @@ const OrganizationManagement = () => {
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-xl font-psemibold">Registration</Text>
             {!isEditingRegCode ? (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setIsEditingRegCode(true)}
                 className="bg-green-100 p-2 rounded-full"
               >
                 <Ionicons name="pencil" size={20} color="#16A34A" />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handleSaveRegCode}
                 disabled={isSavingRegCode}
                 className={`${isSavingRegCode ? 'bg-gray-400' : 'bg-green-600'} px-4 py-2 rounded-lg`}
@@ -222,7 +253,7 @@ const OrganizationManagement = () => {
               </TouchableOpacity>
             )}
           </View>
-          
+
           <View className="mb-4">
             <Text className="text-gray-600 mb-1">Registration Code</Text>
             <View className="flex-row items-center">
@@ -238,7 +269,7 @@ const OrganizationManagement = () => {
                   {regCode || 'No code generated'}
                 </Text>
               )}
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={handleGenerateCode}
                 disabled={!isEditingRegCode}
                 className={`${!isEditingRegCode ? 'bg-gray-300' : 'bg-blue-500'} ml-2 p-2 rounded-lg`}
@@ -254,8 +285,8 @@ const OrganizationManagement = () => {
 
         <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
           <Text className="text-xl font-psemibold mb-4">Study Locations</Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             className="bg-gray-100 p-4 rounded-lg flex-row items-center justify-between mb-2"
           >
             <View>
@@ -264,8 +295,9 @@ const OrganizationManagement = () => {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
+            onPress={newLocationPopup}
             className="bg-green-100 p-3 rounded-lg flex-row items-center justify-center"
           >
             <Ionicons name="add" size={20} color="#16A34A" />
@@ -273,8 +305,61 @@ const OrganizationManagement = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => {
+          setModalVisible(!modalVisible);
+        }}
+      >
+        <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View className="bg-white p-4 rounded-lg shadow-lg w-3/4">
+            <Text className="text-lg font-psemibold mb-4">New Location </Text>
+            <View className="relative" style={{ width: '100%', height: 200 }}>
+              <MapView
+                style={{ width: '100%', height: '100%' }}
+                mapType="hybrid"
+                showsUserLocation={true}
+                followsUserLocation={true}
+                initialRegion={{
+                  latitude: currentLocation?.latitude || 36.130990,
+                  longitude: currentLocation?.longitude || -115.174094,
+                  latitudeDelta: 0.005,
+                  longitudeDelta: 0.005,
+                }}
+                onRegionChange={setMapRegion}
+              />
+              <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
+                <View 
+                  style={{
+                    width: VISUAL_CIRCLE_SIZE,
+                    height: VISUAL_CIRCLE_SIZE,
+                    borderRadius: VISUAL_CIRCLE_SIZE / 2,
+                    backgroundColor: 'rgba(0, 255, 0, 0.2)',
+                    borderColor: 'rgba(0, 255, 0, 0.5)',
+                    borderWidth: 2,
+                  }}
+                />
+              </View>
+            </View>
+            {mapRegion && (
+              <Text className="text-gray-600 text-sm mt-2 mb-2">
+                Radius: {calculateRadiusInMeters(mapRegion)}m
+              </Text>
+            )}
+            <TouchableOpacity
+              onPress={() => setModalVisible(!modalVisible)}
+              className="bg-green-600 p-2 rounded-lg"
+            >
+              <Text className="text-white text-center">Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
 
-export default OrganizationManagement 
+export default OrganizationManagement
