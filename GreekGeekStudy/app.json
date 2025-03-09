@@ -15,6 +15,7 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
+    "owner": "GreekGeek",
     "android": {},
     "web": {
       "bundler": "metro",
