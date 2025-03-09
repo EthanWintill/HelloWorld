@@ -4,41 +4,31 @@
     "slug": "GreekGeekStudy",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sambryant.GreekGeekStudy",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "gimme dat shi"
+        "NSLocationWhenInUseUsageDescription": "gimme dat shi",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
-    },
+    "android": {},
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "static"
     },
     "plugins": [
       "expo-router",
       [
-        "react-native-permissions",
+        "expo-location",
         {
-          "iosPermissions": [
-            "LocationWhenInUse"
-          ]
+          "locationAlwaysAndWhenInUsePermission": "gimme dat shi.", 
+          "locationWhenInUsePermission": "gimme dat shi.", 
+          "locationAlwaysPermission": "gimme dat shi.", 
+          "isIosBackgroundLocationEnabled": true
         }
       ]
     ],
@@ -50,7 +40,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "afb7e781-d1a2-45f1-8800-c0b252abfcb8"
+        "projectId": "e02cfc27-5220-4245-965f-135f68bcb3ac"
       }
     }
   }

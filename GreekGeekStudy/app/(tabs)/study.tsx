@@ -4,8 +4,6 @@ import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import numberToWords from 'number-to-words';
-import Geolocation from 'react-native-geolocation-service';
 import * as Location from 'expo-location'
 import ClockButton from '@/components/ClockButton'
 import PermissionButton from '@/components/PermissionButton'
@@ -20,32 +18,33 @@ const GEOFENCE_TASK = 'GEOFENCE_TASK';
 
 let timeoutId: NodeJS.Timeout | null = null;
 
-    TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
-      if (error) {
-        console.error(error);
-        return;
-      }
-      console.log('Background task executed with data:', data);
+TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
+  if (error) {
+    console.error(error);
+    return;
+  }
+  console.log('Background task executed with data:', data);
 
-      const { eventType } = data as GeofencingEvent;
+  const { eventType } = data as GeofencingEvent;
 
-      if (eventType === Location.GeofencingEventType.Enter) {
-        console.log('You have entered the geofence');
-        console.log('timeoutId:', timeoutId);
-        if(timeoutId) {
-          clearTimeout(timeoutId);
-        }
-      } else if (eventType === Location.GeofencingEventType.Exit) {
-        console.log('You have exited the geofence');
-        Alert.alert('Please enter the geofence to continue studying, you have 5 minutes to do so.');
-        timeoutId = setTimeout(() => {
-          console.log('5 minutes have passed');
-          Alert.alert('You have been clocked out for not entering the geofence in time.');
-          //clockOutAndRefresh();
-        }, 15000);
-        console.log('Timeout id:', timeoutId);
-      }
-    });
+  if (eventType === Location.GeofencingEventType.Enter) {
+    console.log('You have entered the geofence');
+    console.log('timeoutId:', timeoutId);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  } else if (eventType === Location.GeofencingEventType.Exit) {
+    console.log('You have exited the geofence');
+    const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('No access token found');
+      const response = await axios.post(API_URL + 'api/clockout/', {}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+    console.log('Timeout id:', timeoutId);
+  }
+});
 
 
 interface GeofencingEvent {
@@ -96,7 +95,7 @@ const Study = () => {
     if (!res) {
       res = await foregroundRequestPermission();
       console.log('Foreground Location Permission:', res);
-    } 
+    }
 
     while (!res.granted && res.canAskAgain) {
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -115,7 +114,7 @@ const Study = () => {
       setLocationGranted('DENIED');
     }
 
-  } 
+  }
   const handleLocationPermission = async () => {
     await handleForegroundLocationPermission();
     let res = backgroundStatus
@@ -139,7 +138,7 @@ const Study = () => {
 
     if (res.granted) {
       setLocationGranted('GRANTED');
-    
+
     } else {
       setLocationGranted('DENIED');
     }
@@ -183,7 +182,7 @@ const Study = () => {
         notifyOnExit: true
       }]);
       console.log('Geofence started');
-      
+
 
       // Send clock-in request to the server
       const response = await axios.post(API_URL + 'api/clockin/', { "location_id": currentStudyLocation?.id }, {
@@ -221,7 +220,7 @@ const Study = () => {
 
   const clockOutAndRefresh = () => {
     clockOut()
-      .then(() => {})
+      .then(() => { })
       .finally(() => {
         refreshDashboard().finally(() => refreshClock())
       })
@@ -230,7 +229,7 @@ const Study = () => {
   const handleClock = () => {
     if (!checkIsStudying()) {
       clockIn()
-        .then(() => {})
+        .then(() => { })
         .finally(() => {
           refreshDashboard().finally(() => refreshClock())
         })
@@ -275,18 +274,18 @@ const Study = () => {
     if (!data?.user_sessions) return 0;
 
     const activePeriodInstance = getActivePeriodInstance();
-    
+
     // If no active period, sum all sessions
     if (!activePeriodInstance) {
       return data.user_sessions.reduce(
-        (acc: number, session: any) => acc + (session.hours || 0), 
+        (acc: number, session: any) => acc + (session.hours || 0),
         0
       );
     }
 
     // Filter and sum sessions for active period
     const periodSessions = data.user_sessions.filter(
-      (session: any) => 
+      (session: any) =>
         session.period_instance?.id === activePeriodInstance.id
     );
 
@@ -305,18 +304,18 @@ const Study = () => {
   const calculatePercentComplete = () => {
     const required = requiredHours();
     if (required === 0) return 0;
-    
+
     const studied = hoursStudied();
     return Math.min(Math.round((studied / required) * 100), 100);
   }
 
   const getActivePeriodInfo = () => {
     if (!data?.active_period_setting || !data?.org_period_instances) return null;
-    
+
     const activePeriodInstance = data.org_period_instances.find(
       (instance: any) => instance.is_active
     );
-    
+
     if (!activePeriodInstance) return null;
 
     const endDate = new Date(activePeriodInstance.end_date);
@@ -329,7 +328,7 @@ const Study = () => {
 
     const periodSetting = data.active_period_setting;
     let periodDescription = '';
-    
+
     switch (periodSetting.period_type) {
       case 'weekly':
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -381,7 +380,7 @@ const Study = () => {
     handleLocationPermission();
     // Uncomment the next line when you want to clear storage
     //clearAsyncStorage();
-    
+
     refreshClock();
     //console.log("Dashboard Data:", JSON.stringify(data, null, 2));
   }, [isLoading]);
@@ -412,9 +411,9 @@ const Study = () => {
       <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
         <View className="flex-row items-center">
           <Image
-              source={images.logoSmall}
-              className="w-10 h-10" // Increased the size of the logo
-              resizeMode="contain"
+            source={images.logoSmall}
+            className="w-10 h-10" // Increased the size of the logo
+            resizeMode="contain"
           />
           <Text className="font-psemibold text-lg ml-1">
             {data?.org?.name || 'Organization'}
@@ -434,19 +433,19 @@ const Study = () => {
       <View className="flex-1 flex-col justify-between">
         <ScrollView>
           <View className='h-[33vh] w-full justify-center items-center px-4'>
-          {locationGranted === 'GRANTED' || locationGranted === 'DENIED' ? (
-            <ClockButton
-              title={!isStudying ? "Start Studying" : "Stop"}
-              secondaryTitle={!isStudying ? "Alkek Library" : undefined}
-              handlePress={handleClock}
-              isStarted={isStudying}
-              percentComplete={calculatePercentComplete()}
-              time={time}
-              isLoading={isLoading}
-            />
-          ) : (
-            <PermissionButton
-              handlePress={handleLocationPermission}/>
+            {locationGranted === 'GRANTED' || locationGranted === 'DENIED' ? (
+              <ClockButton
+                title={!isStudying ? "Start Studying" : "Stop"}
+                secondaryTitle={!isStudying ? "Alkek Library" : undefined}
+                handlePress={handleClock}
+                isStarted={isStudying}
+                percentComplete={calculatePercentComplete()}
+                time={time}
+                isLoading={isLoading}
+              />
+            ) : (
+              <PermissionButton
+                handlePress={handleLocationPermission} />
             )}
           </View>
           <View className='basis-1/3'>
