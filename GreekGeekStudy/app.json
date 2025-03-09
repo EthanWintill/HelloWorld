@@ -15,7 +15,12 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-    "android": {},
+    "android": {
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
     "web": {
       "bundler": "metro",
       "output": "static"
@@ -25,9 +30,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "gimme dat shi.", 
-          "locationWhenInUsePermission": "gimme dat shi.", 
-          "locationAlwaysPermission": "gimme dat shi.", 
+          "locationAlwaysAndWhenInUsePermission": "gimme dat shi.",
+          "locationWhenInUsePermission": "gimme dat shi.",
+          "locationAlwaysPermission": "gimme dat shi.",
           "isIosBackgroundLocationEnabled": true
         }
       ]
@@ -40,8 +45,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "e02cfc27-5220-4245-965f-135f68bcb3ac"
+        "projectId": "afb7e781-d1a2-45f1-8800-c0b252abfcb8"
       }
-    }
+    },
+    "owner": "sambryant"
   }
 }

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Alert, Linking, Image } from 'react-native'
+import { View, Text, ScrollView, Alert, Linking, Image, TouchableOpacity } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -16,7 +16,7 @@ import * as TaskManager from 'expo-task-manager';
 
 const GEOFENCE_TASK = 'GEOFENCE_TASK';
 
-let timeoutId: NodeJS.Timeout | null = null;
+
 
 TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
   if (error) {
@@ -29,20 +29,22 @@ TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
 
   if (eventType === Location.GeofencingEventType.Enter) {
     console.log('You have entered the geofence');
-    console.log('timeoutId:', timeoutId);
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
+
+    
   } else if (eventType === Location.GeofencingEventType.Exit) {
     console.log('You have exited the geofence');
     const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
-      const response = await axios.post(API_URL + 'api/clockout/', {}, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-    console.log('Timeout id:', timeoutId);
+      try{
+        const response = await axios.post(API_URL + 'api/clockout/', {}, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+      }catch(error){
+        console.log(error)
+      }
+
   }
 });
 
@@ -57,8 +59,8 @@ const Study = () => {
   const { dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
 
-  const [backgroundStatus, backgroundRequestPermission] = Location.useBackgroundPermissions();
-  const [foregroundStatus, foregroundRequestPermission] = Location.useForegroundPermissions();
+  const [backgroundStatus, setBackgroundStatus] = useState(false)
+  const [foregroundStatus, setForegroundStatus] = useState(false)
 
   const [locationGranted, setLocationGranted] = useState('UNKNOWN');
   const [isStudying, setIsStudying] = useState(false)
@@ -89,64 +91,59 @@ const Study = () => {
   };
 
   const handleForegroundLocationPermission = async () => {
-    let res = foregroundStatus
-    console.log('Foreground Location Permission:', res);
-
-    if (!res) {
-      res = await foregroundRequestPermission();
-      console.log('Foreground Location Permission:', res);
+    let foregroundStatus = await Location.getForegroundPermissionsAsync()
+    if (foregroundStatus.status === 'granted'){
+      setForegroundStatus(true)
+      return
     }
+    let res = await Location.requestForegroundPermissionsAsync()
+    console.log('Foreground Location Permission:', res.status);
 
-    while (!res.granted && res.canAskAgain) {
+    
+
+    while (res.status !== 'granted' && res.canAskAgain) {
       await new Promise(resolve => setTimeout(resolve, 100));
-      res = await foregroundRequestPermission();
+      res = await Location.requestForegroundPermissionsAsync()
       console.log('Foreground Location Permission:', res);
     }
 
-    if (!res.granted && !res.canAskAgain) {
-      setLocationGranted('BLOCKED')
-      showSettingsAlert()
-    }
-
-    if (res.granted) {
-      setLocationGranted('GRANTED');
-    } else {
-      setLocationGranted('DENIED');
+    if (res.status !== 'granted') {
+      setForegroundStatus(false)
+    }else{
+      setForegroundStatus(true)
     }
 
   }
   const handleLocationPermission = async () => {
+    console.log('Handling location permission');
     await handleForegroundLocationPermission();
-    let res = backgroundStatus
+    let backgroundStatus = await Location.getBackgroundPermissionsAsync()
+    if (backgroundStatus.status === 'granted'){
+      setBackgroundStatus(true)
+      console.log("PERMISSIONS GOOD")
+      return
+    }
+    let res = await Location.requestBackgroundPermissionsAsync()
+    
     console.log('Location Permission:', res);
 
-    if (!res) {
-      res = await backgroundRequestPermission();
-      console.log('Location Permission:', res);
-    }
-
-    while (!res.granted && res.canAskAgain) {
+    while (res.status !== 'granted' && res.canAskAgain) {
       await new Promise(resolve => setTimeout(resolve, 100));
-      res = await backgroundRequestPermission();
+      res = await Location.requestBackgroundPermissionsAsync()
       console.log('Location Permission:', res);
     }
 
-    if (!res.granted && !res.canAskAgain) {
-      setLocationGranted('BLOCKED')
-      showSettingsAlert()
+    if (res.status !== 'granted') {
+      setBackgroundStatus(false)
+    }else{
+      setBackgroundStatus(true)
     }
 
-    if (res.granted) {
-      setLocationGranted('GRANTED');
-
-    } else {
-      setLocationGranted('DENIED');
-    }
   };
 
   const getStudyLocationGPS = async () => {
     await handleLocationPermission();
-    if (locationGranted !== 'GRANTED') return null;
+    if (!backgroundStatus) return null;
     const location = await Location.getCurrentPositionAsync();
     const studyLocations = dashboardState.data['org_locations'];
     for (const studyLocation of studyLocations) {
@@ -377,7 +374,7 @@ const Study = () => {
   // --- Effects ---
   useEffect(() => {
     getAllAsyncStorageData();
-    handleLocationPermission();
+    
     // Uncomment the next line when you want to clear storage
     //clearAsyncStorage();
 
@@ -390,11 +387,36 @@ const Study = () => {
       clockOutAndRefresh();
     };
 
-
+    // Initial permission check
+    handleLocationPermission();
+    
+    // Set up an interval to check for background permissions until granted
+    let permissionCheckInterval: any;
+    if (!backgroundStatus || !foregroundStatus) {
+      permissionCheckInterval = setInterval(async () => {
+        console.log('Checking permission status...');
+        const foreground = await Location.getForegroundPermissionsAsync();
+        const background = await Location.getBackgroundPermissionsAsync();
+        
+        console.log('Current permissions - Foreground:', foreground.granted, 'Background:', background.granted);
+        
+        // If both permissions are granted, clear the interval
+        if (foreground.granted && background.granted) {
+          console.log('Both permissions granted, stopping interval checks');
+          setBackgroundStatus(true);
+          setForegroundStatus(true);
+          clearInterval(permissionCheckInterval);
+        }
+      }, 1000); // Check every second
+    }
+    
     return () => {
+      if (permissionCheckInterval) {
+        clearInterval(permissionCheckInterval);
+      }
       TaskManager.unregisterTaskAsync(GEOFENCE_TASK);
     };
-  }, []);
+  }, [backgroundStatus, foregroundStatus]);
 
   if (error) {
     return (
@@ -433,7 +455,7 @@ const Study = () => {
       <View className="flex-1 flex-col justify-between">
         <ScrollView>
           <View className='h-[33vh] w-full justify-center items-center px-4'>
-            {locationGranted === 'GRANTED' || locationGranted === 'DENIED' ? (
+            {backgroundStatus && foregroundStatus ? (
               <ClockButton
                 title={!isStudying ? "Start Studying" : "Stop"}
                 secondaryTitle={!isStudying ? "Alkek Library" : undefined}
@@ -448,6 +470,31 @@ const Study = () => {
                 handlePress={handleLocationPermission} />
             )}
           </View>
+          
+          {/* Permission Error Message Area */}
+          {(!backgroundStatus || !foregroundStatus) && (
+            <View className="mx-4 mb-4 p-4 bg-red-50 rounded-lg border border-red-200">
+              <Text className="font-psemibold text-center text-red-700 mb-2">
+                Location Permission Required
+              </Text>
+              <Text className="font-pregular text-center text-red-600 mb-3">
+                {!foregroundStatus 
+                  ? "You need to enable location access for this app to track your study sessions." 
+                  : "Background location access is required to track when you leave study areas."}
+              </Text>
+              <View className="flex items-center">
+                <TouchableOpacity 
+                  onPress={() => Linking.openSettings()}
+                  className="bg-red-600 py-2 px-4 rounded-md"
+                >
+                  <Text className="font-psemibold text-white text-center">
+                    Open Settings
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          
           <View className='basis-1/3'>
             <Text className="font-pregular text-center text-xl">
               {!data ? "Loading..." : (
@@ -474,7 +521,7 @@ const Study = () => {
             </Text>
           </View>
           
-          {/* Period info section - moved inside ScrollView */}
+          {/* Period info section */}
           {data?.active_period_setting && (
             <View className="px-4 py-6 bg-gray-50 mt-4">
               <Text className="font-psemibold text-center mb-2">
