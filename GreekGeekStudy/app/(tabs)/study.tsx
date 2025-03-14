@@ -208,12 +208,13 @@ const Study = () => {
           Authorization: `Bearer ${token}`,
         },
       })
-      await Location.stopGeofencingAsync(GEOFENCE_TASK);
-      console.log('Geofence stopped');
-      
       // Emit event to refresh dashboard after clock out
       eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
       eventEmitter.emit(EVENTS.CLOCK_OUT);
+
+      await Location.stopGeofencingAsync(GEOFENCE_TASK);
+      console.log('Geofence stopped');
+      
     } catch (error) {
       console.log(error)
       if (error instanceof AxiosError && error.response?.status === 401) {

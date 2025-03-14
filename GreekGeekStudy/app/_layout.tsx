@@ -3,15 +3,16 @@ import { SplashScreen, Stack, useRouter } from 'expo-router'
 import React from 'react'
 import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-
 import "../global.css";
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function _layout() {
+  const { expoPushToken, notification } = usePushNotifications();
+  const pushNotifdata = JSON.stringify(notification, undefined, 2);
   const router = useRouter();
   const [fontsLoaded, error] = useFonts({
     "Poppins-Black": require("../assets/fonts/Poppins-Black.ttf"),

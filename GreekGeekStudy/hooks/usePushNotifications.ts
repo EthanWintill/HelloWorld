@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications";
 
 import Constants from "expo-constants";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_URL } from "@/constants";
 
 export interface PushNotificationState {
   expoPushToken?: Notifications.ExpoPushToken;
@@ -56,9 +59,26 @@ export const usePushNotifications = (): PushNotificationState => {
   }
 
   useEffect(() => {
-    registerForPushNotificationsAsync().then((token) => {
-        console.log("push token: " + token?.data);
-      setExpoPushToken(token);
+    registerForPushNotificationsAsync().then(async (pushToken) => {
+      console.log("Push token: \n\n\n", pushToken?.data);
+      const token = await AsyncStorage.getItem('accessToken');
+      
+      if (!token) throw new Error('No access token found')
+
+      await axios.post(
+        `${API_URL}api/notifications/token/`,
+        {
+          "device_id": "123",
+          "token": pushToken?.data
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      
+      setExpoPushToken(pushToken);
     });
 
     notificationListener.current =
