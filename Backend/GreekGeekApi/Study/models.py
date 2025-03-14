@@ -168,3 +168,20 @@ class Group(models.Model):
     def __str__(self):
         return f"Group for {self.org.name}"
 
+class NotificationToken(models.Model):
+    """
+    Stores Expo push notification tokens for users
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notification_tokens')
+    token = models.CharField(max_length=255, unique=True)
+    device_id = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('user', 'device_id')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.token[:10]}..."
+

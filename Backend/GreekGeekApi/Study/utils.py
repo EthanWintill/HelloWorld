@@ -2,6 +2,9 @@ from .models import PeriodSetting, PeriodInstance, Session
 from datetime import datetime, timedelta
 from django.db import transaction, models
 import math
+from django.utils import timezone
+import json
+import requests
 
 def calculate_period_start_date(period_setting, session_time):
     """Calculate the correct period start date for a given session time"""
@@ -135,3 +138,102 @@ def calculate_user_hours(user, period_instance=None):
     total_hours = query.aggregate(total=models.Sum('hours'))['total'] or 0.0
     
     return total_hours 
+
+def send_push_notification(token_list, title, body, data=None):
+    """
+    Utility function to send push notifications to a list of Expo push tokens
+    
+    Args:
+        token_list (list): List of Expo push tokens
+        title (str): Notification title
+        body (str): Notification body
+        data (dict, optional): Additional data to send with the notification
+    
+    Returns:
+        dict: Response from Expo push service
+    """
+    if not token_list:
+        return {"error": "No tokens provided"}
+    
+    if not isinstance(token_list, list):
+        token_list = [token_list]
+    
+    # Prepare notification payload
+    message = {
+        'to': token_list,
+        'title': title,
+        'body': body,
+        'sound': 'default',
+    }
+    
+    if data:
+        message['data'] = data
+    
+    try:
+        response = requests.post(
+            'https://exp.host/--/api/v2/push/send',
+            data=json.dumps(message),
+            headers={
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Accept-Encoding': 'gzip, deflate'
+            }
+        )
+        
+        return response.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+def send_notification_to_users(user_ids, title, body, data=None):
+    """
+    Sends notifications to specified users
+    
+    Args:
+        user_ids (list): List of user IDs to send notifications to
+        title (str): Notification title
+        body (str): Notification body
+        data (dict, optional): Additional data to send with the notification
+    
+    Returns:
+        dict: Result of the notification sending operation
+    """
+    from .models import NotificationToken
+    
+    tokens = NotificationToken.objects.filter(
+        user__id__in=user_ids,
+        is_active=True
+    ).values_list('token', flat=True)
+    
+    token_list = list(tokens)
+    
+    if not token_list:
+        return {"error": "No active tokens found for the specified users"}
+    
+    return send_push_notification(token_list, title, body, data)
+
+def send_notification_to_org(org_id, title, body, data=None):
+    """
+    Sends notifications to all active users in an organization
+    
+    Args:
+        org_id (int): Organization ID
+        title (str): Notification title
+        body (str): Notification body
+        data (dict, optional): Additional data to send with the notification
+    
+    Returns:
+        dict: Result of the notification sending operation
+    """
+    from .models import NotificationToken
+    
+    tokens = NotificationToken.objects.filter(
+        user__org_id=org_id,
+        is_active=True
+    ).values_list('token', flat=True)
+    
+    token_list = list(tokens)
+    
+    if not token_list:
+        return {"error": "No active tokens found for the specified organization"}
+    
+    return send_push_notification(token_list, title, body, data) 

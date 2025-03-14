@@ -1,6 +1,6 @@
 from rest_framework import permissions, viewsets, status, exceptions
 
-from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer, NotificationTokenSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 
@@ -13,12 +13,14 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import User, Org, Session, Location, PeriodSetting, PeriodInstance
+from .models import User, Org, Session, Location, PeriodSetting, PeriodInstance, NotificationToken
 
 from django.http import Http404 
 from django.utils import timezone
 
 from datetime import timedelta
+import json
+import requests
 
 from .utils import get_or_create_period_instance
 
@@ -395,6 +397,124 @@ class UserSessionsView(ListAPIView):
         # Normal flow
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+class NotificationTokenView(APIView):
+    """
+    API view to register or update a user's Expo push notification token
+    """
+    permission_classes = (IsAuthenticated,)
+    
+    def post(self, request, format=None):
+        serializer = NotificationTokenSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, format=None):
+        device_id = request.data.get('device_id')
+        if device_id:
+            tokens = NotificationToken.objects.filter(user=request.user, device_id=device_id)
+        else:
+            token_str = request.data.get('token')
+            if not token_str:
+                return Response(
+                    {"detail": "Either device_id or token must be provided"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            tokens = NotificationToken.objects.filter(user=request.user, token=token_str)
+        
+        if tokens.exists():
+            tokens.update(is_active=False)
+            return Response({"detail": "Notification token deactivated"}, status=status.HTTP_200_OK)
+        
+        return Response(
+            {"detail": "No matching notification token found"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+class SendNotificationView(APIView):
+    """
+    API view to send push notifications to specific users
+    Requires staff privileges
+    """
+    permission_classes = (IsAdminUser,)
+    
+    def post(self, request, format=None):
+        # Validate required fields
+        user_ids = request.data.get('user_ids', [])
+        title = request.data.get('title')
+        body = request.data.get('body')
+        data = request.data.get('data', {})
+        
+        if not title or not body:
+            return Response(
+                {"detail": "Title and body are required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not user_ids:
+            return Response(
+                {"detail": "At least one user_id is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Ensure we can only send notifications to users in our org
+        admin_org = request.user.org
+        if not admin_org:
+            return Response(
+                {"detail": "Admin must belong to an organization"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Get tokens for specified users that belong to admin's org
+        tokens = NotificationToken.objects.filter(
+            user__id__in=user_ids,
+            user__org=admin_org,
+            is_active=True
+        )
+        
+        token_strings = [token.token for token in tokens]
+        
+        if not token_strings:
+            return Response(
+                {"detail": "No active notification tokens found for the specified users"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        # Prepare notification data
+        notification_data = {
+            'to': token_strings,
+            'title': title,
+            'body': body,
+            'data': data,
+            'sound': 'default',
+        }
+        
+        # Send to Expo Push API
+        try:
+            response = requests.post(
+                'https://exp.host/--/api/v2/push/send',
+                data=json.dumps(notification_data),
+                headers={
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Accept-Encoding': 'gzip, deflate'
+                }
+            )
+            
+            expo_response = response.json()
+            
+            return Response({
+                "detail": f"Notification sent to {len(token_strings)} devices",
+                "expo_response": expo_response
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                "detail": "Failed to send notification",
+                "error": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 

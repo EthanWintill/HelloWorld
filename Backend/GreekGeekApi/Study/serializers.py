@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User, Org, Location, Session, PeriodSetting, PeriodInstance
+from .models import User, Org, Location, Session, PeriodSetting, PeriodInstance, NotificationToken
 from django.utils import timezone
 from .utils import get_or_create_period_instance
 
@@ -120,6 +120,31 @@ class SessionSerializer(serializers.ModelSerializer):
         fields = ('id', 'start_time', 'hours', 'user', 'org', 'location', 
                  'before_pic', 'after_pic', 'period_instance')
         read_only_fields = ('id',)
+
+class NotificationTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationToken
+        fields = ['id', 'token', 'device_id', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        # Check if token already exists for this user and device
+        if 'device_id' in validated_data and validated_data['device_id']:
+            existing = NotificationToken.objects.filter(
+                user=user, 
+                device_id=validated_data['device_id']
+            ).first()
+            
+            if existing:
+                # Update existing token
+                existing.token = validated_data['token']
+                existing.is_active = True
+                existing.save()
+                return existing
+        
+        # Create new token
+        return NotificationToken.objects.create(user=user, **validated_data)
 
 class UserDashboardSerializer(serializers.ModelSerializer):
     org = OrgSerializer(read_only=True)
