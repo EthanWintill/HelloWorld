@@ -88,11 +88,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 5,
     position: 'absolute',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 5,
   },
   progressContainer: {
     position: 'absolute',

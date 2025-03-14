@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Alert, Linking, Image, TouchableOpacity } from 'react-native'
+import { View, Text, ScrollView, Alert, Linking, Image, TouchableOpacity, AppState } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -64,19 +64,19 @@ const Study = () => {
 
   const [locationGranted, setLocationGranted] = useState('UNKNOWN');
   const [isStudying, setIsStudying] = useState(false)
+  
+  // Use our reimplemented stopwatch
   const {
     time,
     isRunning,
+    hasStarted,
     start,
     stop,
     reset,
-    lap,
-    laps,
-    currentLapTime,
-    hasStarted,
-    slowestLapTime,
-    fastestLapTime,
+    formatTime
   } = useStopWatch();
+
+  const [appState, setAppState] = useState(AppState.currentState);
 
   // --- Location Related Functions ---
   const showSettingsAlert = () => {
@@ -165,7 +165,6 @@ const Study = () => {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
 
-      //If no location found, alert the user
       if (!currentStudyLocation) {
         Alert.alert('No Study Location Found', 'Please go to a study location to clock in.');
         return;
@@ -231,6 +230,7 @@ const Study = () => {
   }
 
   const handleClock = () => {
+    console.log("handleClock")
     if (!checkIsStudying()) {
       clockIn()
         .then(() => { })
@@ -250,17 +250,31 @@ const Study = () => {
     return new Date(lastSession.start_time).getTime()
   }
 
-  const refreshClock = () => {
-    if (checkIsStudying()) {
-      const starter = getClockTime()
-      setIsStudying(true)
-      start(starter)
-    } else {
-      setIsStudying(false)
-      reset()
-      stop()
+  const refreshClock = async () => {
+    // Wait for dashboard data to be fully loaded
+    if (isLoading || !data) return;
+    
+    try {
+      const isCurrentlyStudying = checkIsStudying();
+      setIsStudying(isCurrentlyStudying);
+      
+      // If we're studying, start the stopwatch fresh
+      if (isCurrentlyStudying && !isRunning) {
+        const startTime = getClockTime();
+        start(startTime);
+      } else if (!isCurrentlyStudying && isRunning) {
+        stop();
+        reset();
+      }
+    } catch (error) {
+      console.error("Error refreshing clock:", error);
+      setIsStudying(false);
+      if (isRunning) {
+        stop();
+        reset();
+      }
     }
-  }
+  };
 
   // --- Study Hours Calculation Functions ---
   const requiredHours = () => {
@@ -388,7 +402,7 @@ const Study = () => {
 
     refreshClock();
     //console.log("Dashboard Data:", JSON.stringify(data, null, 2));
-  }, [isLoading]);
+  }, [isLoading, data]);
 
   useEffect(() => {
     const exitHandler = () => {
@@ -422,9 +436,31 @@ const Study = () => {
       if (permissionCheckInterval) {
         clearInterval(permissionCheckInterval);
       }
-      TaskManager.unregisterTaskAsync(GEOFENCE_TASK);
+      //TaskManager.unregisterTaskAsync(GEOFENCE_TASK);
     };
   }, [backgroundStatus, foregroundStatus]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('App has come to the foreground!');
+        // App reopened - refresh data and clock
+        refreshDashboard();
+        refreshClock();
+      } else if (nextAppState.match(/inactive|background/) && appState === 'active') {
+        console.log('App going to background');
+        // App going to background - stop the stopwatch
+        if (isRunning) {
+          stop();
+        }
+      }
+      setAppState(nextAppState);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [appState, isRunning]);
 
   if (error) {
     return (
@@ -470,7 +506,7 @@ const Study = () => {
                 handlePress={handleClock}
                 isStarted={isStudying}
                 percentComplete={calculatePercentComplete()}
-                time={time}
+                time={time} // Use the actual stopwatch time
                 isLoading={isLoading}
               />
             ) : (
