@@ -23,7 +23,7 @@ const PermissionButton: React.FC<PermissionButtonProps> = ({ handlePress, contai
       style={styles.title}
       className={`text-black text-xl font-medium font-plight mt-1 text-center`}
       >
-      You must enable{'\n'}location sharing to use{'\n'}this app
+      You must enable{'\n'}location sharing to use{'\n'}Greek Geek
       </Text>
     </TouchableOpacity>
   )
