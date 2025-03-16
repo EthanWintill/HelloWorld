@@ -18,7 +18,7 @@ class PeriodInstanceSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class LocationSerializer(serializers.ModelSerializer):
-
+    id = serializers.IntegerField(read_only=True)
     org = serializers.PrimaryKeyRelatedField(queryset=Org.objects.all(), required=False)
     class Meta:
         model = Location
