@@ -458,6 +458,8 @@ const Study = () => {
       setAppState(nextAppState);
     });
 
+    
+
     return () => {
       subscription.remove();
     };

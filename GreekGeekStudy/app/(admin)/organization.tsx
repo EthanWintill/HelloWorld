@@ -6,10 +6,18 @@ import { Ionicons } from '@expo/vector-icons'
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_URL } from '@/constants'
-import MapView, { Marker, Region } from 'react-native-maps';
+import MapView, { Marker, Region, Circle } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { LocationObject } from 'expo-location';
 
+// Define a LocationType interface to fix the TypeScript error
+interface LocationType {
+  id: number;
+  name: string;
+  gps_lat: number;
+  gps_long: number;
+  gps_radius: number;
+}
 
 const OrganizationManagement = () => {
   const { dashboardState, refreshDashboard, handleUnauthorized } = useDashboard()
@@ -22,8 +30,19 @@ const OrganizationManagement = () => {
   const [isEditingRegCode, setIsEditingRegCode] = useState(false)
   const [isSavingDetails, setIsSavingDetails] = useState(false)
   const [isSavingRegCode, setIsSavingRegCode] = useState(false)
+
   const [modalVisible, setModalVisible] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [createMode, setCreateMode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [locationName, setLocationName] = useState('');
+
+  const [currentMeta, setCurrentMeta] = useState<any>({});
+  const [currentLocationId, setCurrentLocationId] = useState<number | null>(null);
+
+  const [selectedLocation, setSelectedLocation] = useState<LocationObject | null>(null);
   const [currentLocation, setCurrentLocation] = useState<LocationObject['coords'] | null>(null);
+  const [radius, setRadius] = useState(75);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
   const VISUAL_CIRCLE_SIZE = 100; // diameter in pixels
 
@@ -37,16 +56,188 @@ const OrganizationManagement = () => {
     return Math.round((VISUAL_CIRCLE_SIZE / 2) * metersPerPixel);
   };
 
+  const onRegionChange = (region: Region) => {
+    if (editMode) {
+      setRadius(calculateRadiusInMeters(region));
+      setCurrentLocation({
+        latitude: region.latitude,
+        longitude: region.longitude,
+        altitude: null,
+        accuracy: null,
+        altitudeAccuracy: null,
+        heading: null,
+        speed: null
+      });
+    }
+  };
+
+  const resetModalState = () => {
+    setLocationName('');
+    setEditMode(false);
+    setCreateMode(false);
+    setIsSubmitting(false);
+    setCurrentLocationId(null);
+  };
+
+  const closeModal = () => {
+    setModalVisible(false);
+    // Only reset state after modal animation completes
+    setTimeout(resetModalState, 300);
+  };
+
   const newLocationPopup = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status == 'granted') {
         const location = await Location.getCurrentPositionAsync({});
         setCurrentLocation(location.coords);
+        setLocationName(''); // Reset name for new location
+        setEditMode(true);
+        setCreateMode(true);
+        setRadius(75);
+        setModalVisible(true);
+      } else {
+        Alert.alert("Permission Required", "Location permission is needed to create a study location.");
       }
-      setModalVisible(true);
     } catch (error) {
       console.error('Error getting location:', error);
+      Alert.alert("Error", "Failed to get current location. Please try again.");
+    }
+  };
+
+  const viewLocationPopup = async (location: LocationType) => {
+    try {
+      // If location has coordinates, set them as the current location
+      if (location && location.gps_lat && location.gps_long) {
+        const locationCoords: LocationObject['coords'] = {
+          latitude: location.gps_lat,
+          longitude: location.gps_long,
+          altitude: null,
+          accuracy: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null
+        };
+        
+        setCurrentLocation(locationCoords);
+        setSelectedLocation({ coords: locationCoords, timestamp: Date.now() });
+        setRadius(location.gps_radius);
+        setLocationName(location.name);
+        setCurrentLocationId(location.id);
+        setEditMode(false);
+        setCreateMode(false);
+        setModalVisible(true);
+      } else {
+        console.error('Location missing coordinates');
+        Alert.alert('Error', 'Location data is incomplete');
+      }
+    } catch (error) {
+      console.error('Error setting location:', error);
+      Alert.alert('Error', 'Failed to load location details');
+    }
+  };
+
+  const handleCreateLocation = async () => {
+    // Validate inputs
+    if (!locationName.trim()) {
+      Alert.alert("Error", "Location name is required");
+      return;
+    }
+
+    if (!currentLocation) {
+      Alert.alert("Error", "Location coordinates are missing");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('No access token found');
+
+      await axios.post(
+        `${API_URL}api/locations/create/`,
+        {
+          name: locationName,
+          gps_lat: currentLocation.latitude,
+          gps_long: currentLocation.longitude,
+          gps_radius: radius
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Close modal first before refreshing data
+      closeModal();
+      await refreshDashboard();
+      Alert.alert("Success", "Location created successfully");
+    } catch (error) {
+      console.error('Error creating location:', error);
+      
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        closeModal();
+        await handleUnauthorized();
+      } else {
+        Alert.alert(
+          "Error",
+          "Failed to create location. Please try again."
+        );
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const handleUpdateLocation = async () => {
+    // Validate inputs
+    if (!locationName.trim()) {
+      Alert.alert("Error", "Location name is required");
+      return;
+    }
+
+    if (!currentLocation || !currentLocationId) {
+      Alert.alert("Error", "Location data is missing");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('No access token found');
+
+      await axios.put(
+        `${API_URL}api/location/${currentLocationId}/modify`,
+        {
+          name: locationName,
+          gps_lat: currentLocation.latitude,
+          gps_long: currentLocation.longitude,
+          gps_radius: radius
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Close modal first before refreshing data
+      closeModal();
+      await refreshDashboard();
+      Alert.alert("Success", "Location updated successfully");
+    } catch (error) {
+      console.error('Error updating location:', error);
+      
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        closeModal();
+        await handleUnauthorized();
+      } else {
+        Alert.alert(
+          "Error",
+          "Failed to update location. Please try again."
+        );
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -150,6 +341,54 @@ const OrganizationManagement = () => {
   const handleGenerateCode = () => {
     const newCode = Math.random().toString(36).substring(2, 10).toUpperCase()
     setRegCode(newCode)
+  }
+
+  const handleDeleteLocation = async (locationId: number) => {
+    try {
+      const token = await AsyncStorage.getItem('accessToken')
+      if (!token) throw new Error('No access token found')
+
+      Alert.alert(
+        "Confirm Deletion",
+        "Are you sure you want to delete this location?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Delete", 
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await axios.delete(
+                  `${API_URL}api/location/${locationId}/modify`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                    },
+                  }
+                )
+                
+                await refreshDashboard()
+                Alert.alert("Success", "Location deleted successfully")
+              } catch (error) {
+                console.error('Error deleting location:', error)
+                
+                if (axios.isAxiosError(error) && error.response?.status === 401) {
+                  await handleUnauthorized()
+                } else {
+                  Alert.alert(
+                    "Error",
+                    "Failed to delete location. Please try again."
+                  )
+                }
+              }
+            }
+          }
+        ]
+      )
+    } catch (error) {
+      console.error('Error preparing to delete location:', error)
+      Alert.alert("Error", "Something went wrong. Please try again.")
+    }
   }
 
   if (isLoading) {
@@ -286,15 +525,41 @@ const OrganizationManagement = () => {
         <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
           <Text className="text-xl font-psemibold mb-4">Study Locations</Text>
 
-          <TouchableOpacity
-            className="bg-gray-100 p-4 rounded-lg flex-row items-center justify-between mb-2"
-          >
-            <View>
-              <Text className="font-psemibold">Alkek Library</Text>
-              <Text className="text-gray-600 text-sm">Main Campus</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
+          {data.org_locations && data.org_locations.length > 0 ? (
+            data.org_locations.map((location: LocationType) => (
+              <View key={location.id} className="bg-gray-100 p-4 rounded-lg mb-2">
+                <View className="flex-row items-center justify-between">
+                  <TouchableOpacity
+                    className="flex-1"
+                    onPress={() => viewLocationPopup(location)}
+                  >
+                    <View>
+                      <Text className="font-psemibold">{location.name}</Text>
+                      <Text className="text-gray-600 text-sm">
+                        Radius: {location.gps_radius}m, {location.gps_lat}, {location.gps_long}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <View className="flex-row">
+                    <TouchableOpacity
+                      onPress={() => viewLocationPopup(location)}
+                      className="p-2"
+                    >
+                      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteLocation(location.id)}
+                      className="p-2 ml-2 bg-red-100 rounded-full"
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text className="text-gray-500 italic mb-2">No study locations added yet</Text>
+          )}
 
           <TouchableOpacity
             onPress={newLocationPopup}
@@ -311,50 +576,140 @@ const OrganizationManagement = () => {
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => {
-          setModalVisible(!modalVisible);
+          closeModal();
         }}
       >
         <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View className="bg-white p-4 rounded-lg shadow-lg w-3/4">
-            <Text className="text-lg font-psemibold mb-4">New Location </Text>
-            <View className="relative" style={{ width: '100%', height: 200 }}>
+          <View className="bg-white p-6 rounded-lg shadow-lg w-5/6 m-4">
+            <Text className="text-xl font-psemibold mb-4">
+              {createMode ? "Create New Location" : editMode ? "Edit Location" : "View Location"}
+            </Text>
+            
+            {/* Location name input */}
+            <View className="mb-4">
+              <Text className="text-gray-600 mb-1">Location Name</Text>
+              <TextInput
+                value={locationName}
+                onChangeText={setLocationName}
+                className="border border-gray-300 rounded-lg p-3"
+                placeholder="Enter location name"
+                editable={createMode || editMode}
+              />
+              {(createMode || editMode) && !locationName.trim() && (
+                <Text className="text-red-500 text-sm mt-1">Location name is required</Text>
+              )}
+            </View>
+            
+            {/* Map view */}
+            <View className="relative mb-4" style={{ width: '100%', height: 250 }}>
               <MapView
-                style={{ width: '100%', height: '100%' }}
+                style={{ width: '100%', height: '100%', borderRadius: 8 }}
                 mapType="hybrid"
                 showsUserLocation={true}
-                followsUserLocation={true}
+                followsUserLocation={createMode}
                 initialRegion={{
                   latitude: currentLocation?.latitude || 36.130990,
                   longitude: currentLocation?.longitude || -115.174094,
-                  latitudeDelta: 0.005,
-                  longitudeDelta: 0.005,
+                  latitudeDelta: radius / 25500,
+                  longitudeDelta: radius / 25500
                 }}
-                onRegionChange={setMapRegion}
-              />
-              <View className="absolute inset-0 items-center justify-center" pointerEvents="none">
-                <View 
-                  style={{
-                    width: VISUAL_CIRCLE_SIZE,
-                    height: VISUAL_CIRCLE_SIZE,
-                    borderRadius: VISUAL_CIRCLE_SIZE / 2,
-                    backgroundColor: 'rgba(0, 255, 0, 0.2)',
-                    borderColor: 'rgba(0, 255, 0, 0.5)',
-                    borderWidth: 2,
+                onRegionChange={onRegionChange}
+              >
+                <Circle
+                  center={{
+                    latitude: currentLocation?.latitude || 36.130990,
+                    longitude: currentLocation?.longitude || -115.174094,
                   }}
+                  radius={radius}
+                  strokeColor="rgba(0, 255, 0, 0.5)"
+                  strokeWidth={2}
+                  fillColor="rgba(0, 255, 0, 0.2)"
                 />
-              </View>
+              </MapView>
+              
+              {editMode && (
+                <View className="absolute bottom-2 right-2 bg-white p-2 rounded-lg opacity-80">
+                  <Text className="text-sm font-psemibold">Move map to adjust location</Text>
+                </View>
+              )}
             </View>
-            {mapRegion && (
-              <Text className="text-gray-600 text-sm mt-2 mb-2">
-                Radius: {calculateRadiusInMeters(mapRegion)}m
-              </Text>
-            )}
-            <TouchableOpacity
-              onPress={() => setModalVisible(!modalVisible)}
-              className="bg-green-600 p-2 rounded-lg"
-            >
-              <Text className="text-white text-center">Close</Text>
-            </TouchableOpacity>
+            
+            <Text className="text-gray-600 text-sm mb-4">
+              Radius: {radius}m
+            </Text>
+            
+            {/* Action buttons */}
+            <View className="flex-row justify-end mt-2">
+              {/* View mode buttons */}
+              {!editMode && !createMode && (
+                <>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditMode(true);
+                      setCreateMode(false);
+                    }}
+                    className="bg-blue-500 px-4 py-3 rounded-lg mr-2"
+                  >
+                    <Text className="text-white font-psemibold">Edit</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={closeModal}
+                    className="bg-gray-500 px-4 py-3 rounded-lg"
+                  >
+                    <Text className="text-white font-psemibold">Close</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              
+              {/* Create mode buttons */}
+              {createMode && (
+                <>
+                  <TouchableOpacity
+                    onPress={closeModal}
+                    className="bg-gray-500 px-4 py-3 rounded-lg mr-2"
+                  >
+                    <Text className="text-white font-psemibold">Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleCreateLocation}
+                    disabled={isSubmitting || !locationName.trim()}
+                    className={`${isSubmitting || !locationName.trim() ? 'bg-gray-400' : 'bg-green-600'} px-4 py-3 rounded-lg`}
+                  >
+                    <Text className="text-white font-psemibold">
+                      {isSubmitting ? 'Creating...' : 'Create'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+              
+              {/* Edit mode buttons */}
+              {editMode && !createMode && (
+                <>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditMode(false);
+                      // Restore original location name if canceled
+                      if (data && data.org_locations) {
+                        const loc = data.org_locations.find((l: LocationType) => l.id === currentLocationId);
+                        if (loc) setLocationName(loc.name);
+                      }
+                    }}
+                    className="bg-gray-500 px-4 py-3 rounded-lg mr-2"
+                  >
+                    <Text className="text-white font-psemibold">Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleUpdateLocation}
+                    disabled={isSubmitting || !locationName.trim()}
+                    className={`${isSubmitting || !locationName.trim() ? 'bg-gray-400' : 'bg-green-600'} px-4 py-3 rounded-lg`}
+                  >
+                    <Text className="text-white font-psemibold">
+                      {isSubmitting ? 'Saving...' : 'Save'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </View>
         </View>
       </Modal>

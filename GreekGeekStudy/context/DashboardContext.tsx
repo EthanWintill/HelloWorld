@@ -52,6 +52,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         error: null,
         data: response.data,
       }));
+      console.log(response.data.org_locations);
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 401) {
         console.log(error.response)
