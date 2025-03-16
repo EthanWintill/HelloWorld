@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Switch, FlatList } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Switch, FlatList, Modal } from 'react-native'
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -90,6 +90,12 @@ const UserDetail = () => {
   const [sessions, setSessions] = useState<any[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [currentPeriod, setCurrentPeriod] = useState<any>(null)
+  
+  // New state for session editing
+  const [isHoursModalVisible, setIsHoursModalVisible] = useState(false)
+  const [selectedSession, setSelectedSession] = useState<any>(null)
+  const [editedHours, setEditedHours] = useState('')
+  const [isSessionUpdateLoading, setIsSessionUpdateLoading] = useState(false)
 
   // Find user by ID from actual data
   useEffect(() => {
@@ -114,37 +120,38 @@ const UserDetail = () => {
     }
   }, [data])
 
+  // Fetch user sessions function to be reused
+  const fetchSessions = async () => {
+    if (!userId) return
+    
+    setSessionsLoading(true)
+    try {
+      const token = await AsyncStorage.getItem('accessToken')
+      if (!token) throw new Error('No access token found')
+
+      const response = await axios.get(
+        `${API_URL}api/users/${userId}/sessions/`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          }
+        }
+      )
+      
+      setSessions(response.data)
+    } catch (error: any) {
+      console.error('Error fetching user sessions:', error)
+      
+      if (error.response?.status === 401) {
+        await handleUnauthorized()
+      }
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
   // Fetch user sessions when user is available
   useEffect(() => {
-    const fetchSessions = async () => {
-      if (!userId) return
-      
-      setSessionsLoading(true)
-      try {
-        const token = await AsyncStorage.getItem('accessToken')
-        if (!token) throw new Error('No access token found')
-
-        const response = await axios.get(
-          `${API_URL}api/users/${userId}/sessions/`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            }
-          }
-        )
-        
-        setSessions(response.data)
-      } catch (error) {
-        console.error('Error fetching user sessions:', error)
-        
-        if (error.response?.status === 401) {
-          await handleUnauthorized()
-        }
-      } finally {
-        setSessionsLoading(false)
-      }
-    }
-
     fetchSessions()
   }, [userId, handleUnauthorized])
 
@@ -168,17 +175,20 @@ const UserDetail = () => {
   }
 
   // Format duration for session display
-  const formatDuration = (hours: number) => {
+  const formatDuration = (hours: number | null) => {
+    if (hours === null) {
+      return 'In progress'
+    }
     const h = Math.floor(hours)
     const m = Math.round((hours - h) * 60)
     return `${h}h ${m}m`
   }
 
   // Get location name from location ID
-  const getLocationName = useCallback((locationId) => {
+  const getLocationName = useCallback((locationId: number | null) => {
     if (!locationId || !data || !data.org_locations) return 'No location'
     
-    const location = data.org_locations.find(loc => loc.id === locationId)
+    const location = data.org_locations.find((loc: any) => loc.id === locationId)
     return location ? location.name : 'Unknown location'
   }, [data])
 
@@ -209,7 +219,7 @@ const UserDetail = () => {
         "User information has been updated.",
         [{ text: "OK" }]
       )
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating user:', error)
       
       if (error.response?.status === 401) {
@@ -249,16 +259,24 @@ const UserDetail = () => {
                 }
               )
               
-              await refreshDashboard()
+              // Show success message and navigate back
               Alert.alert(
                 "Success",
                 "User has been deleted.",
                 [{ 
                   text: "OK",
-                  onPress: () => router.back()
+                  onPress: () => {
+                    // First navigate back
+                    router.back()
+                    
+                    // Then refresh dashboard after a small delay
+                    setTimeout(() => {
+                      refreshDashboard()
+                    }, 300)
+                  }
                 }]
               )
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error deleting user:', error)
               
               if (error.response?.status === 401) {
@@ -305,7 +323,7 @@ const UserDetail = () => {
                 "Password reset email has been sent to the user.",
                 [{ text: "OK" }]
               )
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error resetting password:', error)
               
               if (error.response?.status === 401) {
@@ -314,6 +332,123 @@ const UserDetail = () => {
                 Alert.alert(
                   "Error",
                   "Failed to reset password. Please try again.",
+                  [{ text: "OK" }]
+                )
+              }
+            }
+          }
+        }
+      ]
+    )
+  }
+
+  // Handle session hours update
+  const handleUpdateSessionHours = async () => {
+    if (!selectedSession) return
+    
+    // If editedHours is empty but we're updating a session, this means 
+    // we want to set it to null (in progress)
+    let newHours: number | null = null
+    
+    if (editedHours.trim() !== '') {
+      newHours = parseFloat(editedHours)
+      if (isNaN(newHours) || newHours <= 0) {
+        Alert.alert("Invalid Input", "Please enter a valid number of hours greater than 0")
+        return
+      }
+    }
+    
+    setIsSessionUpdateLoading(true)
+    try {
+      const token = await AsyncStorage.getItem('accessToken')
+      if (!token) throw new Error('No access token found')
+
+      await axios.patch(
+        `${API_URL}api/sessions/${selectedSession.id}/`,
+        { hours: newHours },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      
+      // Close modal and refresh data
+      setIsHoursModalVisible(false)
+      setSelectedSession(null)
+      setEditedHours('')
+      
+      await refreshDashboard()
+      // Refetch the sessions to update the view
+      await fetchSessions()
+      
+      Alert.alert(
+        "Success",
+        newHours === null 
+          ? "Session marked as in progress." 
+          : "Session hours have been updated.",
+        [{ text: "OK" }]
+      )
+    } catch (error: any) {
+      console.error('Error updating session hours:', error)
+      
+      if (error.response?.status === 401) {
+        await handleUnauthorized()
+      } else {
+        Alert.alert(
+          "Error",
+          "Failed to update session hours. Please try again.",
+          [{ text: "OK" }]
+        )
+      }
+    } finally {
+      setIsSessionUpdateLoading(false)
+    }
+  }
+  
+  // Handle session deletion
+  const handleDeleteSession = async (session: any) => {
+    Alert.alert(
+      "Confirm Deletion",
+      "Are you sure you want to delete this session? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('accessToken')
+              if (!token) throw new Error('No access token found')
+
+              await axios.delete(
+                `${API_URL}api/sessions/${session.id}/`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              )
+              
+              // Refresh data
+              await refreshDashboard()
+              // Refetch the sessions to update the view
+              await fetchSessions()
+              
+              Alert.alert(
+                "Success",
+                "Session has been deleted.",
+                [{ text: "OK" }]
+              )
+            } catch (error: any) {
+              console.error('Error deleting session:', error)
+              
+              if (error.response?.status === 401) {
+                await handleUnauthorized()
+              } else {
+                Alert.alert(
+                  "Error",
+                  "Failed to delete session. Please try again.",
                   [{ text: "OK" }]
                 )
               }
@@ -492,11 +627,31 @@ const UserDetail = () => {
                 >
                   <View className="flex-row justify-between items-center">
                     <Text className="font-psemibold">{formatDate(session.start_time)}</Text>
-                    <Text className="text-green-600 font-psemibold">{formatDuration(session.hours)}</Text>
+                    <Text className={`font-psemibold ${session.hours === null ? 'text-orange-600' : 'text-green-600'}`}>
+                      {formatDuration(session.hours)}
+                    </Text>
                   </View>
-                  <Text className="text-gray-600 text-sm">
+                  <Text className="text-gray-600 text-sm mb-2">
                     {getLocationName(session.location)}
                   </Text>
+                  <View className="flex-row justify-end mt-1">
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setSelectedSession(session)
+                        setEditedHours(session.hours !== null ? session.hours.toString() : '')
+                        setIsHoursModalVisible(true)
+                      }}
+                      className="bg-blue-100 p-2 rounded-full mr-2"
+                    >
+                      <Ionicons name="pencil" size={16} color="#3B82F6" />
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      onPress={() => handleDeleteSession(session)}
+                      className="bg-red-100 p-2 rounded-full"
+                    >
+                      <Ionicons name="trash" size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
               style={{ flexGrow: 0 }}
@@ -521,6 +676,69 @@ const UserDetail = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Hours Edit Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isHoursModalVisible}
+        onRequestClose={() => {
+          setIsHoursModalVisible(false)
+          setSelectedSession(null)
+          setEditedHours('')
+        }}
+      >
+        <View className="flex-1 justify-center items-center bg-black/50">
+          <View className="bg-white rounded-lg p-6 w-4/5 shadow-lg">
+            <Text className="text-xl font-psemibold mb-4 text-center">Edit Session Hours</Text>
+            
+            {selectedSession && (
+              <View className="mb-4">
+                <Text className="text-gray-600 mb-2">Date: {formatDate(selectedSession.start_time)}</Text>
+                <Text className="text-gray-600 mb-4">Location: {getLocationName(selectedSession.location)}</Text>
+                
+                <Text className="font-psemibold mb-1">Hours:</Text>
+                <TextInput
+                  value={editedHours}
+                  onChangeText={setEditedHours}
+                  className="border border-gray-300 rounded-lg p-3 text-lg"
+                  keyboardType="numeric"
+                  placeholder="Leave empty to mark as in-progress"
+                  autoFocus
+                />
+                <Text className="text-gray-500 text-sm mt-1">
+                  {selectedSession.hours === null 
+                    ? "This session is currently in progress." 
+                    : "Enter hours or leave empty to mark as in-progress."}
+                </Text>
+              </View>
+            )}
+            
+            <View className="flex-row justify-between mt-2">
+              <TouchableOpacity 
+                onPress={() => {
+                  setIsHoursModalVisible(false)
+                  setSelectedSession(null)
+                  setEditedHours('')
+                }}
+                className="bg-gray-200 py-3 px-5 rounded-lg flex-1 mr-2 items-center"
+              >
+                <Text className="font-psemibold">Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                onPress={handleUpdateSessionHours}
+                disabled={isSessionUpdateLoading}
+                className={`bg-blue-500 py-3 px-5 rounded-lg flex-1 ml-2 items-center ${isSessionUpdateLoading ? 'opacity-70' : ''}`}
+              >
+                <Text className="text-white font-psemibold">
+                  {isSessionUpdateLoading ? 'Saving...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }

@@ -1,21 +1,39 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, FlatList } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 
+// Define user type
+interface User {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  is_active: boolean;
+  is_staff?: boolean;
+  group?: string;
+  total_hours: number;
+}
 
 const UsersManagement = () => {
   const { dashboardState } = useDashboard()
   const { isLoading, error, data } = dashboardState
   const router = useRouter()
   
-  const [users, setUsers] = useState(data.org_users)
+  const [users, setUsers] = useState<User[]>(data?.org_users || [])
   const [searchQuery, setSearchQuery] = useState('')
   const [filterActive, setFilterActive] = useState<boolean | null>(null)
 
-  const filteredUsers = users.filter(user => {
+  // Update users when dashboard data changes
+  useEffect(() => {
+    if (data && data.org_users) {
+      setUsers(data.org_users)
+    }
+  }, [data])
+
+  const filteredUsers = users.filter((user: User) => {
     const matchesSearch = 
       searchQuery === '' || 
       user.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -38,7 +56,7 @@ const UsersManagement = () => {
   }
 
   const handleToggleUserStatus = (userId: number) => {
-    const updatedUsers = users.map(user => 
+    const updatedUsers = users.map((user: User) => 
       user.id === userId ? {...user, is_active: !user.is_active} : user
     )
     setUsers(updatedUsers)
@@ -166,6 +184,7 @@ const UsersManagement = () => {
 
           <TouchableOpacity 
             className="bg-green-600 p-3 rounded-lg flex-row items-center justify-center"
+            onPress={() => router.push('/(admin)/add-user')}
           >
             <Ionicons name="add" size={20} color="white" />
             <Text className="text-white font-psemibold ml-2">Add New User</Text>

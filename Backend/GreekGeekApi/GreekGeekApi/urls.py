@@ -44,6 +44,9 @@ urlpatterns = [
     path('api/deactivate-periods/', views.DeactivateOrgPeriods.as_view(), name='deactivate-periods'),
     path('api/users/<int:user_id>/sessions/', views.UserSessionsView.as_view(), name='user-sessions'),
     
+    # Admin session management
+    path('api/sessions/<int:pk>/', views.AdminSessionView.as_view(), name='admin-session-detail'),
+    
     # Notification endpoints
     path('api/notifications/token/', views.NotificationTokenView.as_view(), name='notification-token'),
     path('api/notifications/send/', views.SendNotificationView.as_view(), name='send-notification'),

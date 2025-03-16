@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Alert, Linking, Image, TouchableOpacity, AppState } from 'react-native'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -14,6 +14,17 @@ import { images } from "@/constants";
 import haversine from 'haversine-distance'
 import * as TaskManager from 'expo-task-manager';
 import eventEmitter, { EVENTS } from '@/services/EventEmitter';
+import MapView, { Marker, Region, Circle } from 'react-native-maps';
+import { useFocusEffect } from '@react-navigation/native';
+
+interface LocationType {
+  id: number;
+  name: string;
+  org: number;
+  gps_lat: number;
+  gps_long: number;
+  gps_radius: number;
+}
 
 const GEOFENCE_TASK = 'GEOFENCE_TASK';
 
@@ -64,6 +75,13 @@ const Study = () => {
 
   const [locationGranted, setLocationGranted] = useState('UNKNOWN');
   const [isStudying, setIsStudying] = useState(false)
+  
+  // Add state for current study location with proper type
+  const [currentStudyLocation, setCurrentStudyLocation] = useState<LocationType | null>(null);
+  
+  // Map related state
+  const [mapRegion, setMapRegion] = useState<Region | null>(null);
+  const mapRef = useRef<MapView>(null);
   
   // Use our reimplemented stopwatch
   const {
@@ -139,11 +157,25 @@ const Study = () => {
 
   };
 
+  // Function to set initial map region based on user location
+  const updateMapRegion = (latitude: number, longitude: number) => {
+    setMapRegion({
+      latitude,
+      longitude,
+      latitudeDelta: 0.002,  // Much more zoomed in (was 0.01)
+      longitudeDelta: 0.002  // Much more zoomed in (was 0.01)
+    });
+  };
+
   const getStudyLocationGPS = async () => {
     await handleLocationPermission();
     if (!backgroundStatus) return null;
     const location = await Location.getCurrentPositionAsync();
     console.log('Current location:', location);
+    
+    // Update map region when we get user location
+    updateMapRegion(location.coords.latitude, location.coords.longitude);
+    
     const studyLocations = dashboardState.data['org_locations'];
     for (const studyLocation of studyLocations) {
       const distance = haversine(
@@ -152,36 +184,38 @@ const Study = () => {
       )
       console.log('Distance to', studyLocation['name'], ':', distance);
       if (distance < studyLocation['gps_radius']) {
+        setCurrentStudyLocation(studyLocation);
         return studyLocation;
       }
     }
+    setCurrentStudyLocation(null);
     return null;
   }
 
   // --- Clock Related Functions ---
   const clockIn = async () => {
     try {
-      let currentStudyLocation = await getStudyLocationGPS();
+      let studyLocation = await getStudyLocationGPS();
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
 
-      if (!currentStudyLocation) {
+      if (!studyLocation) {
         Alert.alert('No Study Location Found', 'Please go to a study location to clock in.');
         return;
       }
 
       // Start Geofence monitoring
       await Location.startGeofencingAsync(GEOFENCE_TASK, [{
-        latitude: currentStudyLocation['gps_lat'],
-        longitude: currentStudyLocation['gps_long'],
-        radius: currentStudyLocation['gps_radius'],
+        latitude: studyLocation['gps_lat'],
+        longitude: studyLocation['gps_long'],
+        radius: studyLocation['gps_radius'],
         notifyOnExit: true
       }]);
       console.log('Geofence started');
 
 
       // Send clock-in request to the server
-      const response = await axios.post(API_URL + 'api/clockin/', { "location_id": currentStudyLocation?.id }, {
+      const response = await axios.post(API_URL + 'api/clockin/', { "location_id": studyLocation?.id }, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -395,6 +429,16 @@ const Study = () => {
   };
 
   // --- Effects ---
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Study screen came into focus - refreshing dashboard');
+      refreshDashboard();
+      return () => {
+        // Cleanup if needed when screen loses focus
+      };
+    }, [])
+  );
+  
   useEffect(() => {
     getAllAsyncStorageData();
     
@@ -412,6 +456,15 @@ const Study = () => {
 
     // Initial permission check
     handleLocationPermission();
+    
+    // Initialize map with user location when permissions are available
+    if (backgroundStatus && foregroundStatus) {
+      Location.getCurrentPositionAsync()
+        .then(location => {
+          updateMapRegion(location.coords.latitude, location.coords.longitude);
+        })
+        .catch(err => console.error('Error getting current position:', err));
+    }
     
     // Set up an interval to check for background permissions until granted
     let permissionCheckInterval: any;
@@ -465,6 +518,21 @@ const Study = () => {
     };
   }, [appState, isRunning]);
 
+  // Add effect to check location periodically when not studying
+  useEffect(() => {
+    if (!isStudying && backgroundStatus && foregroundStatus && !isLoading) {
+      // Update location initially
+      getStudyLocationGPS();
+      
+      // Check location every 30 seconds when not studying
+      const locationInterval = setInterval(() => {
+        getStudyLocationGPS();
+      }, 30000);
+      
+      return () => clearInterval(locationInterval);
+    }
+  }, [isStudying, backgroundStatus, foregroundStatus, isLoading]);
+
   if (error) {
     return (
       <ScrollView className="flex-1 p-4">
@@ -505,12 +573,14 @@ const Study = () => {
             {backgroundStatus && foregroundStatus ? (
               <ClockButton
                 title={!isStudying ? "Start Studying" : "Stop"}
-                secondaryTitle={!isStudying ? "Alkek Library" : undefined}
+                secondaryTitle={!isStudying 
+                  ? (currentStudyLocation ? currentStudyLocation.name : "No Location Found") 
+                  : undefined}
                 handlePress={handleClock}
                 isStarted={isStudying}
                 percentComplete={calculatePercentComplete()}
                 time={time} // Use the actual stopwatch time
-                isLoading={isLoading}
+                isLoading={isLoading && !data} // Only show loading if we don't have data yet
               />
             ) : (
               <PermissionButton
@@ -611,6 +681,86 @@ const Study = () => {
               })()}
             </View>
           )}
+          
+          {/* Map view section */}
+          <View className="mt-4 mx-4 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+            <View className="bg-green-50 px-4 py-3 border-b border-gray-200">
+              <Text className="font-psemibold text-center text-green-800">
+                Study Locations
+              </Text>
+            </View>
+            
+            {/* Map container with fixed height */}
+            <View style={{ height: 250 }}>
+              {mapRegion && (
+                <MapView
+                  ref={mapRef}
+                  style={{ width: '100%', height: '100%' }}
+                  initialRegion={mapRegion}
+                  region={mapRegion}
+                  showsUserLocation={true}
+                  followsUserLocation={true}
+                  mapType="hybrid"
+                >
+                  {/* Render all study locations as circles */}
+                  {data?.org_locations && data.org_locations.map((location: LocationType) => (
+                    <Circle
+                      key={location.id}
+                      center={{
+                        latitude: location.gps_lat,
+                        longitude: location.gps_long,
+                      }}
+                      radius={location.gps_radius}
+                      strokeColor={
+                        currentStudyLocation?.id === location.id
+                          ? "rgba(16, 185, 129, 0.8)"  // Brighter green for current location
+                          : "rgba(16, 185, 129, 0.5)"  // Regular green for other locations
+                      }
+                      strokeWidth={2}
+                      fillColor={
+                        currentStudyLocation?.id === location.id
+                          ? "rgba(16, 185, 129, 0.3)"  // More visible fill for current location
+                          : "rgba(16, 185, 129, 0.1)"  // Light fill for other locations
+                      }
+                    />
+                  ))}
+                </MapView>
+              )}
+              
+              {/* Show an overlay when map isn't available */}
+              {(!mapRegion || !backgroundStatus || !foregroundStatus) && (
+                <View className="absolute inset-0 bg-gray-100 items-center justify-center">
+                  <Text className="text-gray-500 font-psemibold">
+                    {!backgroundStatus || !foregroundStatus
+                      ? "Location permissions required to view map"
+                      : "Loading map..."}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            {/* Map legend */}
+            <View className="p-3 bg-white border-t border-gray-200">
+              <View className="flex-row justify-between items-center">
+                <View className="flex-row items-center">
+                  <View className="h-3 w-3 rounded-full bg-green-500 mr-2" />
+                  <Text className="text-sm text-gray-600">Study Areas</Text>
+                </View>
+                <View className="flex-row items-center">
+                  <View className="h-3 w-3 rounded-full bg-blue-500 mr-2" />
+                  <Text className="text-sm text-gray-600">Your Location</Text>
+                </View>
+                {currentStudyLocation && (
+                  <Text className="text-sm font-psemibold text-green-600">
+                    In: {currentStudyLocation.name}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+          
+          {/* Add some bottom padding */}
+          <View className="h-6" />
         </ScrollView>
       </View>
     </SafeAreaView>

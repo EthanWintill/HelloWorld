@@ -61,6 +61,12 @@ const AdminLayout = () => {
           }} 
         />
         <Stack.Screen 
+          name="add-user" 
+          options={{ 
+            title: 'Add New User',
+          }} 
+        />
+        <Stack.Screen 
           name="study-periods" 
           options={{ 
             title: 'Study Periods',

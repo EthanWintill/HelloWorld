@@ -1,8 +1,9 @@
 import { View, Text, ScrollView, SafeAreaView, Image } from 'react-native'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { images } from "@/constants"
+import { useFocusEffect } from '@react-navigation/native'
 
 interface User {
   id: number;
@@ -18,8 +19,19 @@ interface User {
 }
 
 const Leaderboard = () => {
-  const { dashboardState } = useDashboard()
+  const { dashboardState, refreshDashboard } = useDashboard()
   const { isLoading, error, data } = dashboardState
+  
+  // Add useFocusEffect to refresh dashboard when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Leaderboard screen came into focus - refreshing dashboard');
+      refreshDashboard();
+      return () => {
+        // Cleanup if needed when screen loses focus
+      };
+    }, [])
+  );
 
   const getActivePeriodInstance = () => {
     if (!data?.org_period_instances) return null;
@@ -53,7 +65,8 @@ const Leaderboard = () => {
     );
   }
 
-  if (isLoading) {
+  // Only show loading screen on initial load, not during refreshes
+  if (isLoading && !data) {
     return <LoadingScreen />
   }
 
@@ -106,8 +119,11 @@ const Leaderboard = () => {
 
       {/* Main content */}
       <ScrollView className="p-4">
+        {/* Optional loading indicator when refreshing with existing data */}
+        
+        
         <Text className="text-xl font-bold mb-6 text-center">
-          {data.org ? data.org.name : "Organization"} Leaderboard
+          {data?.org ? data.org.name : "Organization"} Leaderboard
         </Text>
         
         {/* Live users section */}

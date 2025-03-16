@@ -1,5 +1,5 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Modal } from 'react-native'
-import React, { useState } from 'react'
+import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Modal, ActivityIndicator, Keyboard } from 'react-native'
+import React, { useState, useRef } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { Ionicons } from '@expo/vector-icons'
@@ -46,6 +46,11 @@ const OrganizationManagement = () => {
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
   const VISUAL_CIRCLE_SIZE = 100; // diameter in pixels
 
+  const [addressInput, setAddressInput] = useState('');
+  const [isGeocodingLoading, setIsGeocodingLoading] = useState(false);
+  const [geocodingError, setGeocodingError] = useState('');
+  const mapRef = useRef<MapView>(null);
+
   const calculateRadiusInMeters = (region: Region) => {
     const { longitudeDelta, latitude } = region;
     const metersPerDegree = 111319.9;
@@ -73,6 +78,8 @@ const OrganizationManagement = () => {
 
   const resetModalState = () => {
     setLocationName('');
+    setAddressInput('');
+    setGeocodingError('');
     setEditMode(false);
     setCreateMode(false);
     setIsSubmitting(false);
@@ -391,6 +398,56 @@ const OrganizationManagement = () => {
     }
   }
 
+  // Function to handle geocoding of address
+  const handleAddressSearch = async () => {
+    if (!addressInput.trim()) {
+      setGeocodingError('Please enter an address');
+      return;
+    }
+    
+    Keyboard.dismiss();
+    setGeocodingError('');
+    setIsGeocodingLoading(true);
+    
+    try {
+      const geocodedLocations = await Location.geocodeAsync(addressInput);
+      
+      if (geocodedLocations && geocodedLocations.length > 0) {
+        const { latitude, longitude } = geocodedLocations[0];
+        
+        // Update current location
+        const newLocation: LocationObject['coords'] = {
+          latitude,
+          longitude,
+          altitude: null,
+          accuracy: null,
+          altitudeAccuracy: null,
+          heading: null,
+          speed: null
+        };
+        
+        setCurrentLocation(newLocation);
+        
+        // Animate map to new location
+        mapRef.current?.animateToRegion({
+          latitude,
+          longitude,
+          latitudeDelta: radius / 25500,
+          longitudeDelta: radius / 25500
+        }, 1000);
+        
+        setGeocodingError('');
+      } else {
+        setGeocodingError('No results found for this address');
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      setGeocodingError('Error finding this address. Please try again.');
+    } finally {
+      setIsGeocodingLoading(false);
+    }
+  };
+
   if (isLoading) {
     return <LoadingScreen />
   }
@@ -527,7 +584,7 @@ const OrganizationManagement = () => {
 
           {data.org_locations && data.org_locations.length > 0 ? (
             data.org_locations.map((location: LocationType) => (
-              <View key={location.id} className="bg-gray-100 p-4 rounded-lg mb-2">
+              <View key={location.id} className="bg-gray-50 border border-gray-200 p-4 rounded-lg mb-2">
                 <View className="flex-row items-center justify-between">
                   <TouchableOpacity
                     className="flex-1"
@@ -543,9 +600,9 @@ const OrganizationManagement = () => {
                   <View className="flex-row">
                     <TouchableOpacity
                       onPress={() => viewLocationPopup(location)}
-                      className="p-2"
+                      className="p-2 bg-green-100 rounded-full"
                     >
-                      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                      <Ionicons name="pencil" size={20} color="#16A34A" />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleDeleteLocation(location.id)}
@@ -600,9 +657,44 @@ const OrganizationManagement = () => {
               )}
             </View>
             
+            {/* Address search input - only show when in edit mode */}
+            {(createMode || editMode) && (
+              <View className="mb-4">
+                <View className="flex-row items-center border border-gray-300 rounded-lg overflow-hidden">
+                  <TextInput
+                    value={addressInput}
+                    onChangeText={(text) => {
+                      setAddressInput(text);
+                      if (geocodingError) setGeocodingError('');
+                    }}
+                    className="flex-1 p-3"
+                    placeholder="Search for an address"
+                    returnKeyType="search"
+                    onSubmitEditing={handleAddressSearch}
+                  />
+                  <TouchableOpacity
+                    onPress={handleAddressSearch}
+                    disabled={isGeocodingLoading || !addressInput.trim()}
+                    className={`bg-blue-500 p-3 ${(!addressInput.trim() || isGeocodingLoading) ? 'opacity-50' : ''}`}
+                  >
+                    {isGeocodingLoading ? (
+                      <ActivityIndicator size="small" color="white" />
+                    ) : (
+                      <Ionicons name="search" size={20} color="white" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+                
+                {geocodingError !== '' && (
+                  <Text className="text-red-500 text-sm mt-1">{geocodingError}</Text>
+                )}
+              </View>
+            )}
+            
             {/* Map view */}
             <View className="relative mb-4" style={{ width: '100%', height: 250 }}>
               <MapView
+                ref={mapRef}
                 style={{ width: '100%', height: '100%', borderRadius: 8 }}
                 mapType="hybrid"
                 showsUserLocation={true}
