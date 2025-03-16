@@ -520,6 +520,62 @@ class SendNotificationView(APIView):
                 "error": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class AdminSessionView(RetrieveUpdateDestroyAPIView):
+    """
+    View for admin users to retrieve, modify, or delete a specific session by its ID.
+    Only allows access to sessions of users in the same organization as the admin.
+    """
+    permission_classes = (IsAdminUser,)
+    serializer_class = SessionSerializer
+    
+    def get_queryset(self):
+        admin_user = self.request.user
+        
+        # Verify the admin user has an organization
+        if not admin_user.org:
+            return Session.objects.none()
+        
+        # Return all sessions for users in the admin's organization
+        return Session.objects.filter(
+            org=admin_user.org
+        ).select_related(
+            'user', 'org', 'location', 'period_instance'
+        )
+    
+    def get_object(self):
+        obj = super().get_object()
+        # Double-check the session belongs to the admin's organization
+        if obj.org != self.request.user.org:
+            raise exceptions.PermissionDenied(
+                detail="You can only modify sessions for users in your organization"
+            )
+        return obj
+    
+    def update(self, request, *args, **kwargs):
+        # For update operations, we only want to allow hours field to be modified
+        if 'hours' not in request.data or len(request.data) > 1:
+            return Response(
+                {"detail": "Only the hours field can be modified"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def perform_update(self, serializer):
+        serializer.save()
+        
+        # Optional: Send notification to the user about the session modification
+        session = serializer.instance
+        try:
+            send_notification_to_users(
+                [session.user.id], 
+                "Session Updated", 
+                f"Your study session at {session.location.name} has been updated by an admin"
+            )
+        except Exception as e:
+            # Log error but don't block the update
+            print(f"Error sending notification: {str(e)}")
+
 
 
 
