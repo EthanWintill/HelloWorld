@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications";
-
+import * as Device from "expo-device";
 import Constants from "expo-constants";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -60,7 +60,7 @@ export const usePushNotifications = (): PushNotificationState => {
 
   useEffect(() => {
     registerForPushNotificationsAsync().then(async (pushToken) => {
-      console.log("Push token: \n\n\n", pushToken?.data);
+      console.log("Push token: ", pushToken?.data);
       const token = await AsyncStorage.getItem('accessToken');
       
       if (!token) throw new Error('No access token found')
@@ -68,7 +68,7 @@ export const usePushNotifications = (): PushNotificationState => {
       await axios.post(
         `${API_URL}api/notifications/token/`,
         {
-          "device_id": "123",
+          "device_id": Device.deviceName,
           "token": pushToken?.data
         },
         {

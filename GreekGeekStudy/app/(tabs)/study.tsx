@@ -72,9 +72,7 @@ const Study = () => {
     hasStarted,
     start,
     stop,
-    reset,
-    formatTime
-  } = useStopWatch();
+    reset  } = useStopWatch();
 
   const [appState, setAppState] = useState(AppState.currentState);
 
@@ -145,12 +143,14 @@ const Study = () => {
     await handleLocationPermission();
     if (!backgroundStatus) return null;
     const location = await Location.getCurrentPositionAsync();
+    console.log('Current location:', location);
     const studyLocations = dashboardState.data['org_locations'];
     for (const studyLocation of studyLocations) {
       const distance = haversine(
         { latitude: location.coords.latitude, longitude: location.coords.longitude },
         { latitude: studyLocation['gps_lat'], longitude: studyLocation['gps_long'] }
       )
+      console.log('Distance to', studyLocation['name'], ':', distance);
       if (distance < studyLocation['gps_radius']) {
         return studyLocation;
       }

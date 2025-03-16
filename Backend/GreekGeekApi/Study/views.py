@@ -22,7 +22,7 @@ from datetime import timedelta
 import json
 import requests
 
-from .utils import get_or_create_period_instance
+from .utils import get_or_create_period_instance, send_notification_to_users
 
 class PeriodSettingViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAdminUser,)
@@ -120,6 +120,10 @@ class ClockOut(APIView):
             last_session.save()
             current_user.live = False
             current_user.save()
+
+            #Send Notification to user
+            send_notification_to_users([current_user.id], "Clocked Out", f"Your study session at {last_session.location.name} has been ended")
+
             return Response({
                 "detail": "Successfully clocked out.",
                 "start_time": last_session.start_time,
