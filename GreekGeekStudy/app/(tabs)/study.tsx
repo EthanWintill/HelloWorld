@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Alert, Linking, Image, TouchableOpacity, AppState } from 'react-native'
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -15,6 +15,7 @@ import haversine from 'haversine-distance'
 import * as TaskManager from 'expo-task-manager';
 import eventEmitter, { EVENTS } from '@/services/EventEmitter';
 import MapView, { Marker, Region, Circle } from 'react-native-maps';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface LocationType {
   id: number;
@@ -428,6 +429,16 @@ const Study = () => {
   };
 
   // --- Effects ---
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Study screen came into focus - refreshing dashboard');
+      refreshDashboard();
+      return () => {
+        // Cleanup if needed when screen loses focus
+      };
+    }, [])
+  );
+  
   useEffect(() => {
     getAllAsyncStorageData();
     
@@ -569,7 +580,7 @@ const Study = () => {
                 isStarted={isStudying}
                 percentComplete={calculatePercentComplete()}
                 time={time} // Use the actual stopwatch time
-                isLoading={isLoading}
+                isLoading={isLoading && !data} // Only show loading if we don't have data yet
               />
             ) : (
               <PermissionButton

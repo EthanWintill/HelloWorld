@@ -559,22 +559,72 @@ class AdminSessionView(RetrieveUpdateDestroyAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        return super().update(request, *args, **kwargs)
+        session = self.get_object()
+        
+        # Check if trying to change hours from a value to None
+        hours_value = request.data.get('hours')
+        if session.hours is not None and (hours_value is None or hours_value == ''):
+            return Response(
+                {"detail": "Cannot change hours from a value to empty"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        response = super().update(request, *args, **kwargs)
+        
+        # If we're setting hours for an in-progress session, update user's live status
+        if session.hours is None and hours_value is not None:
+            user = session.user
+            user.live = False
+            user.save()
+            
+            # Optional: Send notification to user about admin ending their session
+            try:
+                send_notification_to_users(
+                    [user.id], 
+                    "Session Ended", 
+                    f"Your study session at {session.location.name} has been ended by an admin"
+                )
+            except Exception as e:
+                # Log error but don't block the update
+                print(f"Error sending notification: {str(e)}")
+                
+        return response
+    
+    def perform_destroy(self, instance):
+        # If we're deleting an in-progress session, update user's live status
+        if instance.hours is None:
+            user = instance.user
+            user.live = False
+            user.save()
+            
+            # Optional: Send notification to user about admin deleting their session
+            try:
+                send_notification_to_users(
+                    [user.id], 
+                    "Session Deleted", 
+                    f"Your study session at {instance.location.name} has been deleted by an admin"
+                )
+            except Exception as e:
+                # Log error but don't block the deletion
+                print(f"Error sending notification: {str(e)}")
+                
+        instance.delete()
     
     def perform_update(self, serializer):
         serializer.save()
         
-        # Optional: Send notification to the user about the session modification
+        # Send notification for regular updates (already handled for in-progress sessions in update method)
         session = serializer.instance
-        try:
-            send_notification_to_users(
-                [session.user.id], 
-                "Session Updated", 
-                f"Your study session at {session.location.name} has been updated by an admin"
-            )
-        except Exception as e:
-            # Log error but don't block the update
-            print(f"Error sending notification: {str(e)}")
+        if session.hours is not None:
+            try:
+                send_notification_to_users(
+                    [session.user.id], 
+                    "Session Updated", 
+                    f"Your study session at {session.location.name} has been updated by an admin"
+                )
+            except Exception as e:
+                # Log error but don't block the update
+                print(f"Error sending notification: {str(e)}")
 
 
 

@@ -175,7 +175,10 @@ const UserDetail = () => {
   }
 
   // Format duration for session display
-  const formatDuration = (hours: number) => {
+  const formatDuration = (hours: number | null) => {
+    if (hours === null) {
+      return 'In progress'
+    }
     const h = Math.floor(hours)
     const m = Math.round((hours - h) * 60)
     return `${h}h ${m}m`
@@ -341,12 +344,18 @@ const UserDetail = () => {
 
   // Handle session hours update
   const handleUpdateSessionHours = async () => {
-    if (!selectedSession || !editedHours) return
+    if (!selectedSession) return
     
-    const newHours = parseFloat(editedHours)
-    if (isNaN(newHours) || newHours <= 0) {
-      Alert.alert("Invalid Input", "Please enter a valid number of hours greater than 0")
-      return
+    // If editedHours is empty but we're updating a session, this means 
+    // we want to set it to null (in progress)
+    let newHours: number | null = null
+    
+    if (editedHours.trim() !== '') {
+      newHours = parseFloat(editedHours)
+      if (isNaN(newHours) || newHours <= 0) {
+        Alert.alert("Invalid Input", "Please enter a valid number of hours greater than 0")
+        return
+      }
     }
     
     setIsSessionUpdateLoading(true)
@@ -375,7 +384,9 @@ const UserDetail = () => {
       
       Alert.alert(
         "Success",
-        "Session hours have been updated.",
+        newHours === null 
+          ? "Session marked as in progress." 
+          : "Session hours have been updated.",
         [{ text: "OK" }]
       )
     } catch (error: any) {
@@ -616,7 +627,9 @@ const UserDetail = () => {
                 >
                   <View className="flex-row justify-between items-center">
                     <Text className="font-psemibold">{formatDate(session.start_time)}</Text>
-                    <Text className="text-green-600 font-psemibold">{formatDuration(session.hours)}</Text>
+                    <Text className={`font-psemibold ${session.hours === null ? 'text-orange-600' : 'text-green-600'}`}>
+                      {formatDuration(session.hours)}
+                    </Text>
                   </View>
                   <Text className="text-gray-600 text-sm mb-2">
                     {getLocationName(session.location)}
@@ -625,7 +638,7 @@ const UserDetail = () => {
                     <TouchableOpacity 
                       onPress={() => {
                         setSelectedSession(session)
-                        setEditedHours(session.hours.toString())
+                        setEditedHours(session.hours !== null ? session.hours.toString() : '')
                         setIsHoursModalVisible(true)
                       }}
                       className="bg-blue-100 p-2 rounded-full mr-2"
@@ -690,9 +703,14 @@ const UserDetail = () => {
                   onChangeText={setEditedHours}
                   className="border border-gray-300 rounded-lg p-3 text-lg"
                   keyboardType="numeric"
-                  placeholder="Enter hours (e.g. 2.5)"
+                  placeholder="Leave empty to mark as in-progress"
                   autoFocus
                 />
+                <Text className="text-gray-500 text-sm mt-1">
+                  {selectedSession.hours === null 
+                    ? "This session is currently in progress." 
+                    : "Enter hours or leave empty to mark as in-progress."}
+                </Text>
               </View>
             )}
             
