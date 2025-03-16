@@ -134,7 +134,7 @@ const UserDetail = () => {
         )
         
         setSessions(response.data)
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching user sessions:', error)
         
         if (error.response?.status === 401) {
@@ -175,10 +175,10 @@ const UserDetail = () => {
   }
 
   // Get location name from location ID
-  const getLocationName = useCallback((locationId) => {
+  const getLocationName = useCallback((locationId: number | null) => {
     if (!locationId || !data || !data.org_locations) return 'No location'
     
-    const location = data.org_locations.find(loc => loc.id === locationId)
+    const location = data.org_locations.find((loc: any) => loc.id === locationId)
     return location ? location.name : 'Unknown location'
   }, [data])
 
@@ -209,7 +209,7 @@ const UserDetail = () => {
         "User information has been updated.",
         [{ text: "OK" }]
       )
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating user:', error)
       
       if (error.response?.status === 401) {
@@ -249,16 +249,24 @@ const UserDetail = () => {
                 }
               )
               
-              await refreshDashboard()
+              // Show success message and navigate back
               Alert.alert(
                 "Success",
                 "User has been deleted.",
                 [{ 
                   text: "OK",
-                  onPress: () => router.back()
+                  onPress: () => {
+                    // First navigate back
+                    router.back()
+                    
+                    // Then refresh dashboard after a small delay
+                    setTimeout(() => {
+                      refreshDashboard()
+                    }, 300)
+                  }
                 }]
               )
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error deleting user:', error)
               
               if (error.response?.status === 401) {
@@ -305,7 +313,7 @@ const UserDetail = () => {
                 "Password reset email has been sent to the user.",
                 [{ text: "OK" }]
               )
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error resetting password:', error)
               
               if (error.response?.status === 401) {
