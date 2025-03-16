@@ -65,6 +65,9 @@ const Study = () => {
   const [locationGranted, setLocationGranted] = useState('UNKNOWN');
   const [isStudying, setIsStudying] = useState(false)
   
+  // Add state for current study location
+  const [currentStudyLocation, setCurrentStudyLocation] = useState(null);
+  
   // Use our reimplemented stopwatch
   const {
     time,
@@ -152,36 +155,38 @@ const Study = () => {
       )
       console.log('Distance to', studyLocation['name'], ':', distance);
       if (distance < studyLocation['gps_radius']) {
+        setCurrentStudyLocation(studyLocation);
         return studyLocation;
       }
     }
+    setCurrentStudyLocation(null);
     return null;
   }
 
   // --- Clock Related Functions ---
   const clockIn = async () => {
     try {
-      let currentStudyLocation = await getStudyLocationGPS();
+      let studyLocation = await getStudyLocationGPS();
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
 
-      if (!currentStudyLocation) {
+      if (!studyLocation) {
         Alert.alert('No Study Location Found', 'Please go to a study location to clock in.');
         return;
       }
 
       // Start Geofence monitoring
       await Location.startGeofencingAsync(GEOFENCE_TASK, [{
-        latitude: currentStudyLocation['gps_lat'],
-        longitude: currentStudyLocation['gps_long'],
-        radius: currentStudyLocation['gps_radius'],
+        latitude: studyLocation['gps_lat'],
+        longitude: studyLocation['gps_long'],
+        radius: studyLocation['gps_radius'],
         notifyOnExit: true
       }]);
       console.log('Geofence started');
 
 
       // Send clock-in request to the server
-      const response = await axios.post(API_URL + 'api/clockin/', { "location_id": currentStudyLocation?.id }, {
+      const response = await axios.post(API_URL + 'api/clockin/', { "location_id": studyLocation?.id }, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -465,6 +470,21 @@ const Study = () => {
     };
   }, [appState, isRunning]);
 
+  // Add effect to check location periodically when not studying
+  useEffect(() => {
+    if (!isStudying && backgroundStatus && foregroundStatus && !isLoading) {
+      // Update location initially
+      getStudyLocationGPS();
+      
+      // Check location every 30 seconds when not studying
+      const locationInterval = setInterval(() => {
+        getStudyLocationGPS();
+      }, 30000);
+      
+      return () => clearInterval(locationInterval);
+    }
+  }, [isStudying, backgroundStatus, foregroundStatus, isLoading]);
+
   if (error) {
     return (
       <ScrollView className="flex-1 p-4">
@@ -505,7 +525,9 @@ const Study = () => {
             {backgroundStatus && foregroundStatus ? (
               <ClockButton
                 title={!isStudying ? "Start Studying" : "Stop"}
-                secondaryTitle={!isStudying ? "Alkek Library" : undefined}
+                secondaryTitle={!isStudying 
+                  ? (currentStudyLocation ? currentStudyLocation.name : "No Location Found") 
+                  : undefined}
                 handlePress={handleClock}
                 isStarted={isStudying}
                 percentComplete={calculatePercentComplete()}
