@@ -60,16 +60,6 @@ const ClockButton: React.FC<ClockButtonProps> = ({ title, secondaryTitle, handle
           </>
         )}
       </TouchableOpacity>
-      {/* <AnimatedCircularProgress
-        size={screen.width / 2}
-        width={12}
-        fill={percentComplete}
-        tintColor="blue"
-        rotation={0}
-        dashedTint={{width:3, gap:10}}
-        backgroundColor='rgba(0,0,0,0.1)'
-      /> */}
-      
     </View>
   )
 }

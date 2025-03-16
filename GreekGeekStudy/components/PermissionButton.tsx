@@ -13,24 +13,28 @@ const PermissionButton: React.FC<PermissionButtonProps> = ({ handlePress, contai
   return (
     <TouchableOpacity
       style={[
-        styles.button,
-        { backgroundColor: 'rgba(145, 145, 145, 0.46)' } // light gray inside
+      styles.button,
+      { backgroundColor: 'rgba(145, 145, 145, 0.46)' } // light gray inside
       ]}
       onPress={handlePress}
       activeOpacity={0.7}
-      className={`border-5 rounded-full justify-center items-center border-gray-500 ${containerStyles}`}> 
-      <View className="items-center">
-        <Text 
-          style={styles.title} 
-          className={`text-black text-xl font-medium font-plight mt-1`}> 
-          You must enable location sharing to use this app
-        </Text>
-      </View>
+      className={`border-5 rounded-full justify-center items-center border-gray-500 ${containerStyles}`}>
+      <Text
+      style={styles.title}
+      className={`text-black text-xl font-medium font-plight mt-1 text-center`}
+      >
+      You must enable{'\n'}location sharing to use{'\n'}this app
+      </Text>
     </TouchableOpacity>
   )
 }
 
 const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   button: {
     width: screen.width / 2,
     height: screen.width / 2,
