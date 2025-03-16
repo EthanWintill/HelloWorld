@@ -584,7 +584,7 @@ const OrganizationManagement = () => {
 
           {data.org_locations && data.org_locations.length > 0 ? (
             data.org_locations.map((location: LocationType) => (
-              <View key={location.id} className="bg-gray-100 p-4 rounded-lg mb-2">
+              <View key={location.id} className="bg-gray-50 border border-gray-200 p-4 rounded-lg mb-2">
                 <View className="flex-row items-center justify-between">
                   <TouchableOpacity
                     className="flex-1"
@@ -600,9 +600,9 @@ const OrganizationManagement = () => {
                   <View className="flex-row">
                     <TouchableOpacity
                       onPress={() => viewLocationPopup(location)}
-                      className="p-2"
+                      className="p-2 bg-green-100 rounded-full"
                     >
-                      <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                      <Ionicons name="pencil" size={20} color="#16A34A" />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleDeleteLocation(location.id)}
