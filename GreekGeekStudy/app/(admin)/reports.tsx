@@ -1,73 +1,171 @@
 import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Dimensions } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { Ionicons } from '@expo/vector-icons'
+import axios from 'axios'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import API_URL from '../../constants/api'
 
-// Mock data for study periods
-const MOCK_PERIODS = [
-  { 
-    id: 1, 
-    name: 'Spring 2023 - Week 1',
-    start_date: '2023-01-15T00:00:00Z',
-    end_date: '2023-01-21T23:59:59Z',
-    required_hours: 10,
-    is_active: true,
-    period_type: 'weekly'
-  },
-  { 
-    id: 2, 
-    name: 'Spring 2023 - Week 2',
-    start_date: '2023-01-22T00:00:00Z',
-    end_date: '2023-01-28T23:59:59Z',
-    required_hours: 10,
-    is_active: false,
-    period_type: 'weekly'
-  },
-  { 
-    id: 3, 
-    name: 'Spring 2023 - Week 3',
-    start_date: '2023-01-29T00:00:00Z',
-    end_date: '2023-02-04T23:59:59Z',
-    required_hours: 10,
-    is_active: false,
-    period_type: 'weekly'
-  },
-]
+// Define types for API response
+interface PeriodSetting {
+  id: string;
+  period_type: string;
+  required_hours: number;
+  is_active: boolean;
+}
 
-// Mock data for user study stats
-const MOCK_USER_STATS = [
-  { id: 1, name: 'John Doe', hours: 12.5, goal_percentage: 125 },
-  { id: 2, name: 'Jane Smith', hours: 8.2, goal_percentage: 82 },
-  { id: 3, name: 'Bob Johnson', hours: 15.7, goal_percentage: 157 },
-  { id: 4, name: 'Alice Brown', hours: 10.3, goal_percentage: 103 },
-  { id: 5, name: 'Charlie Wilson', hours: 5.8, goal_percentage: 58 },
-  { id: 6, name: 'Diana Miller', hours: 0, goal_percentage: 0 },
-  { id: 7, name: 'Edward Davis', hours: 9.5, goal_percentage: 95 },
-  { id: 8, name: 'Fiona Clark', hours: 11.2, goal_percentage: 112 },
-]
+interface PeriodInstance {
+  id: string;
+  period_setting: PeriodSetting;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+}
 
-// Mock data for group study stats
-const MOCK_GROUP_STATS = [
-  { id: 1, name: 'Freshmen', hours: 42.3, goal_percentage: 106, member_count: 4 },
-  { id: 2, name: 'Sophomores', hours: 35.8, goal_percentage: 89, member_count: 4 },
-  { id: 3, name: 'Juniors', hours: 51.2, goal_percentage: 128, member_count: 4 },
-  { id: 4, name: 'Seniors', hours: 38.7, goal_percentage: 97, member_count: 4 },
-]
+interface Location {
+  id: number;
+  name: string;
+  gps_lat: number;
+  gps_long: number;
+  gps_radius: number;
+}
 
-// Mock data for location stats
-const MOCK_LOCATION_STATS = [
-  { id: 1, name: 'Alkek Library', hours: 98.5, sessions: 42 },
-  { id: 2, name: 'Student Center', hours: 45.2, sessions: 18 },
-  { id: 3, name: 'Engineering Building', hours: 24.3, sessions: 10 },
-]
+interface Session {
+  id: number;
+  hours: number | null;
+  start_time: string;
+  period_instance: PeriodInstance | null;
+  location: Location | number | null;
+}
+
+interface User {
+  id: number;
+  first_name: string;
+  last_name: string;
+  sessions: Session[];
+}
+
+interface OrgReport {
+  org_id: number;
+  org_name: string;
+  active_period_setting: PeriodSetting | null;
+  period_instances: PeriodInstance[];
+  users: User[];
+  locations: Location[];
+}
+
+interface UserStat {
+  id: number;
+  name: string;
+  hours: number;
+  goal_percentage: number;
+}
+
+interface LocationStat {
+  id: number;
+  name: string;
+  hours: number;
+  sessions: number;
+  gps_lat: number;
+  gps_long: number;
+  gps_radius: number;
+  utilization_rate: number; // percentage of total study time at this location
+}
 
 const Reports = () => {
-  const { dashboardState } = useDashboard()
-  const { isLoading, error, data } = dashboardState
+  const { dashboardState, handleUnauthorized } = useDashboard()
+  const { isLoading: isDashboardLoading, error: dashboardError, data } = dashboardState
   
-  const [selectedPeriod, setSelectedPeriod] = useState<any>(MOCK_PERIODS[0])
-  const [activeTab, setActiveTab] = useState('users') // 'users', 'groups', 'locations'
+  const [orgReport, setOrgReport] = useState<OrgReport | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<any>(null)
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('users') // 'users', 'locations'
+  
+  useEffect(() => {
+    // Fetch organization report data
+    const fetchOrgReport = async () => {
+      try {
+        console.log("Starting to fetch org report data...")
+        setIsLoading(true)
+        
+        // Get token from AsyncStorage
+        const token = await AsyncStorage.getItem('accessToken')
+        console.log("Token available:", !!token)
+        
+        if (!token) {
+          console.error("No access token found in AsyncStorage")
+          setError(new Error("Authentication required"))
+          setIsLoading(false)
+          return
+        }
+        
+        const apiEndpoint = `${API_URL}api/org-report/`
+        console.log("Fetching from endpoint:", apiEndpoint)
+        
+        const response = await axios.get(apiEndpoint, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+        
+        console.log("API Response status:", response.status)
+        console.log("API Response data preview:", JSON.stringify(response.data).substring(0, 100) + "...")
+        
+        // Log location information for debugging
+        if (response.data.locations) {
+          console.log(`Found ${response.data.locations.length} locations in org data`)
+        }
+        if (response.data.users && response.data.users.length > 0 && response.data.users[0].sessions) {
+          const sampleSession = response.data.users[0].sessions[0]
+          console.log("Sample session location:", sampleSession ? sampleSession.location : "No sessions")
+        }
+        
+        setOrgReport(response.data)
+        
+        // Set default selected period to the active one
+        if (response.data.period_instances && response.data.period_instances.length > 0) {
+          const activePeriod = response.data.period_instances.find((p: PeriodInstance) => p.is_active) || response.data.period_instances[0]
+          setSelectedPeriodId(activePeriod.id)
+        }
+        
+        setIsLoading(false)
+      } catch (err) {
+        console.error('Error fetching org report:', err)
+        if (axios.isAxiosError(err)) {
+          console.error('API Error details:', {
+            status: err.response?.status,
+            statusText: err.response?.statusText,
+            data: err.response?.data
+          })
+          
+          // Handle unauthorized response
+          if (err.response?.status === 401) {
+            handleUnauthorized()
+          }
+        }
+        
+        setError(err)
+        setIsLoading(false)
+      }
+    }
+
+    const initFetch = async () => {
+      // Only fetch if we have dashboard data loaded and user is authenticated with staff privileges
+      if (data && !isDashboardLoading) {
+        if (data.is_staff) {
+          console.log("User is staff, fetching org report data...")
+          await fetchOrgReport()
+        } else {
+          console.log("User is not staff, skipping data fetch")
+          setIsLoading(false)
+        }
+      }
+    }
+    
+    initFetch()
+  }, [data, isDashboardLoading, handleUnauthorized])
   
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -82,15 +180,123 @@ const Reports = () => {
     )
   }
 
-  if (isLoading) {
+  // Compute stats data for selected period
+  const getUserStats = (): UserStat[] => {
+    if (!orgReport || !selectedPeriodId) return []
+    
+    return orgReport.users.map(user => {
+      // Find sessions for this user in the selected period
+      const periodSessions = user.sessions.filter(
+        session => session.period_instance && session.period_instance.id === selectedPeriodId
+      )
+      
+      // Calculate total hours
+      const totalHours = periodSessions.reduce((sum: number, session) => {
+        return sum + (session.hours || 0)
+      }, 0)
+      
+      // Get required hours from selected period's settings
+      const selectedPeriod = orgReport.period_instances.find(p => p.id === selectedPeriodId)
+      const requiredHours = selectedPeriod?.period_setting?.required_hours || orgReport.active_period_setting?.required_hours || 10
+      
+      // Calculate goal percentage
+      const goalPercentage = Math.round((totalHours / requiredHours) * 100)
+      
+      return {
+        id: user.id,
+        name: `${user.first_name} ${user.last_name}`,
+        hours: totalHours,
+        goal_percentage: goalPercentage
+      }
+    })
+  }
+  
+  // Get location stats
+  const getLocationStats = (): LocationStat[] => {
+    if (!orgReport || !selectedPeriodId) return []
+    
+    console.log("Starting getLocationStats for period:", selectedPeriodId)
+    
+    // Create a map of location IDs to location objects for quick lookup
+    const locationLookup: Record<number, Location> = {}
+    orgReport.locations.forEach(location => {
+      locationLookup[location.id] = location
+    })
+    console.log("Location lookup map created with", Object.keys(locationLookup).length, "locations")
+    
+    const locationMap: Record<number, LocationStat> = {}
+    
+    // First, initialize with all locations from the org
+    orgReport.locations.forEach(location => {
+      locationMap[location.id] = {
+        id: location.id,
+        name: location.name,
+        hours: 0,
+        sessions: 0,
+        gps_lat: location.gps_lat,
+        gps_long: location.gps_long,
+        gps_radius: location.gps_radius,
+        utilization_rate: 0
+      }
+    })
+    
+    // Aggregate all sessions from the selected period by location
+    orgReport.users.forEach(user => {
+      const periodSessions = user.sessions.filter(
+        session => session.period_instance && session.period_instance.id === selectedPeriodId
+      )
+      
+      periodSessions.forEach(session => {
+        // Handle the case where location could be an ID or null
+        if (!session.location) return
+        
+        // If location is an ID (number)
+        const locationType = typeof session.location
+        const locationId = locationType === 'number' 
+          ? (session.location as number)
+          : (session.location as Location).id
+        
+        // Debug log for location type
+        if (periodSessions.length > 0 && periodSessions.indexOf(session) === 0) {
+          console.log(`First session location type: ${locationType}, value:`, session.location)
+        }
+        
+        if (locationMap[locationId]) {
+          locationMap[locationId].hours += (session.hours || 0)
+          locationMap[locationId].sessions += 1
+        } else {
+          console.log(`Warning: Location ID ${locationId} not found in location map`)
+        }
+      })
+    })
+    
+    // Log results
+    const stats = Object.values(locationMap)
+    console.log(`Generated stats for ${stats.length} locations, ${stats.filter(l => l.sessions > 0).length} have sessions`)
+    
+    // Calculate utilization rate
+    const totalHours = stats.reduce((sum, location) => sum + location.hours, 0)
+    console.log(`Total hours across all locations: ${totalHours}`)
+    
+    if (totalHours > 0) {
+      for (const location of stats) {
+        location.utilization_rate = Math.round((location.hours / totalHours) * 100)
+      }
+    }
+    
+    // Sort by hours in descending order
+    return stats.sort((a, b) => b.hours - a.hours)
+  }
+
+  if (isDashboardLoading || isLoading) {
     return <LoadingScreen />
   }
 
-  if (error) {
+  if (dashboardError || error) {
     return (
       <ScrollView className="flex-1 p-4">
         <Text className="text-red-500 text-lg font-bold">Error:</Text>
-        <Text className="text-red-500">{JSON.stringify(error, null, 2)}</Text>
+        <Text className="text-red-500">{JSON.stringify(dashboardError || error, null, 2)}</Text>
       </ScrollView>
     )
   }
@@ -105,6 +311,16 @@ const Reports = () => {
       </SafeAreaView>
     )
   }
+  
+  // Handle case where data isn't loaded yet
+  if (!orgReport) {
+    return <LoadingScreen />
+  }
+  
+  const periods = orgReport.period_instances || []
+  const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || periods[0]
+  const userStats = getUserStats()
+  const locationStats = getLocationStats()
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -115,32 +331,34 @@ const Reports = () => {
           <View className="mb-4">
             <Text className="text-gray-600 mb-2">Select Period</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
-              {MOCK_PERIODS.map(period => (
+              {periods.map(period => (
                 <TouchableOpacity 
                   key={period.id}
-                  className={`px-4 py-2 rounded-lg mr-2 ${selectedPeriod.id === period.id ? 'bg-green-600' : 'bg-gray-200'}`}
-                  onPress={() => setSelectedPeriod(period)}
+                  className={`px-4 py-2 rounded-lg mr-2 ${selectedPeriodId === period.id ? 'bg-green-600' : 'bg-gray-200'}`}
+                  onPress={() => setSelectedPeriodId(period.id)}
                 >
-                  <Text className={selectedPeriod.id === period.id ? 'text-white' : 'text-gray-700'}>
-                    {period.name}
+                  <Text className={selectedPeriodId === period.id ? 'text-white' : 'text-gray-700'}>
+                    {`${formatDate(period.start_date)} - ${formatDate(period.end_date)}`}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
             
-            <View className="bg-gray-100 p-3 rounded-lg">
-              <Text className="text-gray-600">
-                {formatDate(selectedPeriod.start_date)} - {formatDate(selectedPeriod.end_date)}
-              </Text>
-              <Text className="text-gray-600">
-                {selectedPeriod.required_hours} hours required • {selectedPeriod.period_type}
-              </Text>
-              {selectedPeriod.is_active && (
-                <View className="bg-green-100 px-2 py-1 rounded-full self-start mt-1">
-                  <Text className="text-green-600 text-xs">Active Period</Text>
-                </View>
-              )}
-            </View>
+            {selectedPeriod && (
+              <View className="bg-gray-100 p-3 rounded-lg">
+                <Text className="text-gray-600">
+                  {formatDate(selectedPeriod.start_date)} - {formatDate(selectedPeriod.end_date)}
+                </Text>
+                <Text className="text-gray-600">
+                  {selectedPeriod.period_setting?.required_hours || orgReport.active_period_setting?.required_hours} hours required
+                </Text>
+                {selectedPeriod.is_active && (
+                  <View className="bg-green-100 px-2 py-1 rounded-full self-start mt-1">
+                    <Text className="text-green-600 text-xs">Active Period</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
           
           <View className="flex-row mb-4">
@@ -150,14 +368,6 @@ const Reports = () => {
             >
               <Text className={`text-center ${activeTab === 'users' ? 'text-green-600 font-psemibold' : 'text-gray-600'}`}>
                 Users
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => setActiveTab('groups')}
-              className={`flex-1 py-2 ${activeTab === 'groups' ? 'border-b-2 border-green-600' : 'border-b border-gray-200'}`}
-            >
-              <Text className={`text-center ${activeTab === 'groups' ? 'text-green-600 font-psemibold' : 'text-gray-600'}`}>
-                Groups
               </Text>
             </TouchableOpacity>
             <TouchableOpacity 
@@ -179,13 +389,13 @@ const Reports = () => {
                 <Text className="font-psemibold">Goal %</Text>
               </View>
               
-              {MOCK_USER_STATS.map(user => (
+              {userStats.map(user => (
                 <View 
                   key={user.id}
                   className="flex-row justify-between items-center py-3 border-b border-gray-100"
                 >
                   <Text className="flex-1">{user.name}</Text>
-                  <Text className="w-16 text-right">{user.hours}h</Text>
+                  <Text className="w-16 text-right">{user.hours.toFixed(1)}h</Text>
                   <View className="w-16 flex-row items-center justify-end">
                     <View 
                       className={`w-2 h-2 rounded-full mr-1 ${
@@ -201,63 +411,18 @@ const Reports = () => {
               <View className="mt-4 p-3 bg-gray-100 rounded-lg">
                 <View className="flex-row justify-between">
                   <Text className="font-psemibold">Total Users:</Text>
-                  <Text>{MOCK_USER_STATS.length}</Text>
+                  <Text>{userStats.length}</Text>
                 </View>
                 <View className="flex-row justify-between">
                   <Text className="font-psemibold">Average Hours:</Text>
                   <Text>
-                    {(MOCK_USER_STATS.reduce((sum, user) => sum + user.hours, 0) / MOCK_USER_STATS.length).toFixed(1)}h
+                    {userStats.length ? (userStats.reduce((sum, user) => sum + user.hours, 0) / userStats.length).toFixed(1) : 0}h
                   </Text>
                 </View>
                 <View className="flex-row justify-between">
                   <Text className="font-psemibold">Goal Completion:</Text>
                   <Text>
-                    {Math.round(MOCK_USER_STATS.reduce((sum, user) => sum + user.goal_percentage, 0) / MOCK_USER_STATS.length)}%
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-          
-          {/* Groups Tab */}
-          {activeTab === 'groups' && (
-            <View>
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="font-psemibold">Group</Text>
-                <Text className="font-psemibold">Members</Text>
-                <Text className="font-psemibold">Hours</Text>
-                <Text className="font-psemibold">Goal %</Text>
-              </View>
-              
-              {MOCK_GROUP_STATS.map(group => (
-                <View 
-                  key={group.id}
-                  className="flex-row justify-between items-center py-3 border-b border-gray-100"
-                >
-                  <Text className="flex-1">{group.name}</Text>
-                  <Text className="w-16 text-right">{group.member_count}</Text>
-                  <Text className="w-16 text-right">{group.hours}h</Text>
-                  <View className="w-16 flex-row items-center justify-end">
-                    <View 
-                      className={`w-2 h-2 rounded-full mr-1 ${
-                        group.goal_percentage >= 100 ? 'bg-green-500' : 
-                        group.goal_percentage >= 75 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`} 
-                    />
-                    <Text>{group.goal_percentage}%</Text>
-                  </View>
-                </View>
-              ))}
-              
-              <View className="mt-4 p-3 bg-gray-100 rounded-lg">
-                <View className="flex-row justify-between">
-                  <Text className="font-psemibold">Total Groups:</Text>
-                  <Text>{MOCK_GROUP_STATS.length}</Text>
-                </View>
-                <View className="flex-row justify-between">
-                  <Text className="font-psemibold">Total Hours:</Text>
-                  <Text>
-                    {MOCK_GROUP_STATS.reduce((sum, group) => sum + group.hours, 0).toFixed(1)}h
+                    {userStats.length ? Math.round(userStats.reduce((sum, user) => sum + user.goal_percentage, 0) / userStats.length) : 0}%
                   </Text>
                 </View>
               </View>
@@ -268,38 +433,58 @@ const Reports = () => {
           {activeTab === 'locations' && (
             <View>
               <View className="flex-row justify-between items-center mb-2">
-                <Text className="font-psemibold">Location</Text>
-                <Text className="font-psemibold">Sessions</Text>
-                <Text className="font-psemibold">Hours</Text>
+                <Text className="font-psemibold flex-1">Location</Text>
+                <Text className="font-psemibold w-16 text-center">Sessions</Text>
+                <Text className="font-psemibold w-16 text-center">Hours</Text>
+                <Text className="font-psemibold w-20 text-center">Utilization</Text>
               </View>
               
-              {MOCK_LOCATION_STATS.map(location => (
-                <View 
-                  key={location.id}
-                  className="flex-row justify-between items-center py-3 border-b border-gray-100"
-                >
-                  <Text className="flex-1">{location.name}</Text>
-                  <Text className="w-16 text-right">{location.sessions}</Text>
-                  <Text className="w-16 text-right">{location.hours}h</Text>
-                </View>
-              ))}
+              {locationStats.length === 0 ? (
+                <Text className="text-gray-500 italic py-4 text-center">No location data available for this period</Text>
+              ) : (
+                locationStats.map(location => (
+                  <View 
+                    key={location.id}
+                    className="flex-row justify-between items-center py-3 border-b border-gray-100"
+                  >
+                    <View className="flex-1">
+                      <Text>{location.name}</Text>
+                      <Text className="text-gray-500 text-xs">{location.gps_radius}m radius</Text>
+                    </View>
+                    <Text className="w-16 text-center">{location.sessions}</Text>
+                    <Text className="w-16 text-center">{location.hours.toFixed(1)}h</Text>
+                    <View className="w-20 items-center">
+                      <View className="w-full bg-gray-200 rounded-full h-2 mb-1">
+                        <View 
+                          className={`h-2 rounded-full ${
+                            location.utilization_rate >= 70 ? 'bg-green-500' : 
+                            location.utilization_rate >= 30 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`} 
+                          style={{ width: `${location.utilization_rate}%` }} 
+                        />
+                      </View>
+                      <Text className="text-xs">{location.utilization_rate}%</Text>
+                    </View>
+                  </View>
+                ))
+              )}
               
               <View className="mt-4 p-3 bg-gray-100 rounded-lg">
                 <View className="flex-row justify-between">
                   <Text className="font-psemibold">Total Locations:</Text>
-                  <Text>{MOCK_LOCATION_STATS.length}</Text>
+                  <Text>{locationStats.length}</Text>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="font-psemibold">Active Locations:</Text>
+                  <Text>{locationStats.filter(loc => loc.sessions > 0).length} of {locationStats.length}</Text>
                 </View>
                 <View className="flex-row justify-between">
                   <Text className="font-psemibold">Total Sessions:</Text>
-                  <Text>
-                    {MOCK_LOCATION_STATS.reduce((sum, location) => sum + location.sessions, 0)}
-                  </Text>
+                  <Text>{locationStats.reduce((sum, location) => sum + location.sessions, 0)}</Text>
                 </View>
                 <View className="flex-row justify-between">
                   <Text className="font-psemibold">Total Hours:</Text>
-                  <Text>
-                    {MOCK_LOCATION_STATS.reduce((sum, location) => sum + location.hours, 0).toFixed(1)}h
-                  </Text>
+                  <Text>{locationStats.reduce((sum, location) => sum + location.hours, 0).toFixed(1)}h</Text>
                 </View>
               </View>
             </View>

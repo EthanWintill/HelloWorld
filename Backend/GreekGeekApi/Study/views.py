@@ -24,6 +24,89 @@ import requests
 
 from .utils import get_or_create_period_instance, send_notification_to_users
 
+class OrgReportView(APIView):
+    """
+    View for admin users to retrieve comprehensive organization report data.
+    Provides data for the organization as a whole and individual users' study progress.
+    """
+    permission_classes = (IsAdminUser,)
+    
+    def get(self, request, format=None):
+        admin_user = request.user
+        org = admin_user.org
+        
+        if not org:
+            return Response(
+                {"detail": "Admin user must belong to an organization"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 1. Get all users in the admin's organization
+        users = User.objects.filter(org=org)
+        user_data = []
+        
+        # 2. Get the current period setting and instances
+        try:
+            active_period_setting = PeriodSetting.objects.get(org=org, is_active=True)
+            period_setting_data = PeriodSettingSerializer(active_period_setting).data
+        except PeriodSetting.DoesNotExist:
+            active_period_setting = None
+            period_setting_data = None
+        
+        # 3. Get all period instances for the organization
+        period_instances = []
+        if active_period_setting:
+            # Ensure current period instance exists
+            current_time = timezone.now()
+            get_or_create_period_instance(admin_user, current_time)
+            
+            # Get all period instances
+            period_instances = PeriodInstance.objects.filter(
+                period_setting__org=org
+            ).order_by('-start_date')
+            period_instances_data = PeriodInstanceSerializer(period_instances, many=True).data
+        else:
+            period_instances_data = []
+        
+        # 4. Get data for each user, including their sessions
+        for user in users:
+            user_info = UserSerializer(user).data
+            
+            # Get all sessions for this user
+            sessions = Session.objects.filter(user=user).select_related(
+                'location', 'period_instance'
+            ).order_by('-start_time')
+            sessions_data = SessionSerializer(sessions, many=True).data
+            
+            # Calculate total hours for current period (if exists)
+            current_period_hours = 0
+            if period_instances and period_instances.filter(is_active=True).exists():
+                active_period = period_instances.get(is_active=True)
+                current_period_sessions = sessions.filter(period_instance=active_period)
+                for session in current_period_sessions:
+                    if session.hours is not None:
+                        current_period_hours += session.hours
+            
+            # Add user sessions and calculated data
+            user_info['sessions'] = sessions_data
+            user_info['current_period_hours'] = current_period_hours
+            
+            user_data.append(user_info)
+        
+        # 5. Get all locations for this organization
+        locations = Location.objects.filter(org=org)
+        locations_data = LocationSerializer(locations, many=True).data
+        
+        # Assemble the final response
+        return Response({
+            'org_id': org.id,
+            'org_name': org.name,
+            'active_period_setting': period_setting_data,
+            'period_instances': period_instances_data,
+            'users': user_data,
+            'locations': locations_data
+        })
+
 class PeriodSettingViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAdminUser,)
     serializer_class = PeriodSettingSerializer

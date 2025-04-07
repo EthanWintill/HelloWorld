@@ -50,4 +50,7 @@ urlpatterns = [
     # Notification endpoints
     path('api/notifications/token/', views.NotificationTokenView.as_view(), name='notification-token'),
     path('api/notifications/send/', views.SendNotificationView.as_view(), name='send-notification'),
+    
+    # Reports endpoint
+    path('api/org-report/', views.OrgReportView.as_view(), name='org-report'),
 ]
