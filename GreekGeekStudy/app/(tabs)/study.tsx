@@ -16,6 +16,8 @@ import * as TaskManager from 'expo-task-manager';
 import eventEmitter, { EVENTS } from '@/services/EventEmitter';
 import MapView, { Marker, Region, Circle } from 'react-native-maps';
 import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 interface LocationType {
   id: number;
@@ -191,6 +193,11 @@ const Study = () => {
     setCurrentStudyLocation(null);
     return null;
   }
+
+  // --- Navigation Functions ---
+  const navigateToAdmin = () => {
+    router.push('/(admin)');
+  };
 
   // --- Clock Related Functions ---
   const clockIn = async () => {
@@ -557,14 +564,44 @@ const Study = () => {
           </Text>
         </View>
         <View className="flex-row items-center gap-2">
-          <Text className="font-psemibold text-gray-600, text-lg">
-            {data?.first_name} {data?.last_name?.[0]}.
-          </Text>
+          <View className="items-end">
+            <Text className="font-psemibold text-gray-600, text-lg">
+              {data?.first_name} {data?.last_name?.[0]}.
+            </Text>
+            {data?.group && (
+              <Text className="font-pregular text-gray-500 text-sm">
+                {data.group.name}
+              </Text>
+            )}
+          </View>
           <Text className="font-psemibold text-green-600 text-2xl">
             {Math.round(hoursStudied())}h
           </Text>
         </View>
       </View>
+
+      {/* Admin Dashboard Button */}
+      {data?.is_staff && (
+        <View className="px-4 pt-4">
+          <TouchableOpacity 
+            onPress={navigateToAdmin}
+            className="bg-green-600 p-4 rounded-xl shadow-sm"
+          >
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1">
+                <View className="bg-white/20 p-2 rounded-full mr-3">
+                  <Ionicons name="settings" size={20} color="white" />
+                </View>
+                <View>
+                  <Text className="text-white font-psemibold text-lg">Admin Dashboard</Text>
+                  <Text className="text-white/90 text-sm">Manage organization settings</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="white" />
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Main content */}
       <View className="flex-1 flex-col justify-between">

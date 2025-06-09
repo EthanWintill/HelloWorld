@@ -42,8 +42,12 @@ const Profile = () => {
         {/* Header Section */}
         <View className="bg-white mx-4 mt-4 p-8 rounded-2xl shadow-sm">
           <View className="items-center mb-6">
-            <View className="bg-green-100 p-6 rounded-full mb-4">
+            <View className="bg-green-100 p-6 rounded-full mb-4 relative">
               <Ionicons name="person" size={48} color="#16A34A" />
+              {/* Live indicator */}
+              {data.live && (
+                <View className="absolute -top-1 -right-1 bg-red-500/75 w-5 h-5 rounded-full border-2 border-white" />
+              )}
             </View>
             <Text className="text-3xl font-bold text-gray-900 text-center mb-2">
               {data.first_name} {data.last_name}
@@ -120,6 +124,22 @@ const Profile = () => {
             </View>
           </View>
 
+          {/* Group Information */}
+          {data.group && (
+            <View className="bg-white p-6 rounded-2xl shadow-sm mb-8">
+              <Text className="text-xl font-bold text-gray-900 mb-6">Group</Text>
+              
+              <View className="flex-row items-center p-4 bg-gray-50 rounded-xl">
+                <View className="bg-green-100 p-3 rounded-full mr-4">
+                  <Ionicons name="people" size={24} color="#16A34A" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm text-gray-500 mb-1">Group Name</Text>
+                  <Text className="text-gray-900 font-medium text-xl">{data.group.name}</Text>
+                </View>
+              </View>
+            </View>
+          )}
 
         </View>
 

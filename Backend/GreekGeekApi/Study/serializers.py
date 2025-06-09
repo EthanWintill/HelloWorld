@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User, Org, Location, Session, PeriodSetting, PeriodInstance, NotificationToken
+from .models import User, Org, Location, Session, PeriodSetting, PeriodInstance, NotificationToken, Group
 from django.utils import timezone
 from .utils import get_or_create_period_instance
 
@@ -58,6 +58,101 @@ class UpdateOrgSerializer(OrgSerializer):
     school = serializers.CharField(required=False)
     study_req = serializers.FloatField(required=False)
     study_goal = serializers.FloatField(required=False)
+
+class GroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Group
+        fields = ('id', 'name', 'org')
+
+class CreateGroupSerializer(serializers.ModelSerializer):
+    user_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        allow_empty=True
+    )
+    
+    class Meta:
+        model = Group
+        fields = ('id', 'name', 'user_ids')
+        read_only_fields = ('id',)
+    
+    def create(self, validated_data):
+        user_ids = validated_data.pop('user_ids', [])
+        current_user = self.context['request'].user
+        
+        if not current_user.org:
+            raise serializers.ValidationError("Admin must belong to an organization")
+        
+        # Check if group name already exists in this organization
+        if Group.objects.filter(org=current_user.org, name=validated_data['name']).exists():
+            raise serializers.ValidationError({"name": "A group with this name already exists in your organization"})
+        
+        # Create the group
+        group = Group.objects.create(
+            name=validated_data['name'],
+            org=current_user.org
+        )
+        
+        # Assign users to the group
+        if user_ids:
+            # Verify all users belong to the admin's org
+            users = User.objects.filter(id__in=user_ids, org=current_user.org)
+            if users.count() != len(user_ids):
+                raise serializers.ValidationError("Some users do not belong to your organization")
+            
+            # Assign users to this group
+            users.update(group=group)
+        
+        return group
+
+class UpdateGroupSerializer(serializers.ModelSerializer):
+    user_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False,
+        allow_empty=True
+    )
+    
+    class Meta:
+        model = Group
+        fields = ('id', 'name', 'user_ids')
+        read_only_fields = ('id',)
+    
+    def update(self, instance, validated_data):
+        user_ids = validated_data.pop('user_ids', None)
+        current_user = self.context['request'].user
+        
+        # Update group name if provided
+        if 'name' in validated_data:
+            new_name = validated_data['name']
+            # Check if the new name conflicts with existing groups (excluding current instance)
+            if Group.objects.filter(
+                org=current_user.org, 
+                name=new_name
+            ).exclude(id=instance.id).exists():
+                raise serializers.ValidationError({"name": "A group with this name already exists in your organization"})
+            
+            instance.name = new_name
+            instance.save()
+        
+        # Update user assignments if provided
+        if user_ids is not None:
+            # First, remove all users from this group
+            User.objects.filter(group=instance).update(group=None)
+            
+            # Then assign the new users
+            if user_ids:
+                # Verify all users belong to the admin's org
+                users = User.objects.filter(id__in=user_ids, org=current_user.org)
+                if users.count() != len(user_ids):
+                    raise serializers.ValidationError("Some users do not belong to your organization")
+                
+                # Assign users to this group
+                users.update(group=instance)
+        
+        return instance
+
 class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
         required=True,
@@ -154,20 +249,28 @@ class UserDashboardSerializer(serializers.ModelSerializer):
     org_period_instances = serializers.SerializerMethodField()
     active_period_setting = serializers.SerializerMethodField()
     last_location = LocationSerializer(read_only=True)
+    group = GroupSerializer(read_only=True)
+    org_groups = serializers.SerializerMethodField()
     total_hours = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'phone_number', 
+        fields = ('id', 'email', 'first_name', 'last_name', 'phone_number', 'group',
                  'is_staff', 'live', 'org', 'org_locations', 'org_users', 
                  'user_sessions', 'org_period_instances', 'active_period_setting',
-                 'last_location', 'total_hours')
+                 'last_location', 'org_groups', 'total_hours')
+
+    def get_org_groups(self, obj):
+        if obj.org:
+            groups = Group.objects.filter(org=obj.org)
+            return GroupSerializer(groups, many=True).data
+        return []
 
     def get_org_users(self, obj):
         from .utils import calculate_user_hours, get_or_create_period_instance
         
         if obj.org:
-            users = User.objects.filter(org=obj.org)
+            users = User.objects.filter(org=obj.org).select_related('group')
             user_data = []
             
             # Get current period instance if available
@@ -177,6 +280,12 @@ class UserDashboardSerializer(serializers.ModelSerializer):
             for user in users:
                 # Get base user data
                 serialized_user = UserSerializer(user).data
+                
+                # Add group information
+                if user.group:
+                    serialized_user['group'] = GroupSerializer(user.group).data
+                else:
+                    serialized_user['group'] = None
                 
                 # Add total hours
                 if period_instance:

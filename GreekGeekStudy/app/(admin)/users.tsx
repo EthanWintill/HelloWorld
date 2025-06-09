@@ -13,7 +13,11 @@ interface User {
   email: string;
   is_active: boolean;
   is_staff?: boolean;
-  group?: string;
+  group?: {
+    id: number;
+    name: string;
+    org: number;
+  };
   total_hours: number;
 }
 
@@ -24,7 +28,7 @@ const UsersManagement = () => {
   
   const [users, setUsers] = useState<User[]>(data?.org_users || [])
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterActive, setFilterActive] = useState<boolean | null>(null)
+  const [filterGroup, setFilterGroup] = useState<string | null>(null)
 
   // Update users when dashboard data changes
   useEffect(() => {
@@ -33,6 +37,9 @@ const UsersManagement = () => {
     }
   }, [data])
 
+  // Get unique groups for filter buttons
+  const uniqueGroups = Array.from(new Set(users.filter(user => user.group).map(user => user.group!.name)))
+  
   const filteredUsers = users.filter((user: User) => {
     const matchesSearch = 
       searchQuery === '' || 
@@ -40,11 +47,11 @@ const UsersManagement = () => {
       user.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase())
     
-    const matchesActiveFilter = 
-      filterActive === null || 
-      user.is_active === filterActive
+    const matchesGroupFilter = 
+      filterGroup === null || 
+      (user.group && user.group.name === filterGroup)
     
-    return matchesSearch && matchesActiveFilter
+    return matchesSearch && matchesGroupFilter
   })
 
   const handleViewUser = (userId: number) => {
@@ -109,26 +116,28 @@ const UsersManagement = () => {
                 )}
               </View>
               
-              <View className="flex-row mb-2">
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                className="mb-2"
+                contentContainerStyle={{ paddingVertical: 4 }}
+              >
                 <TouchableOpacity 
-                  onPress={() => setFilterActive(null)}
-                  className={`px-4 py-2 rounded-lg mr-2 ${filterActive === null ? 'bg-green-600' : 'bg-gray-200'}`}
+                  onPress={() => setFilterGroup(null)}
+                  className={`px-4 py-2 rounded-lg mr-2 ${filterGroup === null ? 'bg-green-600' : 'bg-gray-200'}`}
                 >
-                  <Text className={filterActive === null ? 'text-white' : 'text-gray-700'}>All</Text>
+                  <Text className={filterGroup === null ? 'text-white' : 'text-gray-700'}>All</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setFilterActive(true)}
-                  className={`px-4 py-2 rounded-lg mr-2 ${filterActive === true ? 'bg-green-600' : 'bg-gray-200'}`}
-                >
-                  <Text className={filterActive === true ? 'text-white' : 'text-gray-700'}>Active</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setFilterActive(false)}
-                  className={`px-4 py-2 rounded-lg ${filterActive === false ? 'bg-green-600' : 'bg-gray-200'}`}
-                >
-                  <Text className={filterActive === false ? 'text-white' : 'text-gray-700'}>Inactive</Text>
-                </TouchableOpacity>
-              </View>
+                {uniqueGroups.map((groupName) => (
+                  <TouchableOpacity 
+                    key={groupName}
+                    onPress={() => setFilterGroup(groupName)}
+                    className={`px-4 py-2 rounded-lg mr-2 ${filterGroup === groupName ? 'bg-green-600' : 'bg-gray-200'}`}
+                  >
+                    <Text className={filterGroup === groupName ? 'text-white' : 'text-gray-700'}>{groupName}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
 
             {filteredUsers.length === 0 ? (
@@ -158,7 +167,7 @@ const UsersManagement = () => {
                           )}
                           {item.group && (
                             <Text className="text-gray-500 text-sm ml-2">
-                             • {item.group}
+                             • {item.group.name}
                             </Text>
                           )}
                           <Text className="text-gray-500 text-sm ml-2">

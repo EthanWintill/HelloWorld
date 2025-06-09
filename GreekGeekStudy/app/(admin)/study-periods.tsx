@@ -331,19 +331,28 @@ const StudyPeriodsManagement = () => {
                 <Text className="text-gray-600 mb-1">Period Type</Text>
                 <View className="flex-row mt-1">
                   <TouchableOpacity 
-                    onPress={() => setNewPeriodSetting({...newPeriodSetting, period_type: 'weekly'})}
+                    onPress={() => {
+                      setNewPeriodSetting({...newPeriodSetting, period_type: 'weekly'})
+                      setShowStartDatePicker(false)
+                    }}
                     className={`px-4 py-2 rounded-lg mr-2 ${newPeriodSetting.period_type === 'weekly' ? 'bg-green-600' : 'bg-gray-200'}`}
                   >
                     <Text className={newPeriodSetting.period_type === 'weekly' ? 'text-white' : 'text-gray-700'}>Weekly</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    onPress={() => setNewPeriodSetting({...newPeriodSetting, period_type: 'monthly'})}
+                    onPress={() => {
+                      setNewPeriodSetting({...newPeriodSetting, period_type: 'monthly'})
+                      setShowStartDatePicker(false)
+                    }}
                     className={`px-4 py-2 rounded-lg mr-2 ${newPeriodSetting.period_type === 'monthly' ? 'bg-green-600' : 'bg-gray-200'}`}
                   >
                     <Text className={newPeriodSetting.period_type === 'monthly' ? 'text-white' : 'text-gray-700'}>Monthly</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    onPress={() => setNewPeriodSetting({...newPeriodSetting, period_type: 'custom'})}
+                    onPress={() => {
+                      setNewPeriodSetting({...newPeriodSetting, period_type: 'custom'})
+                      setShowStartDatePicker(false)
+                    }}
                     className={`px-4 py-2 rounded-lg ${newPeriodSetting.period_type === 'custom' ? 'bg-green-600' : 'bg-gray-200'}`}
                   >
                     <Text className={newPeriodSetting.period_type === 'custom' ? 'text-white' : 'text-gray-700'}>Custom</Text>

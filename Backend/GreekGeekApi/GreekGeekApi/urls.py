@@ -54,6 +54,10 @@ urlpatterns = [
     # Reports endpoint
     path('api/org-report/', views.OrgReportView.as_view(), name='org-report'),
 
+    # Group management endpoints
+    path('api/groups/', views.GroupManagementView.as_view(), name='groups-list-create'),
+    path('api/groups/<int:group_id>/', views.GroupManagementView.as_view(), name='group-detail'),
+
     # Debug endpoint
     path('api/debug/', views.debug, name='debug'),
 ]

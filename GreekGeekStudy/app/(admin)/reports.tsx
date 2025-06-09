@@ -182,25 +182,31 @@ const Reports = () => {
 
   // Compute stats data for selected period
   const getUserStats = (): UserStat[] => {
-    if (!orgReport || !selectedPeriodId) return []
+    if (!orgReport) return []
     
     return orgReport.users.map(user => {
-      // Find sessions for this user in the selected period
-      const periodSessions = user.sessions.filter(
-        session => session.period_instance && session.period_instance.id === selectedPeriodId
-      )
+      // If no periods exist, use all sessions (lifetime data)
+      const sessionsToAnalyze = !orgReport.period_instances || orgReport.period_instances.length === 0 
+        ? user.sessions
+        : user.sessions.filter(session => session.period_instance && session.period_instance.id === selectedPeriodId)
       
       // Calculate total hours
-      const totalHours = periodSessions.reduce((sum: number, session) => {
+      const totalHours = sessionsToAnalyze.reduce((sum: number, session) => {
         return sum + (session.hours || 0)
       }, 0)
       
-      // Get required hours from selected period's settings
-      const selectedPeriod = orgReport.period_instances.find(p => p.id === selectedPeriodId)
-      const requiredHours = selectedPeriod?.period_setting?.required_hours || orgReport.active_period_setting?.required_hours || 10
+      // Get required hours - if no periods, use a default or show as N/A
+      let requiredHours = 0
+      let goalPercentage = 0
       
-      // Calculate goal percentage
-      const goalPercentage = Math.round((totalHours / requiredHours) * 100)
+      if (orgReport.period_instances && orgReport.period_instances.length > 0) {
+        const selectedPeriod = orgReport.period_instances.find(p => p.id === selectedPeriodId)
+        requiredHours = selectedPeriod?.period_setting?.required_hours || orgReport.active_period_setting?.required_hours || 10
+        goalPercentage = Math.round((totalHours / requiredHours) * 100)
+      } else {
+        // For lifetime data, we don't have a goal to compare against
+        goalPercentage = 0
+      }
       
       return {
         id: user.id,
@@ -213,9 +219,9 @@ const Reports = () => {
   
   // Get location stats
   const getLocationStats = (): LocationStat[] => {
-    if (!orgReport || !selectedPeriodId) return []
+    if (!orgReport) return []
     
-    console.log("Starting getLocationStats for period:", selectedPeriodId)
+    console.log("Starting getLocationStats")
     
     // Create a map of location IDs to location objects for quick lookup
     const locationLookup: Record<number, Location> = {}
@@ -240,13 +246,13 @@ const Reports = () => {
       }
     })
     
-    // Aggregate all sessions from the selected period by location
+    // Aggregate sessions - use all sessions if no periods, otherwise filter by selected period
     orgReport.users.forEach(user => {
-      const periodSessions = user.sessions.filter(
-        session => session.period_instance && session.period_instance.id === selectedPeriodId
-      )
+      const sessionsToAnalyze = !orgReport.period_instances || orgReport.period_instances.length === 0
+        ? user.sessions
+        : user.sessions.filter(session => session.period_instance && session.period_instance.id === selectedPeriodId)
       
-      periodSessions.forEach(session => {
+      sessionsToAnalyze.forEach(session => {
         // Handle the case where location could be an ID or null
         if (!session.location) return
         
@@ -257,7 +263,7 @@ const Reports = () => {
           : (session.location as Location).id
         
         // Debug log for location type
-        if (periodSessions.length > 0 && periodSessions.indexOf(session) === 0) {
+        if (sessionsToAnalyze.length > 0 && sessionsToAnalyze.indexOf(session) === 0) {
           console.log(`First session location type: ${locationType}, value:`, session.location)
         }
         
@@ -321,45 +327,60 @@ const Reports = () => {
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || periods[0]
   const userStats = getUserStats()
   const locationStats = getLocationStats()
+  const hasPeriodsData = periods.length > 0
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <ScrollView className="flex-1 p-4">
         <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <Text className="text-xl font-psemibold mb-4">Study Period Reports</Text>
+          <Text className="text-xl font-psemibold mb-4">
+            {hasPeriodsData ? 'Study Period Reports' : 'Lifetime Study Reports'}
+          </Text>
           
-          <View className="mb-4">
-            <Text className="text-gray-600 mb-2">Select Period</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
-              {periods.map(period => (
-                <TouchableOpacity 
-                  key={period.id}
-                  className={`px-4 py-2 rounded-lg mr-2 ${selectedPeriodId === period.id ? 'bg-green-600' : 'bg-gray-200'}`}
-                  onPress={() => setSelectedPeriodId(period.id)}
-                >
-                  <Text className={selectedPeriodId === period.id ? 'text-white' : 'text-gray-700'}>
-                    {`${formatDate(period.start_date)} - ${formatDate(period.end_date)}`}
+          {/* Only show period selection if periods exist */}
+          {hasPeriodsData && (
+            <View className="mb-4">
+              <Text className="text-gray-600 mb-2">Select Period</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
+                {periods.map(period => (
+                  <TouchableOpacity 
+                    key={period.id}
+                    className={`px-4 py-2 rounded-lg mr-2 ${selectedPeriodId === period.id ? 'bg-green-600' : 'bg-gray-200'}`}
+                    onPress={() => setSelectedPeriodId(period.id)}
+                  >
+                    <Text className={selectedPeriodId === period.id ? 'text-white' : 'text-gray-700'}>
+                      {`${formatDate(period.start_date)} - ${formatDate(period.end_date)}`}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              
+              {selectedPeriod && (
+                <View className="bg-gray-100 p-3 rounded-lg">
+                  <Text className="text-gray-600">
+                    {formatDate(selectedPeriod.start_date)} - {formatDate(selectedPeriod.end_date)}
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            
-            {selectedPeriod && (
-              <View className="bg-gray-100 p-3 rounded-lg">
-                <Text className="text-gray-600">
-                  {formatDate(selectedPeriod.start_date)} - {formatDate(selectedPeriod.end_date)}
-                </Text>
-                <Text className="text-gray-600">
-                  {selectedPeriod.period_setting?.required_hours || orgReport.active_period_setting?.required_hours} hours required
-                </Text>
-                {selectedPeriod.is_active && (
-                  <View className="bg-green-100 px-2 py-1 rounded-full self-start mt-1">
-                    <Text className="text-green-600 text-xs">Active Period</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
+                  <Text className="text-gray-600">
+                    {selectedPeriod.period_setting?.required_hours || orgReport.active_period_setting?.required_hours} hours required
+                  </Text>
+                  {selectedPeriod.is_active && (
+                    <View className="bg-green-100 px-2 py-1 rounded-full self-start mt-1">
+                      <Text className="text-green-600 text-xs">Active Period</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+          
+          {/* Show lifetime data info when no periods */}
+          {!hasPeriodsData && (
+            <View className="mb-4 bg-blue-100 p-3 rounded-lg">
+              <Text className="text-blue-600 text-center">
+                Showing lifetime study data across all sessions
+              </Text>
+            </View>
+          )}
           
           <View className="flex-row mb-4">
             <TouchableOpacity 
@@ -386,7 +407,7 @@ const Reports = () => {
               <View className="flex-row justify-between items-center mb-2">
                 <Text className="font-psemibold">User</Text>
                 <Text className="font-psemibold">Hours</Text>
-                <Text className="font-psemibold">Goal %</Text>
+                {hasPeriodsData && <Text className="font-psemibold">Goal %</Text>}
               </View>
               
               {userStats.map(user => (
@@ -396,15 +417,17 @@ const Reports = () => {
                 >
                   <Text className="flex-1">{user.name}</Text>
                   <Text className="w-16 text-right">{user.hours.toFixed(1)}h</Text>
-                  <View className="w-16 flex-row items-center justify-end">
-                    <View 
-                      className={`w-2 h-2 rounded-full mr-1 ${
-                        user.goal_percentage >= 100 ? 'bg-green-500' : 
-                        user.goal_percentage >= 75 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`} 
-                    />
-                    <Text>{user.goal_percentage}%</Text>
-                  </View>
+                  {hasPeriodsData && (
+                    <View className="w-16 flex-row items-center justify-end">
+                      <View 
+                        className={`w-2 h-2 rounded-full mr-1 ${
+                          user.goal_percentage >= 100 ? 'bg-green-500' : 
+                          user.goal_percentage >= 75 ? 'bg-yellow-500' : 'bg-red-500'
+                        }`} 
+                      />
+                      <Text>{user.goal_percentage}%</Text>
+                    </View>
+                  )}
                 </View>
               ))}
               
@@ -419,12 +442,14 @@ const Reports = () => {
                     {userStats.length ? (userStats.reduce((sum, user) => sum + user.hours, 0) / userStats.length).toFixed(1) : 0}h
                   </Text>
                 </View>
-                <View className="flex-row justify-between">
-                  <Text className="font-psemibold">Goal Completion:</Text>
-                  <Text>
-                    {userStats.length ? Math.round(userStats.reduce((sum, user) => sum + user.goal_percentage, 0) / userStats.length) : 0}%
-                  </Text>
-                </View>
+                {hasPeriodsData && (
+                  <View className="flex-row justify-between">
+                    <Text className="font-psemibold">Goal Completion:</Text>
+                    <Text>
+                      {userStats.length ? Math.round(userStats.reduce((sum, user) => sum + user.goal_percentage, 0) / userStats.length) : 0}%
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
           )}
@@ -434,9 +459,9 @@ const Reports = () => {
             <View>
               <View className="flex-row justify-between items-center mb-2">
                 <Text className="font-psemibold flex-1">Location</Text>
-                <Text className="font-psemibold w-16 text-center">Sessions</Text>
-                <Text className="font-psemibold w-16 text-center">Hours</Text>
-                <Text className="font-psemibold w-20 text-center">Utilization</Text>
+                <Text className="font-psemibold w-14 text-center">Sess.</Text>
+                <Text className="font-psemibold w-14 text-center">Hours</Text>
+                <Text className="font-psemibold w-16 text-center">Usage</Text>
               </View>
               
               {locationStats.length === 0 ? (
@@ -451,9 +476,9 @@ const Reports = () => {
                       <Text>{location.name}</Text>
                       <Text className="text-gray-500 text-xs">{location.gps_radius}m radius</Text>
                     </View>
-                    <Text className="w-16 text-center">{location.sessions}</Text>
-                    <Text className="w-16 text-center">{location.hours.toFixed(1)}h</Text>
-                    <View className="w-20 items-center">
+                    <Text className="w-14 text-center">{location.sessions}</Text>
+                    <Text className="w-14 text-center">{location.hours.toFixed(1)}h</Text>
+                    <View className="w-16 items-center">
                       <View className="w-full bg-gray-200 rounded-full h-2 mb-1">
                         <View 
                           className={`h-2 rounded-full ${

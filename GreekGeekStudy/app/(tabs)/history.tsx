@@ -187,9 +187,16 @@ const History = () => {
           </Text>
         </View>
         <View className="flex-row items-center gap-2">
-          <Text className="font-psemibold text-gray-600 text-lg">
-            {data?.first_name} {data?.last_name?.[0]}.
-          </Text>
+          <View className="items-end">
+            <Text className="font-psemibold text-gray-600 text-lg">
+              {data?.first_name} {data?.last_name?.[0]}.
+            </Text>
+            {data?.group && (
+              <Text className="font-pregular text-gray-500 text-sm">
+                {data.group.name}
+              </Text>
+            )}
+          </View>
           <Text className="font-psemibold text-green-600 text-2xl">
             {hoursStudied().toFixed(0)}h
           </Text>

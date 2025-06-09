@@ -102,7 +102,7 @@ class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=255)  # Store hashed password
     phone_number = models.CharField(max_length=20, blank=True, null=True)  # Optional phone number
-    group_id = models.IntegerField(null=True, blank=True)  # Assuming this is a separate group identifier
+    group = models.ForeignKey('Group', on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
     live = models.BooleanField(default=False)
     last_location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
 
@@ -165,8 +165,11 @@ class Group(models.Model):
     org = models.ForeignKey(Org, on_delete=models.CASCADE, related_name="groups")
     name = models.CharField(max_length=255)
 
+    class Meta:
+        unique_together = ('org', 'name')
+
     def __str__(self):
-        return f"Group for {self.org.name}"
+        return f"{self.name} of {self.org.name}"
 
 class NotificationToken(models.Model):
     """
