@@ -53,4 +53,7 @@ urlpatterns = [
     
     # Reports endpoint
     path('api/org-report/', views.OrgReportView.as_view(), name='org-report'),
+
+    # Debug endpoint
+    path('api/debug/', views.debug, name='debug'),
 ]

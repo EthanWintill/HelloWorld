@@ -24,6 +24,10 @@ import requests
 
 from .utils import get_or_create_period_instance, send_notification_to_users
 
+@api_view(['GET'])
+def debug(request):
+    return Response(dict(request.headers))
+
 class OrgReportView(APIView):
     """
     View for admin users to retrieve comprehensive organization report data.
