@@ -37,68 +37,105 @@ const Profile = () => {
   }
 
   return (
-    <SafeAreaView className="flex-1">
-      <View className="flex-1 justify-between p-4">
-        <View>
-          <View className="bg-white p-4 rounded-lg shadow mb-4">
-            <Text className="text-2xl font-bold mb-2">
+    <SafeAreaView className="flex-1 bg-gray-50">
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Header Section */}
+        <View className="bg-white mx-4 mt-4 p-8 rounded-2xl shadow-sm">
+          <View className="items-center mb-6">
+            <View className="bg-green-100 p-6 rounded-full mb-4">
+              <Ionicons name="person" size={48} color="#16A34A" />
+            </View>
+            <Text className="text-3xl font-bold text-gray-900 text-center mb-2">
               {data.first_name} {data.last_name}
             </Text>
-            <Text className="text-gray-600 mb-1">{data.email}</Text>
-            <Text className="text-gray-600 mb-1">{data.phone_number}</Text>
             {data.is_staff && (
-              <Text className="text-blue-600 font-semibold">Staff Member</Text>
-            )}
-            <Text className="text-gray-600 mt-2 font-semibold">
-              Organization: {data.org?.name}
-            </Text>
-          </View>
-
-          {data.is_staff && (
-            <TouchableOpacity 
-              onPress={navigateToAdmin}
-              className="bg-green-600 p-4 rounded-lg shadow mb-4 flex-row items-center justify-between"
-            >
-              <View className="flex-row items-center">
-                <Ionicons name="settings-outline" size={24} color="white" />
-                <Text className="text-white font-bold text-lg ml-2">Admin Dashboard</Text>
+              <View className="bg-green-600 px-4 py-2 rounded-full">
+                <Text className="text-white font-semibold">Staff Member</Text>
               </View>
-              <Ionicons name="chevron-forward" size={24} color="white" />
-            </TouchableOpacity>
-          )}
-
-          <View className="bg-white p-4 rounded-lg shadow mb-4">
-            <Text className="text-lg font-bold mb-3">Account Settings</Text>
-            
-            <TouchableOpacity className="flex-row items-center py-2 border-b border-gray-200">
-              <Ionicons name="person-outline" size={20} color="#4B5563" className="mr-2" />
-              <Text className="text-gray-700 ml-2">Edit Profile</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity className="flex-row items-center py-2 border-b border-gray-200">
-              <Ionicons name="lock-closed-outline" size={20} color="#4B5563" className="mr-2" />
-              <Text className="text-gray-700 ml-2">Change Password</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity className="flex-row items-center py-2 border-b border-gray-200">
-              <Ionicons name="notifications-outline" size={20} color="#4B5563" className="mr-2" />
-              <Text className="text-gray-700 ml-2">Notification Settings</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity className="flex-row items-center py-2">
-              <Ionicons name="help-circle-outline" size={20} color="#4B5563" className="mr-2" />
-              <Text className="text-gray-700 ml-2">Help & Support</Text>
-            </TouchableOpacity>
+            )}
           </View>
         </View>
 
-        <TouchableOpacity 
-          onPress={signout}
-          className="bg-red-500 px-8 py-3 rounded-lg"
-        >
-          <Text className="text-white font-bold text-lg text-center">Sign Out</Text>
-        </TouchableOpacity>
-      </View>
+        <View className="px-4 mt-4">
+          {/* Admin Dashboard */}
+          {data.is_staff && (
+            <TouchableOpacity 
+              onPress={navigateToAdmin}
+              className="bg-green-600 p-6 rounded-2xl shadow-sm mb-8"
+            >
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1">
+                  <View className="bg-white/20 p-3 rounded-full mr-4">
+                    <Ionicons name="settings" size={28} color="white" />
+                  </View>
+                  <View>
+                    <Text className="text-white font-bold text-xl">Admin Dashboard</Text>
+                    <Text className="text-white/90 text-base">Manage your organization settings</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={28} color="white" />
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Contact Information */}
+          <View className="bg-white p-6 rounded-2xl shadow-sm mb-8">
+            <Text className="text-xl font-bold text-gray-900 mb-6">Contact Information</Text>
+            
+            <View className="space-y-4">
+              <View className="flex-row items-center p-4 bg-gray-50 rounded-xl">
+                <View className="bg-green-100 p-3 rounded-full mr-4">
+                  <Ionicons name="mail" size={24} color="#16A34A" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm text-gray-500 mb-1">Email Address</Text>
+                  <Text className="text-gray-900 font-medium text-lg">{data.email}</Text>
+                </View>
+              </View>
+              
+              <View className="flex-row items-center p-4 bg-gray-50 rounded-xl">
+                <View className="bg-green-100 p-3 rounded-full mr-4">
+                  <Ionicons name="call" size={24} color="#16A34A" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm text-gray-500 mb-1">Phone Number</Text>
+                  <Text className="text-gray-900 font-medium text-lg">{data.phone_number}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Organization Information */}
+          <View className="bg-white p-6 rounded-2xl shadow-sm mb-8">
+            <Text className="text-xl font-bold text-gray-900 mb-6">Organization</Text>
+            
+            <View className="flex-row items-center p-4 bg-gray-50 rounded-xl">
+              <View className="bg-green-100 p-3 rounded-full mr-4">
+                <Ionicons name="business" size={24} color="#16A34A" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm text-gray-500 mb-1">Organization Name</Text>
+                <Text className="text-gray-900 font-medium text-xl">{data.org?.name}</Text>
+              </View>
+            </View>
+          </View>
+
+
+        </View>
+
+        {/* Sign Out Button */}
+        <View className="px-4 pt-8 pb-8">
+          <TouchableOpacity 
+            onPress={signout}
+            className="bg-white p-6 rounded-2xl shadow-sm border-2 border-red-200"
+          >
+            <View className="flex-row items-center justify-center">
+              <Ionicons name="log-out-outline" size={24} color="#EF4444" />
+              <Text className="text-red-500 font-bold text-xl ml-3">Sign Out</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }
