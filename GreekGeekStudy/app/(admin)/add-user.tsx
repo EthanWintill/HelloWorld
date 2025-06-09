@@ -88,7 +88,7 @@ const AddUser = () => {
     setIsSubmitting(true);
     
     try {
-      const response = await axios.post(`${API_URL}/api/signup/`, formData);
+      const response = await axios.post(`${API_URL}api/signup/`, formData);
       
       Alert.alert(
         "Success",

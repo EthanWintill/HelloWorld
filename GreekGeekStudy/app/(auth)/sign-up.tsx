@@ -39,7 +39,7 @@ const SignUp = () => {
     try {
       let result = await axios.request({
         method: 'GET',
-        url: `${API_URL}/api/org-by-code/?reg_code=${form.orgCode}`
+        url: `${API_URL}api/org-by-code/?reg_code=${form.orgCode}`
       })
       if (result.status === 200) {
         setOrganizationName(result.data.name)
@@ -47,6 +47,7 @@ const SignUp = () => {
         setFormErrors((prevErrors) => ({ ...prevErrors, orgCode: undefined }))
       }
     } catch (error: any) {
+      console.log(error.response)
       if (error.response) {
         setFormErrors((prevErrors) => ({ ...prevErrors, orgCode: "Organization not found with that code. Please check with your organization administrator." }))
         setShowForm(false)
@@ -92,7 +93,7 @@ const SignUp = () => {
     try {
       let result = await axios.request({
         method: 'POST',
-        url: `${API_URL}/api/signup/`,
+        url: `${API_URL}api/signup/`,
         data: {
           email: form.email,
           password: form.password,
