@@ -61,7 +61,7 @@ const StudyPeriodsManagement = () => {
     period_type: 'weekly',
     required_hours: 10,
     start_date: new Date(),
-    due_day_of_week: 5, // Friday
+    due_day_of_week: 4, // Friday (Monday=0, so Friday=4)
     custom_days: 7
   })
   
@@ -77,7 +77,7 @@ const StudyPeriodsManagement = () => {
   // Get day of week name
   const getDayOfWeekName = (dayNumber: number | null): string => {
     if (dayNumber === null) return 'Not set'
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     return days[dayNumber]
   }
   
@@ -407,7 +407,7 @@ const StudyPeriodsManagement = () => {
                 <View className="mb-3">
                   <Text className="text-gray-600 mb-1">Due Day of Week</Text>
                   <View className="flex-row flex-wrap">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
                       <TouchableOpacity 
                         key={index}
                         onPress={() => setNewPeriodSetting({...newPeriodSetting, due_day_of_week: index})}

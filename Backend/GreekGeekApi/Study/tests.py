@@ -301,7 +301,8 @@ class LocationCrudTestCase(TestCase):
             "org": self.org1.id,
             "gps_lat": 40.0,
             "gps_long": 75.0,
-            "gps_radius": 10.0
+            "gps_radius": 10.0,
+            "gps_address": "123 Test Street, Test City, TC 12345"
         }
         self.location1_org1 = Location.objects.create(
             name = "Test Location Org1",
@@ -396,6 +397,34 @@ class LocationCrudTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['name'], self.location1_org1.name)
+        
+    def test_create_location_with_address(self):
+        self.client.force_authenticate(user=self.staffuser_org1)
+        url = reverse('location-create')
+        response = self.client.post(url, self.location_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Location.objects.count(), 3)
+        
+        # Verify the address was saved
+        created_location = Location.objects.get(name="Test Location")
+        self.assertEqual(created_location.gps_address, "123 Test Street, Test City, TC 12345")
+        
+    def test_create_location_without_address(self):
+        self.client.force_authenticate(user=self.staffuser_org1)
+        url = reverse('location-create')
+        location_data_no_address = {
+            "name": "Test Location No Address",
+            "org": self.org1.id,
+            "gps_lat": 41.0,
+            "gps_long": 76.0,
+            "gps_radius": 15.0
+        }
+        response = self.client.post(url, location_data_no_address)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify the address is None/null
+        created_location = Location.objects.get(name="Test Location No Address")
+        self.assertIsNone(created_location.gps_address)
         
         
     

@@ -209,9 +209,9 @@ const Leaderboard = () => {
                     )}
                   </View>
                   <View className="items-end">
-                    <View className="flex-row items-center bg-green-100 px-3 py-1 rounded-full">
-                      <Text className="text-green-600 font-bold text-base mr-1">●</Text>
-                      <Text className="text-green-600 font-bold text-base">LIVE</Text>
+                    <View className="flex-row items-center bg-red-100 px-3 py-1 rounded-full">
+                      <Text className="text-red-600 font-bold text-base mr-1">●</Text>
+                      <Text className="text-red-600 font-bold text-base">LIVE</Text>
                     </View>
                     <Text className="text-gray-600 text-sm mt-1 text-right">
                       {user.last_location?.name}

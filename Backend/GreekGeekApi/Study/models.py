@@ -59,7 +59,10 @@ class PeriodSetting(models.Model):
                 days_until_due = 7
             return from_date + timedelta(days=days_until_due)
         elif self.period_type == "monthly":
-            return from_date.replace(month=from_date.month + 1)
+            if from_date.month == 12:
+                return from_date.replace(year=from_date.year + 1, month=1)
+            else:
+                return from_date.replace(month=from_date.month + 1)
         elif self.period_type == "custom" and self.custom_days:
             return from_date + timedelta(days=self.custom_days)
         return None
@@ -153,6 +156,7 @@ class Location(models.Model):
     gps_lat = models.FloatField()
     gps_long = models.FloatField()
     gps_radius = models.FloatField()  # Radius in meters
+    gps_address = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
         ordering = ['org']

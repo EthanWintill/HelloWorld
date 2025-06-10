@@ -29,6 +29,7 @@ interface Location {
   gps_lat: number;
   gps_long: number;
   gps_radius: number;
+  gps_address?: string;
 }
 
 interface Session {
@@ -70,6 +71,7 @@ interface LocationStat {
   gps_lat: number;
   gps_long: number;
   gps_radius: number;
+  gps_address?: string;
   utilization_rate: number; // percentage of total study time at this location
 }
 

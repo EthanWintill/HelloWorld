@@ -22,7 +22,7 @@ class LocationSerializer(serializers.ModelSerializer):
     org = serializers.PrimaryKeyRelatedField(queryset=Org.objects.all(), required=False)
     class Meta:
         model = Location
-        fields = ('id','name','org','gps_lat','gps_long','gps_radius')
+        fields = ('id','name','org','gps_lat','gps_long','gps_radius','gps_address')
 
     def create(self, validated_data):
         
@@ -44,6 +44,7 @@ class UpdateLocationSerializer(LocationSerializer):
     gps_lat = serializers.FloatField(required=False)
     gps_long = serializers.FloatField(required=False)
     gps_radius = serializers.FloatField(required=False)
+    gps_address = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
     
 

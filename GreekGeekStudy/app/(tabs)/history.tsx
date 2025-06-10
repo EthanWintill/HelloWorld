@@ -7,6 +7,10 @@ import { images } from "@/constants"
 interface Location {
   id: number;
   name: string;
+  gps_lat?: number;
+  gps_long?: number; 
+  gps_radius?: number;
+  gps_address?: string;
 }
 
 interface Session {
@@ -102,6 +106,7 @@ const History = () => {
 
     return grouped
   }
+
   const getActivePeriodInstance = () => {
     if (!data?.org_period_instances) return null;
     return data.org_period_instances.find(
@@ -154,6 +159,82 @@ const History = () => {
     return "text-red-500";
   }
 
+  // Add study progress functions
+  const requiredHours = () => {
+    if (!data?.active_period_setting) return 0;
+    return Math.round(data.active_period_setting.required_hours);
+  }
+
+  const studyHoursLeft = () => {
+    const required = requiredHours();
+    const studied = hoursStudied();
+    return Math.max(0, required - studied);
+  }
+
+  const calculatePercentComplete = () => {
+    const required = requiredHours();
+    if (required === 0) return 0;
+
+    const studied = hoursStudied();
+    return Math.min(Math.round((studied / required) * 100), 100);
+  }
+
+  const getActivePeriodInfo = () => {
+    if (!data?.active_period_setting || !data?.org_period_instances) return null;
+
+    const activePeriodInstance = data.org_period_instances.find(
+      (instance: any) => instance.is_active
+    );
+
+    if (!activePeriodInstance) return null;
+
+    // Handle potential timezone issues by ensuring consistent date parsing
+    const endDate = new Date(activePeriodInstance.end_date);
+    const now = new Date();
+    
+    // Calculate the difference in milliseconds
+    const timeDifference = endDate.getTime() - now.getTime();
+    const hoursRemaining = Math.max(0, timeDifference / (1000 * 60 * 60));
+    
+    // For days calculation, we want to know how many calendar days are left
+    // Reset both dates to start of day for accurate day comparison
+    const endDateStartOfDay = new Date(endDate);
+    endDateStartOfDay.setHours(0, 0, 0, 0);
+    
+    const nowStartOfDay = new Date(now);
+    nowStartOfDay.setHours(0, 0, 0, 0);
+    
+    const daysDifference = (endDateStartOfDay.getTime() - nowStartOfDay.getTime()) / (1000 * 60 * 60 * 24);
+    const daysRemaining = Math.max(0, Math.ceil(daysDifference));
+
+    // Show days only if we have more than 24 hours remaining OR if it's due today/tomorrow
+    const shouldShowDays = hoursRemaining >= 24 || daysRemaining >= 1;
+
+    const periodSetting = data.active_period_setting;
+    let periodDescription = '';
+
+    switch (periodSetting.period_type) {
+      case 'weekly':
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        periodDescription = `Weekly period (Due ${days[periodSetting.due_day_of_week]})`;
+        break;
+      case 'monthly':
+        periodDescription = 'Monthly period';
+        break;
+      case 'custom':
+        periodDescription = `${periodSetting.custom_days}-day period`;
+        break;
+    }
+
+    return {
+      description: periodDescription,
+      shouldShowDays,
+      daysRemaining,
+      hoursRemaining: Math.round(hoursRemaining),
+      endDate
+    };
+  };
+
   if (isLoading) {
     return <LoadingScreen />
   }
@@ -205,6 +286,110 @@ const History = () => {
 
       {/* Main content */}
       <ScrollView className="p-4">
+        {/* Study Progress Card */}
+        <View className="mb-6">
+          <View className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            {!data ? (
+              <Text className="font-pregular text-center text-gray-500">Loading...</Text>
+            ) : (
+              <>
+                {/* Header */}
+                <Text className="font-psemibold text-center text-gray-800 text-lg mb-4">
+                  Study Progress
+                </Text>
+                
+                {/* Progress Bar */}
+                <View className="mb-4">
+                  <View className="bg-gray-200 rounded-full h-3 mb-2">
+                    <View 
+                      className="bg-blue-500 h-3 rounded-full"
+                      style={{ width: `${Math.min(calculatePercentComplete(), 100)}%` }}
+                    />
+                  </View>
+                  <Text className="font-pregular text-center text-gray-600 text-sm">
+                    {calculatePercentComplete()}% Complete
+                  </Text>
+                </View>
+                
+                {/* Study Stats */}
+                <View className="flex-row justify-between items-center">
+                  <View className="items-center flex-1">
+                    <Text className="font-pbold text-2xl text-green-600">
+                      {Math.round(hoursStudied() * 10) / 10}
+                    </Text>
+                    <Text className="font-pregular text-gray-500 text-sm">
+                      Hours Studied
+                    </Text>
+                  </View>
+                  
+                  <View className="w-px h-12 bg-gray-300 mx-4" />
+                  
+                  <View className="items-center flex-1">
+                    <Text className="font-pbold text-2xl text-gray-800">
+                      {requiredHours()}
+                    </Text>
+                    <Text className="font-pregular text-gray-500 text-sm">
+                      Hours Required
+                    </Text>
+                  </View>
+                  
+                  <View className="w-px h-12 bg-gray-300 mx-4" />
+                  
+                  <View className="items-center flex-1">
+                    <Text className="font-pbold text-2xl text-orange-600">
+                      {Math.round(studyHoursLeft() * 10) / 10}
+                    </Text>
+                    <Text className="font-pregular text-gray-500 text-sm">
+                      Hours Left
+                    </Text>
+                  </View>
+                </View>
+                
+                {/* Period Information */}
+                {data?.active_period_setting && (
+                  <View className="mt-4 pt-4 border-t border-gray-200">
+                    {(() => {
+                      const periodInfo = getActivePeriodInfo();
+                      if (!periodInfo) return null;
+                      
+                      return (
+                        <>
+                          <Text className="font-psemibold text-center text-gray-800 mb-2">
+                            {periodInfo.description}
+                          </Text>
+                          <Text className="font-pregular text-center text-gray-600 mb-1">
+                            {periodInfo.shouldShowDays ? (
+                              <>
+                                <Text className="font-bold text-green-600">
+                                  {periodInfo.daysRemaining} day{periodInfo.daysRemaining !== 1 ? 's' : ''}
+                                </Text>
+                                {' remaining'}
+                              </>
+                            ) : periodInfo.hoursRemaining > 0 ? (
+                              <>
+                                <Text className="font-bold text-red-600">
+                                  {periodInfo.hoursRemaining} hour{periodInfo.hoursRemaining !== 1 ? 's' : ''}
+                                </Text>
+                                {' remaining'}
+                              </>
+                            ) : (
+                              'Due now'
+                            )}
+                          </Text>
+                          <Text className="font-pregular text-center text-gray-500 text-sm">
+                            Due {periodInfo.endDate.toLocaleDateString()} at{' '}
+                            {periodInfo.endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                          </Text>
+                        </>
+                      );
+                    })()}
+                  </View>
+                )}
+              </>
+            )}
+          </View>
+        </View>
+
         <Text className="text-xl font-bold mb-6 text-center">Study History</Text>
         
         {groupSessionsByPeriod().map((group, index, array) => {
