@@ -76,6 +76,15 @@ class OrgReportView(APIView):
         for user in users:
             user_info = UserSerializer(user).data
             
+            # Add group information
+            if user.group:
+                user_info['group'] = {
+                    'id': user.group.id,
+                    'name': user.group.name
+                }
+            else:
+                user_info['group'] = None
+            
             # Get all sessions for this user
             sessions = Session.objects.filter(user=user).select_related(
                 'location', 'period_instance'

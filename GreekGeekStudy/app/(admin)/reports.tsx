@@ -32,6 +32,11 @@ interface Location {
   gps_address?: string;
 }
 
+interface Group {
+  id: number;
+  name: string;
+}
+
 interface Session {
   id: number;
   hours: number | null;
@@ -44,6 +49,7 @@ interface User {
   id: number;
   first_name: string;
   last_name: string;
+  group: Group | null;
   sessions: Session[];
 }
 
@@ -59,6 +65,7 @@ interface OrgReport {
 interface UserStat {
   id: number;
   name: string;
+  group: Group | null;
   hours: number;
   goal_percentage: number;
 }
@@ -75,6 +82,16 @@ interface LocationStat {
   utilization_rate: number; // percentage of total study time at this location
 }
 
+interface GroupStat {
+  id: number;
+  name: string;
+  member_count: number;
+  total_hours: number;
+  average_hours: number;
+  goal_percentage: number;
+  active_members: number; // members with > 0 hours
+}
+
 const Reports = () => {
   const { dashboardState, handleUnauthorized } = useDashboard()
   const { isLoading: isDashboardLoading, error: dashboardError, data } = dashboardState
@@ -83,7 +100,7 @@ const Reports = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<any>(null)
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('users') // 'users', 'locations'
+  const [activeTab, setActiveTab] = useState('users') // 'users', 'locations', 'groups'
   
   useEffect(() => {
     // Fetch organization report data
@@ -213,6 +230,7 @@ const Reports = () => {
       return {
         id: user.id,
         name: `${user.first_name} ${user.last_name}`,
+        group: user.group,
         hours: totalHours,
         goal_percentage: goalPercentage
       }
@@ -295,6 +313,77 @@ const Reports = () => {
     // Sort by hours in descending order
     return stats.sort((a, b) => b.hours - a.hours)
   }
+  
+  // Get group stats
+  const getGroupStats = (): GroupStat[] => {
+    if (!orgReport) return []
+    
+    console.log("Starting getGroupStats")
+    
+    const groupMap: Record<number, GroupStat> = {}
+    
+    // Initialize group stats (only for users with groups)
+    orgReport.users.forEach(user => {
+      if (user.group && !groupMap[user.group.id]) {
+        groupMap[user.group.id] = {
+          id: user.group.id,
+          name: user.group.name,
+          member_count: 0,
+          total_hours: 0,
+          average_hours: 0,
+          goal_percentage: 0,
+          active_members: 0
+        }
+      }
+      if (user.group) {
+        groupMap[user.group.id].member_count += 1
+      }
+    })
+    
+    // Calculate stats for each group
+    Object.values(groupMap).forEach(groupStat => {
+      const groupUsers = orgReport.users.filter(user => user.group && user.group.id === groupStat.id)
+      
+      let totalGroupHours = 0
+      let activeMembers = 0
+      let totalGoalPercentage = 0
+      
+      groupUsers.forEach(user => {
+        // Filter sessions by selected period (same logic as getUserStats)
+        const sessionsToAnalyze = !orgReport.period_instances || orgReport.period_instances.length === 0 
+          ? user.sessions
+          : user.sessions.filter(session => session.period_instance && session.period_instance.id === selectedPeriodId)
+        
+        const userHours = sessionsToAnalyze.reduce((sum: number, session) => {
+          return sum + (session.hours || 0)
+        }, 0)
+        
+        if (userHours > 0) {
+          activeMembers += 1
+        }
+        
+        totalGroupHours += userHours
+        
+        // Calculate goal percentage for this user
+        if (orgReport.period_instances && orgReport.period_instances.length > 0) {
+          const selectedPeriod = orgReport.period_instances.find(p => p.id === selectedPeriodId)
+          const requiredHours = selectedPeriod?.period_setting?.required_hours || orgReport.active_period_setting?.required_hours || 10
+          const userGoalPercentage = (userHours / requiredHours) * 100
+          totalGoalPercentage += userGoalPercentage
+        }
+      })
+      
+      groupStat.total_hours = totalGroupHours
+      groupStat.average_hours = groupStat.member_count > 0 ? totalGroupHours / groupStat.member_count : 0
+      groupStat.active_members = activeMembers
+      groupStat.goal_percentage = groupStat.member_count > 0 ? Math.round(totalGoalPercentage / groupStat.member_count) : 0
+    })
+    
+    console.log(`Generated stats for ${Object.keys(groupMap).length} groups`)
+    
+    // Sort by total hours in descending order
+    return Object.values(groupMap).sort((a, b) => b.total_hours - a.total_hours)
+  }
 
   if (isDashboardLoading || isLoading) {
     return <LoadingScreen />
@@ -329,6 +418,7 @@ const Reports = () => {
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId) || periods[0]
   const userStats = getUserStats()
   const locationStats = getLocationStats()
+  const groupStats = getGroupStats()
   const hasPeriodsData = periods.length > 0
 
   return (
@@ -394,6 +484,14 @@ const Reports = () => {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity 
+              onPress={() => setActiveTab('groups')}
+              className={`flex-1 py-2 ${activeTab === 'groups' ? 'border-b-2 border-green-600' : 'border-b border-gray-200'}`}
+            >
+              <Text className={`text-center ${activeTab === 'groups' ? 'text-green-600 font-psemibold' : 'text-gray-600'}`}>
+                Groups
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
               onPress={() => setActiveTab('locations')}
               className={`flex-1 py-2 ${activeTab === 'locations' ? 'border-b-2 border-green-600' : 'border-b border-gray-200'}`}
             >
@@ -417,7 +515,10 @@ const Reports = () => {
                   key={user.id}
                   className="flex-row justify-between items-center py-3 border-b border-gray-100"
                 >
-                  <Text className="flex-1">{user.name}</Text>
+                  <View className="flex-1">
+                    <Text>{user.name}</Text>
+                    <Text className="text-gray-500 text-xs">{user.group ? user.group.name : 'No Group'}</Text>
+                  </View>
                   <Text className="w-16 text-right">{user.hours.toFixed(1)}h</Text>
                   {hasPeriodsData && (
                     <View className="w-16 flex-row items-center justify-end">
@@ -449,6 +550,78 @@ const Reports = () => {
                     <Text className="font-psemibold">Goal Completion:</Text>
                     <Text>
                       {userStats.length ? Math.round(userStats.reduce((sum, user) => sum + user.goal_percentage, 0) / userStats.length) : 0}%
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
+          
+          {/* Groups Tab */}
+          {activeTab === 'groups' && (
+            <View>
+              <View className="flex-row justify-between items-center mb-2">
+                <Text className="font-psemibold flex-1">Group</Text>
+                <Text className="font-psemibold w-14 text-center">Members</Text>
+                <Text className="font-psemibold w-14 text-center">Active</Text>
+                <Text className="font-psemibold w-16 text-center">Total Hours</Text>
+                <Text className="font-psemibold w-16 text-center">Avg Hours</Text>
+                {hasPeriodsData && <Text className="font-psemibold w-16 text-center">Goal %</Text>}
+              </View>
+              
+              {groupStats.length === 0 ? (
+                <Text className="text-gray-500 italic py-4 text-center">No groups available</Text>
+              ) : (
+                groupStats.map(group => (
+                  <View 
+                    key={group.id}
+                    className="flex-row justify-between items-center py-3 border-b border-gray-100"
+                  >
+                    <View className="flex-1">
+                      <Text>{group.name}</Text>
+                      <Text className="text-gray-500 text-xs">{group.active_members} of {group.member_count} active</Text>
+                    </View>
+                    <Text className="w-14 text-center">{group.member_count}</Text>
+                    <Text className="w-14 text-center">{group.active_members}</Text>
+                    <Text className="w-16 text-center">{group.total_hours.toFixed(1)}h</Text>
+                    <Text className="w-16 text-center">{group.average_hours.toFixed(1)}h</Text>
+                    {hasPeriodsData && (
+                      <View className="w-16 flex-row items-center justify-end">
+                        <View 
+                          className={`w-2 h-2 rounded-full mr-1 ${
+                            group.goal_percentage >= 100 ? 'bg-green-500' : 
+                            group.goal_percentage >= 75 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`} 
+                        />
+                        <Text className="text-xs">{group.goal_percentage}%</Text>
+                      </View>
+                    )}
+                  </View>
+                ))
+              )}
+              
+              <View className="mt-4 p-3 bg-gray-100 rounded-lg">
+                <View className="flex-row justify-between">
+                  <Text className="font-psemibold">Total Groups:</Text>
+                  <Text>{groupStats.length}</Text>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="font-psemibold">Total Members:</Text>
+                  <Text>{groupStats.reduce((sum, group) => sum + group.member_count, 0)}</Text>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="font-psemibold">Active Members:</Text>
+                  <Text>{groupStats.reduce((sum, group) => sum + group.active_members, 0)}</Text>
+                </View>
+                <View className="flex-row justify-between">
+                  <Text className="font-psemibold">Total Hours:</Text>
+                  <Text>{groupStats.reduce((sum, group) => sum + group.total_hours, 0).toFixed(1)}h</Text>
+                </View>
+                {hasPeriodsData && (
+                  <View className="flex-row justify-between">
+                    <Text className="font-psemibold">Average Goal Completion:</Text>
+                    <Text>
+                      {groupStats.length ? Math.round(groupStats.reduce((sum, group) => sum + group.goal_percentage, 0) / groupStats.length) : 0}%
                     </Text>
                   </View>
                 )}
