@@ -10,13 +10,13 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         # Get current datetime and datetime in 3 days
         today = timezone.now().replace(microsecond=0)
-        three_days_from_now = (today + timedelta(days=3)).replace(microsecond=0)
+        tomorrow = (today + timedelta(days=1)).replace(microsecond=0)
         
-        self.stdout.write(f"Checking for periods ending on {three_days_from_now}")
+        self.stdout.write(f"Checking for periods ending on {tomorrow}")
         
         # Find all periods ending in 3 days
         ending_periods = PeriodInstance.objects.filter(
-            end_date__contains=three_days_from_now.date()
+            end_date__contains=tomorrow.date()
         )
         
         self.stdout.write(f"Found {ending_periods.count()} periods ending in 3 days")
@@ -46,10 +46,10 @@ class Command(BaseCommand):
             notification_result = send_notification_to_users(
                 user_ids=user_ids,
                 title="Study Period Ending Soon",
-                body=f"Your current study period ends in 3 days on {three_days_from_now.strftime('%B %d, %Y')}. Make sure to complete your study requirements!",
+                body=f"Your current study period ends in 3 days on {tomorrow.strftime('%B %d, %Y')}. Make sure to complete your study requirements!",
                 data={
                     "type": "period_ending",
-                    "end_date": three_days_from_now.isoformat()
+                    "end_date": tomorrow.isoformat()
                 }
             )
             

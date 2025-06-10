@@ -22,7 +22,7 @@ from datetime import timedelta
 import json
 import requests
 
-from .utils import get_or_create_period_instance, send_notification_to_users
+from .utils import get_or_create_period_instance, send_notification_to_users, send_notification_to_org
 
 class OrgReportView(APIView):
     """
@@ -255,6 +255,21 @@ class ClockIn(APIView):
         current_user.live = True
         current_user.last_location = location
         current_user.save()
+
+        # Notify all users in the org except the one who just clocked in
+        location_name = location.name if location else "Unknown location"
+        user_name = f"{current_user.first_name} {current_user.last_name}".strip()
+        send_notification_to_org(
+            org_id=org.id,
+            title="Someone Started Studying!",
+            body=f"{user_name} is now studying at {location_name}.",
+            data={
+                "type": "user_studying",
+                "user_id": current_user.id,
+                "user_name": user_name,
+                "location": location_name
+            }
+        )
 
         return Response({
             "detail": "Successfully clocked in.",
