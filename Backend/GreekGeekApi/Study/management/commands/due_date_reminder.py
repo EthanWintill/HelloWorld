@@ -50,7 +50,8 @@ class Command(BaseCommand):
                 data={
                     "type": "period_ending",
                     "end_date": tomorrow.isoformat()
-                }
+                },
+                notification_type="study_deadline_approaching"
             )
             
             self.stdout.write(f"Notification result: {notification_result}")

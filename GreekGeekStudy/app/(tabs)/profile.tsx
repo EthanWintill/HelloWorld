@@ -120,7 +120,6 @@ const Profile = () => {
           {/* Contact Information */}
           <View className="bg-white p-6 rounded-2xl shadow-sm mb-8">
             <Text className="text-xl font-bold text-gray-900 mb-6">Contact Information</Text>
-            
             <View className="space-y-4">
               <View className="flex-row items-center p-4 bg-gray-50 rounded-xl">
                 <View className="bg-green-100 p-3 rounded-full mr-4">
@@ -131,7 +130,6 @@ const Profile = () => {
                   <Text className="text-gray-900 font-medium text-lg">{data.email}</Text>
                 </View>
               </View>
-              
               <View className="flex-row items-center p-4 bg-gray-50 rounded-xl">
                 <View className="bg-green-100 p-3 rounded-full mr-4">
                   <Ionicons name="call" size={24} color="#16A34A" />
@@ -147,24 +145,7 @@ const Profile = () => {
           {/* Organization Information */}
           <View className="bg-white p-6 rounded-2xl shadow-sm mb-8">
             <Text className="text-xl font-bold text-gray-900 mb-6">Organization</Text>
-            
-            <TouchableOpacity className="flex-row items-center py-2 border-b border-gray-200">
-              <Ionicons name="lock-closed-outline" size={20} color="#4B5563" className="mr-2" />
-              <Text className="text-gray-700 ml-2">Change Password</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity className="flex-row items-center py-2 border-b border-gray-200"
-              onPress={() => setModalVisible(true)}
-            >
-              <Ionicons name="notifications-outline" size={20} color="#4B5563" className="mr-2" />
-              <Text className="text-gray-700 ml-2">Notification Settings</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity className="flex-row items-center py-2">
-              <Ionicons name="help-circle-outline" size={20} color="#4B5563" className="mr-2" />
-              <Text className="text-gray-700 ml-2">Help & Support</Text>
-            </TouchableOpacity>
-            <View className="flex-row items-center p-4 bg-gray-50 rounded-xl">
+            <View className="flex-row items-center p-4 bg-gray-50 rounded-xl mb-4">
               <View className="bg-green-100 p-3 rounded-full mr-4">
                 <Ionicons name="business" size={24} color="#16A34A" />
               </View>
@@ -172,6 +153,23 @@ const Profile = () => {
                 <Text className="text-sm text-gray-500 mb-1">Organization Name</Text>
                 <Text className="text-gray-900 font-medium text-xl">{data.org?.name}</Text>
               </View>
+            </View>
+            {/* Account Actions - now here, but styled as separate buttons */}
+            <View className="space-y-2">
+              <TouchableOpacity className="flex-row items-center p-4 bg-gray-50 rounded-xl"
+                onPress={() => setModalVisible(true)}
+              >
+                <Ionicons name="notifications-outline" size={20} color="#4B5563" className="mr-2" />
+                <Text className="text-gray-700 ml-2 font-semibold">Notification Settings</Text>
+              </TouchableOpacity>
+              <TouchableOpacity className="flex-row items-center p-4 bg-gray-50 rounded-xl">
+                <Ionicons name="lock-closed-outline" size={20} color="#4B5563" className="mr-2" />
+                <Text className="text-gray-700 ml-2 font-semibold">Change Password</Text>
+              </TouchableOpacity>
+              <TouchableOpacity className="flex-row items-center p-4 bg-gray-50 rounded-xl">
+                <Ionicons name="help-circle-outline" size={20} color="#4B5563" className="mr-2" />
+                <Text className="text-gray-700 ml-2 font-semibold">Help & Support</Text>
+              </TouchableOpacity>
             </View>
           </View>
 

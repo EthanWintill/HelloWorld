@@ -218,7 +218,7 @@ class ClockOut(APIView):
             current_user.save()
 
             #Send Notification to user
-            send_notification_to_users([current_user.id], "Clocked Out", f"Your study session at {last_session.location.name} has been ended")
+            send_notification_to_users([current_user.id], "Clocked Out", f"Your study session at {last_session.location.name} has been ended", notification_type='user_leaves_zone')
 
             return Response({
                 "detail": "Successfully clocked out.",
@@ -281,7 +281,8 @@ class ClockIn(APIView):
                 "user_id": current_user.id,
                 "user_name": user_name,
                 "location": location_name
-            }
+            },
+            notification_type='org_starts_studying'
         )
 
         return Response({

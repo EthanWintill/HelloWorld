@@ -263,8 +263,8 @@ class UserDashboardSerializer(serializers.ModelSerializer):
                  'is_staff', 'live', 'org', 'org_locations', 'org_users', 
                  'user_sessions', 'org_period_instances', 'active_period_setting',
                  'last_location', 'total_hours',
-                 'notify_org_starts_studying', 'notify_user_leaves_zone', 'notify_study_deadline_approaching')
-                 'last_location', 'org_groups', 'total_hours')
+                 'notify_org_starts_studying', 'notify_user_leaves_zone', 'notify_study_deadline_approaching',
+                 'org_groups')
 
     def get_org_groups(self, obj):
         if obj.org:
