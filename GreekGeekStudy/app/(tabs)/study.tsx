@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Alert, Linking, Image, TouchableOpacity, AppState } from 'react-native'
+import { View, Text, ScrollView, Alert, Linking, Image, TouchableOpacity, AppState, Modal } from 'react-native'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -16,6 +16,8 @@ import * as TaskManager from 'expo-task-manager';
 import eventEmitter, { EVENTS } from '@/services/EventEmitter';
 import MapView, { Marker, Region, Circle } from 'react-native-maps';
 import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 interface LocationType {
   id: number;
@@ -24,6 +26,7 @@ interface LocationType {
   gps_lat: number;
   gps_long: number;
   gps_radius: number;
+  gps_address?: string;
 }
 
 const GEOFENCE_TASK = 'GEOFENCE_TASK';
@@ -82,6 +85,9 @@ const Study = () => {
   // Map related state
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
   const mapRef = useRef<MapView>(null);
+  
+  // New state for study locations list
+  const [locationsListVisible, setLocationsListVisible] = useState(false);
   
   // Use our reimplemented stopwatch
   const {
@@ -167,6 +173,26 @@ const Study = () => {
     });
   };
 
+  // Function to recenter map to user's current location
+  const recenterMap = async () => {
+    try {
+      if (!backgroundStatus || !foregroundStatus) return;
+      
+      const location = await Location.getCurrentPositionAsync();
+      const newRegion = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.002,
+        longitudeDelta: 0.002
+      };
+      
+      // Animate to the new region
+      mapRef.current?.animateToRegion(newRegion, 1000);
+    } catch (error) {
+      console.error('Error getting current location for recenter:', error);
+    }
+  };
+
   const getStudyLocationGPS = async () => {
     await handleLocationPermission();
     if (!backgroundStatus) return null;
@@ -191,6 +217,18 @@ const Study = () => {
     setCurrentStudyLocation(null);
     return null;
   }
+
+  // --- Navigation Functions ---
+  const navigateToAdmin = () => {
+    router.push('/(admin)');
+  };
+
+  // Function to open study locations list
+  const openLocationsList = () => {
+    setLocationsListVisible(true);
+  };
+
+
 
   // --- Clock Related Functions ---
   const clockIn = async () => {
@@ -372,13 +410,27 @@ const Study = () => {
 
     if (!activePeriodInstance) return null;
 
+    // Handle potential timezone issues by ensuring consistent date parsing
     const endDate = new Date(activePeriodInstance.end_date);
     const now = new Date();
-    const hoursRemaining = Math.max(0, (endDate.getTime() - now.getTime()) / (1000 * 60 * 60));
-    const daysRemaining = hoursRemaining / 24;
+    
+    // Calculate the difference in milliseconds
+    const timeDifference = endDate.getTime() - now.getTime();
+    const hoursRemaining = Math.max(0, timeDifference / (1000 * 60 * 60));
+    
+    // For days calculation, we want to know how many calendar days are left
+    // Reset both dates to start of day for accurate day comparison
+    const endDateStartOfDay = new Date(endDate);
+    endDateStartOfDay.setHours(0, 0, 0, 0);
+    
+    const nowStartOfDay = new Date(now);
+    nowStartOfDay.setHours(0, 0, 0, 0);
+    
+    const daysDifference = (endDateStartOfDay.getTime() - nowStartOfDay.getTime()) / (1000 * 60 * 60 * 24);
+    const daysRemaining = Math.max(0, Math.ceil(daysDifference));
 
-    // Show days only if we have 24 or more hours
-    const shouldShowDays = daysRemaining >= 1;
+    // Show days only if we have more than 24 hours remaining OR if it's due today/tomorrow
+    const shouldShowDays = hoursRemaining >= 24 || daysRemaining >= 1;
 
     const periodSetting = data.active_period_setting;
     let periodDescription = '';
@@ -399,7 +451,7 @@ const Study = () => {
     return {
       description: periodDescription,
       shouldShowDays,
-      daysRemaining: Math.floor(daysRemaining),
+      daysRemaining,
       hoursRemaining: Math.round(hoursRemaining),
       endDate
     };
@@ -557,9 +609,16 @@ const Study = () => {
           </Text>
         </View>
         <View className="flex-row items-center gap-2">
-          <Text className="font-psemibold text-gray-600, text-lg">
-            {data?.first_name} {data?.last_name?.[0]}.
-          </Text>
+          <View className="items-end">
+            <Text className="font-psemibold text-gray-600, text-lg">
+              {data?.first_name} {data?.last_name?.[0]}.
+            </Text>
+            {data?.group && (
+              <Text className="font-pregular text-gray-500 text-sm">
+                {data.group.name}
+              </Text>
+            )}
+          </View>
           <Text className="font-psemibold text-green-600 text-2xl">
             {Math.round(hoursStudied())}h
           </Text>
@@ -569,12 +628,57 @@ const Study = () => {
       {/* Main content */}
       <View className="flex-1 flex-col justify-between">
         <ScrollView>
+          {/* Admin Dashboard Button */}
+          {data?.is_staff && (
+            <View className="px-4 pt-4">
+              <TouchableOpacity 
+                onPress={navigateToAdmin}
+                className="bg-green-600 p-4 rounded-xl shadow-sm"
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center flex-1">
+                    <View className="bg-white/20 p-2 rounded-full mr-3">
+                      <Ionicons name="settings" size={20} color="white" />
+                    </View>
+                    <View>
+                      <Text className="text-white font-psemibold text-lg">Admin Dashboard</Text>
+                      <Text className="text-white/90 text-sm">Manage organization settings</Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="white" />
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Study Locations Button */}
+          {data?.org_locations && data.org_locations.length > 0 && (
+            <View className="px-4 pt-4">
+              <TouchableOpacity 
+                onPress={openLocationsList}
+                className="bg-blue-600 p-4 rounded-xl shadow-sm"
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center flex-1">
+                    <View className="bg-white/20 p-2 rounded-full mr-3">
+                      <Ionicons name="location" size={20} color="white" />
+                    </View>
+                    <View>
+                      <Text className="text-white font-psemibold text-lg">Study Locations</Text>
+                      <Text className="text-white/90 text-sm">View all {data.org_locations.length} study areas</Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="white" />
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
           <View className='h-[33vh] w-full justify-center items-center px-4'>
             {backgroundStatus && foregroundStatus ? (
               <ClockButton
                 title={!isStudying ? "Start Studying" : "Stop"}
                 secondaryTitle={!isStudying 
-                  ? (currentStudyLocation ? currentStudyLocation.name : "No Location Found") 
+                  ? (currentStudyLocation ? currentStudyLocation.name : "Not in a study area") 
                   : undefined}
                 handlePress={handleClock}
                 isStarted={isStudying}
@@ -612,73 +716,57 @@ const Study = () => {
             </View>
           )}
           
-          <View className='basis-1/3'>
-            <Text className="font-pregular text-center text-xl">
-              {!data ? "Loading..." : (
-                studyHoursLeft() === 0 || requiredHours() === 0 ? (
-                  <>
-                    <Text className="font-bold text-green-600">
-                      {hoursStudied().toFixed(2)}
-                    </Text>
-                    {' hours studied'}
-                  </>
-                ) : (
-                  <>
-                    <Text className="font-bold text-green-600">
-                      {studyHoursLeft().toFixed(2)}
-                    </Text>
-                    {` hour${studyHoursLeft() !== 1 ? 's' : ''} left to reach goal of `}
-                    <Text className="font-bold text-green-600">
-                      {requiredHours()}
-                    </Text>
-                    {' hours'}
-                  </>
-                )
-              )}
-            </Text>
-          </View>
-          
-          {/* Period info section */}
-          {data?.active_period_setting && (
-            <View className="px-4 py-6 bg-gray-50 mt-4">
-              <Text className="font-psemibold text-center mb-2">
-                Current Study Period
+          {/* Simple Progress Section */}
+          {data && (
+            <View className="mx-4 mb-4">
+              <Text className="font-psemibold text-center text-gray-800 text-lg mb-4">
+                Study Progress
               </Text>
-              {(() => {
-                const periodInfo = getActivePeriodInfo();
-                if (!periodInfo) return null;
+              
+              {/* Progress Bar */}
+              <View className="mb-2">
+                <View className="bg-gray-200 rounded-full h-3 mb-2">
+                  <View 
+                    className="bg-blue-500 h-3 rounded-full"
+                    style={{ width: `${Math.min(calculatePercentComplete(), 100)}%` }}
+                  />
+                </View>
+                <Text className="font-pregular text-center text-gray-600 text-sm mb-2">
+                  {calculatePercentComplete()}% Complete
+                </Text>
                 
-                return (
-                  <>
-                    <Text className="font-pregular text-center text-gray-600 mb-1">
-                      {periodInfo.description}
-                    </Text>
-                    <Text className="font-pregular text-center text-gray-600">
-                      {periodInfo.shouldShowDays ? (
-                        <>
-                          <Text className="font-bold text-green-600">
-                            {periodInfo.daysRemaining} day{periodInfo.daysRemaining !== 1 ? 's' : ''}
-                          </Text>
-                          {' remaining'}
-                        </>
-                      ) : periodInfo.hoursRemaining > 0 ? (
-                        <>
-                          <Text className="font-bold text-red-600">
-                            {periodInfo.hoursRemaining} hour{periodInfo.hoursRemaining !== 1 ? 's' : ''}
-                          </Text>
-                          {' remaining'}
-                        </>
-                      ) : (
-                        'Due now'
-                      )}
-                    </Text>
-                    <Text className="font-pregular text-center text-gray-500 text-sm mt-1">
-                      Due {periodInfo.endDate.toLocaleDateString()} at{' '}
-                      {periodInfo.endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                    </Text>
-                  </>
-                );
-              })()}
+                {/* Days Remaining */}
+                {data?.active_period_setting && (
+                  <Text className="font-pregular text-center text-sm text-gray-600">
+                    {(() => {
+                      const periodInfo = getActivePeriodInfo();
+                      if (!periodInfo) return '';
+                      
+                      if (periodInfo.shouldShowDays) {
+                        return (
+                          <>
+                            <Text className="text-green-600">
+                              {periodInfo.daysRemaining} day{periodInfo.daysRemaining !== 1 ? 's' : ''}
+                            </Text>
+                            {' remaining'}
+                          </>
+                        );
+                      } else if (periodInfo.hoursRemaining > 0) {
+                        return (
+                          <>
+                            <Text className="text-red-600">
+                              {periodInfo.hoursRemaining} hour{periodInfo.hoursRemaining !== 1 ? 's' : ''}
+                            </Text>
+                            {' remaining'}
+                          </>
+                        );
+                      } else {
+                        return 'Due now';
+                      }
+                    })()}
+                  </Text>
+                )}
+              </View>
             </View>
           )}
           
@@ -686,21 +774,29 @@ const Study = () => {
           <View className="mt-4 mx-4 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
             <View className="bg-green-50 px-4 py-3 border-b border-gray-200">
               <Text className="font-psemibold text-center text-green-800">
-                Study Locations
+                Current Location
               </Text>
+              {!currentStudyLocation && (
+                <Text className="font-pregular text-center text-red-600 text-sm mt-1">
+                  Not in a study area
+                </Text>
+              )}
             </View>
             
             {/* Map container with fixed height */}
-            <View style={{ height: 250 }}>
+            <View style={{ height: 250, position: 'relative' }}>
               {mapRegion && (
                 <MapView
                   ref={mapRef}
                   style={{ width: '100%', height: '100%' }}
                   initialRegion={mapRegion}
-                  region={mapRegion}
                   showsUserLocation={true}
-                  followsUserLocation={true}
+                  followsUserLocation={false}
                   mapType="hybrid"
+                  zoomEnabled={true}
+                  scrollEnabled={true}
+                  pitchEnabled={true}
+                  rotateEnabled={true}
                 >
                   {/* Render all study locations as circles */}
                   {data?.org_locations && data.org_locations.map((location: LocationType) => (
@@ -725,6 +821,34 @@ const Study = () => {
                     />
                   ))}
                 </MapView>
+              )}
+              
+              {/* Recenter button */}
+              {mapRegion && backgroundStatus && foregroundStatus && (
+                <TouchableOpacity
+                  onPress={recenterMap}
+                  style={{
+                    position: 'absolute',
+                    bottom: 12,
+                    right: 12,
+                    backgroundColor: 'white',
+                    borderRadius: 20,
+                    width: 40,
+                    height: 40,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    shadowColor: '#000',
+                    shadowOffset: {
+                      width: 0,
+                      height: 2,
+                    },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 3.84,
+                    elevation: 5,
+                  }}
+                >
+                  <Ionicons name="locate" size={20} color="#16a34a" />
+                </TouchableOpacity>
               )}
               
               {/* Show an overlay when map isn't available */}
@@ -758,11 +882,73 @@ const Study = () => {
               </View>
             </View>
           </View>
+
+
           
           {/* Add some bottom padding */}
           <View className="h-6" />
         </ScrollView>
       </View>
+
+      {/* Study Locations List Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={locationsListVisible}
+        onRequestClose={() => setLocationsListVisible(false)}
+      >
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'transparent' }}>
+          <View className="bg-white rounded-t-3xl max-h-3/4">
+            <View className="p-4 border-b border-gray-200">
+              <View className="flex-row justify-between items-center">
+                <Text className="text-xl font-psemibold">Study Locations</Text>
+                <TouchableOpacity
+                  onPress={() => setLocationsListVisible(false)}
+                  className="p-2"
+                >
+                  <Ionicons name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            <ScrollView className="px-4 py-2">
+              {data?.org_locations && data.org_locations.map((location: LocationType) => (
+                <View
+                  key={location.id}
+                  className="bg-gray-50 border border-gray-200 p-4 rounded-lg mb-3"
+                >
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1">
+                      <Text className="font-psemibold text-lg">{location.name}</Text>
+                      {location.gps_address && (
+                        <Text className="text-gray-600 text-sm mt-1">
+                          {location.gps_address.split(',')[0].trim()}
+                        </Text>
+                      )}
+                      <Text className="text-gray-500 text-xs mt-1">
+                        Radius: {location.gps_radius}m
+                      </Text>
+                      {currentStudyLocation?.id === location.id && (
+                        <Text className="text-green-600 font-psemibold text-xs mt-1">
+                          Currently in this area
+                        </Text>
+                      )}
+                    </View>
+                    <View className="ml-3">
+                      <Ionicons name="location" size={24} color="#6B7280" />
+                    </View>
+                  </View>
+                </View>
+              ))}
+              
+              {/* Add some bottom padding for the last item */}
+              <View className="h-4" />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      
     </SafeAreaView>
   )
 }

@@ -7,10 +7,10 @@ import uuid
 # Organization Model
 class Org(models.Model):
     name = models.CharField(max_length=255)
-    reg_code = models.CharField(max_length=255)
+    reg_code = models.CharField(max_length=255, unique=True)
     school = models.CharField(max_length=255)
-    study_req = models.FloatField()
-    study_goal = models.FloatField()
+    study_req = models.FloatField(default=2)
+    study_goal = models.FloatField(default=4)
 
     class Meta:
         ordering = ['id']
@@ -59,7 +59,10 @@ class PeriodSetting(models.Model):
                 days_until_due = 7
             return from_date + timedelta(days=days_until_due)
         elif self.period_type == "monthly":
-            return from_date.replace(month=from_date.month + 1)
+            if from_date.month == 12:
+                return from_date.replace(year=from_date.year + 1, month=1)
+            else:
+                return from_date.replace(month=from_date.month + 1)
         elif self.period_type == "custom" and self.custom_days:
             return from_date + timedelta(days=self.custom_days)
         return None
@@ -102,7 +105,7 @@ class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=255)  # Store hashed password
     phone_number = models.CharField(max_length=20, blank=True, null=True)  # Optional phone number
-    group_id = models.IntegerField(null=True, blank=True)  # Assuming this is a separate group identifier
+    group = models.ForeignKey('Group', on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
     live = models.BooleanField(default=False)
     last_location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
 
@@ -158,6 +161,7 @@ class Location(models.Model):
     gps_lat = models.FloatField()
     gps_long = models.FloatField()
     gps_radius = models.FloatField()  # Radius in meters
+    gps_address = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
         ordering = ['org']
@@ -170,8 +174,11 @@ class Group(models.Model):
     org = models.ForeignKey(Org, on_delete=models.CASCADE, related_name="groups")
     name = models.CharField(max_length=255)
 
+    class Meta:
+        unique_together = ('org', 'name')
+
     def __str__(self):
-        return f"Group for {self.org.name}"
+        return f"{self.name} of {self.org.name}"
 
 class NotificationToken(models.Model):
     """

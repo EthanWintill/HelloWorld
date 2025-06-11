@@ -71,14 +71,7 @@ const AdminDashboard = () => {
           title="Organization Settings" 
           icon="business" 
           route="/(admin)/organization" 
-          description="Manage organization name, registration code, and school"
-        />
-        
-        <AdminMenuItem 
-          title="Manage Groups" 
-          icon="people" 
-          route="/(admin)/groups" 
-          description="Create, edit, and assign users to groups"
+          description="Manage organization name, registration code, school, and study locations"
         />
 
         <Text className="text-lg font-psemibold mb-3 mt-4 text-gray-800">User Management</Text>
@@ -88,6 +81,13 @@ const AdminDashboard = () => {
           icon="person" 
           route="/(admin)/users" 
           description="View and edit user information"
+        />
+        
+        <AdminMenuItem 
+          title="Manage Groups" 
+          icon="people" 
+          route="/(admin)/groups" 
+          description="Create, edit, and assign users to groups"
         />
 
         <Text className="text-lg font-psemibold mb-3 mt-4 text-gray-800">Study Management</Text>

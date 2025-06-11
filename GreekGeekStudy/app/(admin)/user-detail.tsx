@@ -157,7 +157,10 @@ const UserDetail = () => {
 
   // Filter sessions based on current period timeframe
   const filteredSessions = useMemo(() => {
-    if (!sessions.length || !currentPeriod) return []
+    if (!sessions.length) return []
+    
+    // If no current period, show all sessions
+    if (!currentPeriod) return sessions
     
     const periodStart = new Date(currentPeriod.start_date).getTime()
     const periodEnd = new Date(currentPeriod.end_date).getTime()
@@ -581,13 +584,15 @@ const UserDetail = () => {
             <Text className="text-gray-600 mb-1">Group</Text>
             {isEditing ? (
               <TextInput
-                value={editedUser.group || ''}
+                value={typeof editedUser.group === 'object' ? editedUser.group?.name || '' : editedUser.group || ''}
                 onChangeText={(text) => setEditedUser({...editedUser, group: text || null})}
                 className="border border-gray-300 rounded-lg p-2"
                 placeholder="Enter group"
               />
             ) : (
-              <Text className="text-lg">{user.group || 'Not assigned'}</Text>
+              <Text className="text-lg">
+                {typeof user.group === 'object' ? user.group?.name || 'Not assigned' : user.group || 'Not assigned'}
+              </Text>
             )}
           </View>
 
@@ -688,7 +693,7 @@ const UserDetail = () => {
           setEditedHours('')
         }}
       >
-        <View className="flex-1 justify-center items-center bg-black/50">
+        <View className="flex-1 justify-center items-center bg-transparent">
           <View className="bg-white rounded-lg p-6 w-4/5 shadow-lg">
             <Text className="text-xl font-psemibold mb-4 text-center">Edit Session Hours</Text>
             

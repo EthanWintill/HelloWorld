@@ -1,6 +1,6 @@
 from rest_framework import permissions, viewsets, status, exceptions
 
-from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer, NotificationTokenSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer, NotificationTokenSerializer, GroupSerializer, CreateGroupSerializer, UpdateGroupSerializer, OrgOwnerSignupSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 
@@ -13,7 +13,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import User, Org, Session, Location, PeriodSetting, PeriodInstance, NotificationToken
+from .models import User, Org, Session, Location, PeriodSetting, PeriodInstance, NotificationToken, Group
 
 from django.http import Http404 
 from django.utils import timezone
@@ -23,6 +23,10 @@ import json
 import requests
 
 from .utils import get_or_create_period_instance, send_notification_to_users, send_notification_to_org
+
+@api_view(['GET'])
+def debug(request):
+    return Response(dict(request.headers))
 
 class OrgReportView(APIView):
     """
@@ -71,6 +75,15 @@ class OrgReportView(APIView):
         # 4. Get data for each user, including their sessions
         for user in users:
             user_info = UserSerializer(user).data
+            
+            # Add group information
+            if user.group:
+                user_info['group'] = {
+                    'id': user.group.id,
+                    'name': user.group.name
+                }
+            else:
+                user_info['group'] = None
             
             # Get all sessions for this user
             sessions = Session.objects.filter(user=user).select_related(
@@ -734,6 +747,124 @@ class AdminSessionView(RetrieveUpdateDestroyAPIView):
             except Exception as e:
                 # Log error but don't block the update
                 print(f"Error sending notification: {str(e)}")
+
+class GroupManagementView(APIView):
+    """
+    View for admin users to manage groups in their organization.
+    Supports creating, updating, and deleting groups with user assignments.
+    """
+    permission_classes = (IsAdminUser,)
+    
+    def get_group_queryset(self):
+        """Get groups that belong to the admin's organization"""
+        admin_user = self.request.user
+        if not admin_user.org:
+            return Group.objects.none()
+        return Group.objects.filter(org=admin_user.org)
+    
+    def get(self, request, group_id=None, format=None):
+        """List all groups or get a specific group"""
+        if group_id:
+            try:
+                group = self.get_group_queryset().get(id=group_id)
+                # Include users in this group
+                users_in_group = User.objects.filter(group=group)
+                group_data = GroupSerializer(group).data
+                group_data['users'] = UserSerializer(users_in_group, many=True).data
+                return Response(group_data)
+            except Group.DoesNotExist:
+                return Response(
+                    {"detail": "Group not found"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        else:
+            # List all groups
+            groups = self.get_group_queryset()
+            groups_data = []
+            for group in groups:
+                users_in_group = User.objects.filter(group=group)
+                group_data = GroupSerializer(group).data
+                group_data['users'] = UserSerializer(users_in_group, many=True).data
+                groups_data.append(group_data)
+            return Response(groups_data)
+    
+    def post(self, request, format=None):
+        """Create a new group"""
+        serializer = CreateGroupSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            group = serializer.save()
+            # Return the created group with its users
+            users_in_group = User.objects.filter(group=group)
+            group_data = GroupSerializer(group).data
+            group_data['users'] = UserSerializer(users_in_group, many=True).data
+            return Response(group_data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def put(self, request, group_id, format=None):
+        """Update a group"""
+        try:
+            group = self.get_group_queryset().get(id=group_id)
+        except Group.DoesNotExist:
+            return Response(
+                {"detail": "Group not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = UpdateGroupSerializer(group, data=request.data, context={'request': request})
+        if serializer.is_valid():
+            group = serializer.save()
+            # Return the updated group with its users
+            users_in_group = User.objects.filter(group=group)
+            group_data = GroupSerializer(group).data
+            group_data['users'] = UserSerializer(users_in_group, many=True).data
+            return Response(group_data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, group_id, format=None):
+        """Delete a group"""
+        try:
+            group = self.get_group_queryset().get(id=group_id)
+        except Group.DoesNotExist:
+            return Response(
+                {"detail": "Group not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Remove users from this group before deleting
+        User.objects.filter(group=group).update(group=None)
+        
+        group_name = group.name
+        group.delete()
+        
+        return Response(
+            {"detail": f"Group '{group_name}' has been deleted"}, 
+            status=status.HTTP_200_OK
+        )
+
+class OrgOwnerSignupView(CreateAPIView):
+    """
+    View for creating a new organization and its owner user account.
+    This is intended for website signup where someone wants to create a new organization.
+    """
+    permission_classes = (AllowAny,)
+    serializer_class = OrgOwnerSignupSerializer
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            result = serializer.save()
+            
+            # Prepare response data
+            user_data = UserSerializer(result['user']).data
+            org_data = OrgSerializer(result['org']).data
+            
+            return Response({
+                'detail': 'Organization and owner account created successfully',
+                'user': user_data,
+                'organization': org_data
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 

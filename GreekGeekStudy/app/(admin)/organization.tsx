@@ -17,6 +17,7 @@ interface LocationType {
   gps_lat: number;
   gps_long: number;
   gps_radius: number;
+  gps_address?: string;
 }
 
 const OrganizationManagement = () => {
@@ -44,6 +45,9 @@ const OrganizationManagement = () => {
   const [currentLocation, setCurrentLocation] = useState<LocationObject['coords'] | null>(null);
   const [radius, setRadius] = useState(75);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
+  const [originalMapRegion, setOriginalMapRegion] = useState<Region | null>(null);
+  const [originalRadius, setOriginalRadius] = useState<number>(75);
+  const [originalLocation, setOriginalLocation] = useState<LocationObject['coords'] | null>(null);
   const VISUAL_CIRCLE_SIZE = 100; // diameter in pixels
 
   const [addressInput, setAddressInput] = useState('');
@@ -76,6 +80,28 @@ const OrganizationManagement = () => {
     }
   };
 
+  // Calculate the correct map region based on radius
+  const calculateMapRegion = (latitude: number, longitude: number, radiusInMeters: number): Region => {
+    const metersPerDegree = 111319.9;
+    const metersPerLongitudeDegree = Math.cos(latitude * (Math.PI / 180)) * metersPerDegree;
+    const mapWidthInPixels = 400; // Approximate width of MapView
+    
+    // This should be the inverse of calculateRadiusInMeters
+    // From calculateRadiusInMeters: radius = (VISUAL_CIRCLE_SIZE / 2) * metersPerPixel
+    // So: metersPerPixel = radius / (VISUAL_CIRCLE_SIZE / 2)
+    const metersPerPixel = radiusInMeters / (VISUAL_CIRCLE_SIZE / 2);
+    const mapWidthInMeters = mapWidthInPixels * metersPerPixel;
+    const longitudeDelta = mapWidthInMeters / metersPerLongitudeDegree;
+    const latitudeDelta = longitudeDelta; // Keep it square for simplicity
+    
+    return {
+      latitude,
+      longitude,
+      latitudeDelta,
+      longitudeDelta
+    };
+  };
+
   const resetModalState = () => {
     setLocationName('');
     setAddressInput('');
@@ -84,6 +110,10 @@ const OrganizationManagement = () => {
     setCreateMode(false);
     setIsSubmitting(false);
     setCurrentLocationId(null);
+    setMapRegion(null);
+    setOriginalMapRegion(null);
+    setOriginalRadius(75);
+    setOriginalLocation(null);
   };
 
   const closeModal = () => {
@@ -131,6 +161,11 @@ const OrganizationManagement = () => {
         setRadius(location.gps_radius);
         setLocationName(location.name);
         setCurrentLocationId(location.id);
+        
+        // Calculate and set the correct map region based on the stored radius
+        const correctRegion = calculateMapRegion(location.gps_lat, location.gps_long, location.gps_radius);
+        setMapRegion(correctRegion);
+        
         setEditMode(false);
         setCreateMode(false);
         setModalVisible(true);
@@ -161,13 +196,42 @@ const OrganizationManagement = () => {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
 
+      // Always generate address from coordinates using reverse geocoding
+      let generatedAddress = null;
+      try {
+        const geocodeResult = await Location.reverseGeocodeAsync({
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+        });
+        
+        if (geocodeResult && geocodeResult.length > 0) {
+          const result = geocodeResult[0];
+          // Build address string from available components
+          const addressParts = [
+            result.name,
+            result.street,
+            result.city,
+            result.region,
+            result.postalCode,
+            result.country
+          ].filter(Boolean);
+          
+          generatedAddress = addressParts.join(', ');
+          console.log('Auto-generated address:', generatedAddress);
+        }
+      } catch (geocodeError) {
+        console.warn('Reverse geocoding failed:', geocodeError);
+        // Continue without address if geocoding fails
+      }
+
       await axios.post(
         `${API_URL}api/locations/create/`,
         {
           name: locationName,
           gps_lat: currentLocation.latitude,
           gps_long: currentLocation.longitude,
-          gps_radius: radius
+          gps_radius: radius,
+          gps_address: generatedAddress
         },
         {
           headers: {
@@ -213,13 +277,42 @@ const OrganizationManagement = () => {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
 
+      // Always generate address from coordinates using reverse geocoding
+      let generatedAddress = null;
+      try {
+        const geocodeResult = await Location.reverseGeocodeAsync({
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+        });
+        
+        if (geocodeResult && geocodeResult.length > 0) {
+          const result = geocodeResult[0];
+          // Build address string from available components
+          const addressParts = [
+            result.name,
+            result.street,
+            result.city,
+            result.region,
+            result.postalCode,
+            result.country
+          ].filter(Boolean);
+          
+          generatedAddress = addressParts.join(', ');
+          console.log('Auto-generated address:', generatedAddress);
+        }
+      } catch (geocodeError) {
+        console.warn('Reverse geocoding failed:', geocodeError);
+        // Continue without address if geocoding fails
+      }
+
       await axios.put(
         `${API_URL}api/location/${currentLocationId}/modify`,
         {
           name: locationName,
           gps_lat: currentLocation.latitude,
           gps_long: currentLocation.longitude,
-          gps_radius: radius
+          gps_radius: radius,
+          gps_address: generatedAddress
         },
         {
           headers: {
@@ -428,6 +521,9 @@ const OrganizationManagement = () => {
         
         setCurrentLocation(newLocation);
         
+        // Clear the search input
+        setAddressInput('');
+        
         // Animate map to new location
         mapRef.current?.animateToRegion({
           latitude,
@@ -592,8 +688,13 @@ const OrganizationManagement = () => {
                   >
                     <View>
                       <Text className="font-psemibold">{location.name}</Text>
-                      <Text className="text-gray-600 text-sm">
-                        Radius: {location.gps_radius}m, {location.gps_lat}, {location.gps_long}
+                      {location.gps_address && (
+                        <Text className="text-gray-600 text-sm">
+                          {location.gps_address.split(',')[0].trim()}
+                        </Text>
+                      )}
+                      <Text className="text-gray-500 text-xs">
+                        Radius: {location.gps_radius}m
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -660,6 +761,7 @@ const OrganizationManagement = () => {
             {/* Address search input - only show when in edit mode */}
             {(createMode || editMode) && (
               <View className="mb-4">
+                <Text className="text-gray-600 mb-2">Search Address (For Map Navigation)</Text>
                 <View className="flex-row items-center border border-gray-300 rounded-lg overflow-hidden">
                   <TextInput
                     value={addressInput}
@@ -668,7 +770,7 @@ const OrganizationManagement = () => {
                       if (geocodingError) setGeocodingError('');
                     }}
                     className="flex-1 p-3"
-                    placeholder="Search for an address"
+                    placeholder="Search for an address to navigate map"
                     returnKeyType="search"
                     onSubmitEditing={handleAddressSearch}
                   />
@@ -685,6 +787,10 @@ const OrganizationManagement = () => {
                   </TouchableOpacity>
                 </View>
                 
+                <Text className="text-gray-500 text-xs mt-1">
+                  Search to navigate map to a general area, then position precisely
+                </Text>
+                
                 {geocodingError !== '' && (
                   <Text className="text-red-500 text-sm mt-1">{geocodingError}</Text>
                 )}
@@ -699,6 +805,7 @@ const OrganizationManagement = () => {
                 mapType="hybrid"
                 showsUserLocation={true}
                 followsUserLocation={createMode}
+                region={mapRegion || undefined}
                 initialRegion={{
                   latitude: currentLocation?.latitude || 36.130990,
                   longitude: currentLocation?.longitude || -115.174094,
@@ -737,6 +844,10 @@ const OrganizationManagement = () => {
                 <>
                   <TouchableOpacity
                     onPress={() => {
+                      // Store current map region before entering edit mode
+                      setOriginalMapRegion(mapRegion);
+                      setOriginalRadius(radius);
+                      setOriginalLocation(currentLocation);
                       setEditMode(true);
                       setCreateMode(false);
                     }}
@@ -765,8 +876,11 @@ const OrganizationManagement = () => {
                   <TouchableOpacity
                     onPress={handleCreateLocation}
                     disabled={isSubmitting || !locationName.trim()}
-                    className={`${isSubmitting || !locationName.trim() ? 'bg-gray-400' : 'bg-green-600'} px-4 py-3 rounded-lg`}
+                    className={`${isSubmitting || !locationName.trim() ? 'bg-gray-400' : 'bg-green-600'} px-4 py-3 rounded-lg flex-row items-center justify-center`}
                   >
+                    {isSubmitting && (
+                      <ActivityIndicator size="small" color="white" className="mr-2" />
+                    )}
                     <Text className="text-white font-psemibold">
                       {isSubmitting ? 'Creating...' : 'Create'}
                     </Text>
@@ -783,7 +897,16 @@ const OrganizationManagement = () => {
                       // Restore original location name if canceled
                       if (data && data.org_locations) {
                         const loc = data.org_locations.find((l: LocationType) => l.id === currentLocationId);
-                        if (loc) setLocationName(loc.name);
+                        if (loc) {
+                          setLocationName(loc.name);
+                        }
+                      }
+                      // Restore original map region and animate back
+                      if (originalMapRegion) {
+                        setMapRegion(originalMapRegion);
+                        setRadius(originalRadius);
+                        setCurrentLocation(originalLocation);
+                        mapRef.current?.animateToRegion(originalMapRegion, 500);
                       }
                     }}
                     className="bg-gray-500 px-4 py-3 rounded-lg mr-2"
@@ -793,8 +916,11 @@ const OrganizationManagement = () => {
                   <TouchableOpacity
                     onPress={handleUpdateLocation}
                     disabled={isSubmitting || !locationName.trim()}
-                    className={`${isSubmitting || !locationName.trim() ? 'bg-gray-400' : 'bg-green-600'} px-4 py-3 rounded-lg`}
+                    className={`${isSubmitting || !locationName.trim() ? 'bg-gray-400' : 'bg-green-600'} px-4 py-3 rounded-lg flex-row items-center justify-center`}
                   >
+                    {isSubmitting && (
+                      <ActivityIndicator size="small" color="white" className="mr-2" />
+                    )}
                     <Text className="text-white font-psemibold">
                       {isSubmitting ? 'Saving...' : 'Save'}
                     </Text>

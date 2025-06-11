@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Sign In - GreekGeek{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <h2 class="card-title">Admin Sign In</h2>
+                        <p class="text-muted">Organization administrators only</p>
+                    </div>
+                    
+                    <div id="error-message" class="alert alert-danger d-none" role="alert">
+                        <!-- Error messages will be displayed here -->
+                    </div>
+                    
+                    <form id="login-form">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary" id="login-btn">
+                                <span id="login-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                <span id="login-text">Sign In</span>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-3">
+                        <p class="mb-0">Need to create an organization? <a href="/register/">Start Free Trial</a></p>
+                        <small class="text-muted">For organization administrators only</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Redirect if already logged in
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        window.location.href = '/';
+        return;
+    }
+    
+    const form = document.getElementById('login-form');
+    const errorMessage = document.getElementById('error-message');
+    const loginBtn = document.getElementById('login-btn');
+    const loginSpinner = document.getElementById('login-spinner');
+    const loginText = document.getElementById('login-text');
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        loginBtn.disabled = true;
+        loginSpinner.classList.remove('d-none');
+        loginText.textContent = 'Signing in...';
+        errorMessage.classList.add('d-none');
+        
+        const formData = new FormData(form);
+        const data = {
+            email: formData.get('email'),
+            password: formData.get('password')
+        };
+        
+        try {
+            const response = await fetch('/api/token/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                // Store tokens in localStorage
+                localStorage.setItem('access_token', result.access);
+                localStorage.setItem('refresh_token', result.refresh);
+                
+                // Verify admin status before allowing access
+                loginText.textContent = 'Verifying admin access...';
+                
+                try {
+                    const dashResponse = await fetch('/api/dashboard/', {
+                        headers: {
+                            'Authorization': `Bearer ${result.access}`,
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    if (dashResponse.ok) {
+                        const userData = await dashResponse.json();
+                        
+                        // Check if user is staff (admin) and has an org
+                        if (!userData.is_staff) {
+                            errorMessage.innerHTML = `
+                                <strong>Access Denied:</strong> Admin privileges required.<br>
+                                <small>This portal is for organization administrators only.</small>
+                            `;
+                            errorMessage.classList.remove('d-none');
+                            localStorage.removeItem('access_token');
+                            localStorage.removeItem('refresh_token');
+                            return;
+                        }
+                        
+                        if (!userData.org) {
+                            errorMessage.innerHTML = `
+                                <strong>Access Denied:</strong> You must belong to an organization.<br>
+                                <small>Please contact support if you believe this is an error.</small>
+                            `;
+                            errorMessage.classList.remove('d-none');
+                            localStorage.removeItem('access_token');
+                            localStorage.removeItem('refresh_token');
+                            return;
+                        }
+                        
+                        // Admin verification successful - redirect to dashboard
+                        window.location.href = '/';
+                    } else {
+                        errorMessage.textContent = 'Unable to verify admin status. Please try again.';
+                        errorMessage.classList.remove('d-none');
+                        localStorage.removeItem('access_token');
+                        localStorage.removeItem('refresh_token');
+                    }
+                } catch (verifyError) {
+                    console.error('Admin verification error:', verifyError);
+                    errorMessage.textContent = 'An error occurred during admin verification. Please try again.';
+                    errorMessage.classList.remove('d-none');
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
+                }
+            } else {
+                // Show error message
+                let errorText = 'Login failed. Please check your credentials.';
+                if (result.detail) {
+                    errorText = result.detail;
+                } else if (result.non_field_errors) {
+                    errorText = result.non_field_errors.join(' ');
+                }
+                
+                errorMessage.textContent = errorText;
+                errorMessage.classList.remove('d-none');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            errorMessage.textContent = 'An error occurred. Please try again.';
+            errorMessage.classList.remove('d-none');
+        } finally {
+            // Reset loading state
+            loginBtn.disabled = false;
+            loginSpinner.classList.add('d-none');
+            loginText.textContent = 'Sign In';
+        }
+    });
+});
+</script>
+{% endblock %} 

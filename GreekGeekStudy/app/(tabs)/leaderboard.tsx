@@ -16,6 +16,11 @@ interface User {
   last_location?: {
     name: string;
   };
+  group?: {
+    id: number;
+    name: string;
+    org: number;
+  };
 }
 
 const Leaderboard = () => {
@@ -32,6 +37,30 @@ const Leaderboard = () => {
       };
     }, [])
   );
+
+  // Deterministic color assignment for groups
+  const getGroupColor = (groupId: number): string => {
+    const colors = [
+      'text-purple-600',
+      'text-red-600', 
+      'text-orange-600',
+      'text-indigo-600',
+      'text-pink-600',
+      'text-teal-600',
+      'text-yellow-700',
+      'text-rose-600',
+      'text-amber-700',
+      'text-violet-600',
+      'text-fuchsia-600',
+      'text-cyan-600',
+      'text-purple-700',
+      'text-red-700',
+      'text-orange-700'
+    ];
+    
+    // Use group ID to deterministically select a color
+    return colors[groupId % colors.length];
+  };
 
   const getActivePeriodInstance = () => {
     if (!data?.org_period_instances) return null;
@@ -84,6 +113,20 @@ const Leaderboard = () => {
   // Get all users and sort by total_hours
   const allUsers = data?.org_users || [];
   
+  // Create a sorted ranking of all users for trophy assignment
+  const rankedUsers = [...allUsers].sort((a: User, b: User) => (b.total_hours || 0) - (a.total_hours || 0));
+  
+  // Function to get ranking emoji for top 3 users
+  const getRankingEmoji = (userId: number): string => {
+    const userRank = rankedUsers.findIndex(user => user.id === userId);
+    switch (userRank) {
+      case 0: return "🥇 ";
+      case 1: return "🥈 ";
+      case 2: return "🥉 ";
+      default: return "";
+    }
+  };
+  
   // Separate live and non-live users and sort by total_hours (highest first)
   const liveUsers = allUsers
     .filter((user: User) => user.live)
@@ -108,9 +151,16 @@ const Leaderboard = () => {
           </Text>
         </View>
         <View className="flex-row items-center gap-2">
-          <Text className="font-psemibold text-gray-600 text-lg">
-            {data?.first_name} {data?.last_name?.[0]}.
-          </Text>
+          <View className="items-end">
+            <Text className="font-psemibold text-gray-600 text-lg">
+              {data?.first_name} {data?.last_name?.[0]}.
+            </Text>
+            {data?.group && (
+              <Text className="font-pregular text-gray-500 text-sm">
+                {data.group.name}
+              </Text>
+            )}
+          </View>
           <Text className="font-psemibold text-green-600 text-2xl">
             {hoursStudied().toFixed(0)}h
           </Text>
@@ -129,7 +179,11 @@ const Leaderboard = () => {
         {/* Live users section */}
         {liveUsers.length > 0 && (
           <>
-            <Text className="font-bold text-lg mb-2">Currently Studying</Text>
+            <View className="flex-row items-center my-4">
+              <View className="flex-1 h-px bg-gray-200" />
+              <Text className="mx-4 text-gray-500 font-medium">Currently Studying</Text>
+              <View className="flex-1 h-px bg-gray-200" />
+            </View>
             
             {liveUsers.map((user: User, index: number) => (
               <View 
@@ -140,7 +194,7 @@ const Leaderboard = () => {
                   <View className="flex-1">
                     <View className="flex-row items-center">
                       <Text className="font-bold text-lg text-gray-800">
-                        {user.first_name} {user.last_name}
+                        {getRankingEmoji(user.id)}{user.first_name} {user.last_name}
                       </Text>
                       {user.id === data.id && (
                         <Text className="text-gray-500 ml-1">(You)</Text>
@@ -150,14 +204,14 @@ const Leaderboard = () => {
                       </Text>
                     </View>
                     <Text className="text-gray-600">{user.email}</Text>
-                    {user.is_staff && (
-                      <Text className="text-blue-600 font-semibold mt-1">Staff Member</Text>
+                    {user.group && (
+                      <Text className={getGroupColor(user.group.id)} font-medium mt-1>{user.group.name}</Text>
                     )}
                   </View>
                   <View className="items-end">
-                    <View className="flex-row items-center bg-green-100 px-3 py-1 rounded-full">
-                      <Text className="text-green-600 font-bold text-base mr-1">●</Text>
-                      <Text className="text-green-600 font-bold text-base">LIVE</Text>
+                    <View className="flex-row items-center bg-red-100 px-3 py-1 rounded-full">
+                      <Text className="text-red-600 font-bold text-base mr-1">●</Text>
+                      <Text className="text-red-600 font-bold text-base">LIVE</Text>
                     </View>
                     <Text className="text-gray-600 text-sm mt-1 text-right">
                       {user.last_location?.name}
@@ -188,7 +242,7 @@ const Leaderboard = () => {
               <View className="flex-1">
                 <View className="flex-row items-center">
                   <Text className="font-bold text-lg text-gray-800">
-                    {user.first_name} {user.last_name}
+                    {getRankingEmoji(user.id)}{user.first_name} {user.last_name}
                   </Text>
                   {user.id === data.id && (
                     <Text className="text-gray-500 ml-1">(You)</Text>
@@ -198,8 +252,8 @@ const Leaderboard = () => {
                   </Text>
                 </View>
                 <Text className="text-gray-600">{user.email}</Text>
-                {user.is_staff && (
-                  <Text className="text-blue-600 font-semibold mt-1">Staff Member</Text>
+                {user.group && (
+                  <Text className={getGroupColor(user.group.id)} font-medium mt-1>{user.group.name}</Text>
                 )}
               </View>
             </View>
