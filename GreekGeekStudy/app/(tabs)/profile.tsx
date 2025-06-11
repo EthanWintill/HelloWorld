@@ -1,14 +1,23 @@
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView } from 'react-native'
-import React from 'react'
+import React, { useState } from 'react'
+import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, Modal } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import { API_URL } from '@/constants';
 import { router } from 'expo-router';
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { Ionicons } from '@expo/vector-icons'
 
 const Profile = () => {
-  const { dashboardState } = useDashboard()
+  const { dashboardState, refreshDashboard } = useDashboard()
   const { isLoading, error, data } = dashboardState
+
+  // Notification toggles state
+  const [notifyOrgStudying, setNotifyOrgStudying] = useState(data?.notify_org_starts_studying ?? true)
+  const [notifyUserLeaves, setNotifyUserLeaves] = useState(data?.notify_user_leaves_zone ?? true)
+  const [notifyDeadline, setNotifyDeadline] = useState(data?.notify_study_deadline_approaching ?? true)
+  const [saving, setSaving] = useState(false)
+  const [modalVisible, setModalVisible] = useState(false)
 
   const signout = async () => {
     try {
@@ -22,6 +31,32 @@ const Profile = () => {
   const navigateToAdmin = () => {
     router.push('/(admin)');
   };
+
+  // Save notification settings
+  const handleSaveNotifications = async () => {
+    setSaving(true)
+    try {
+      const token = await AsyncStorage.getItem('accessToken')
+      if (!token) throw new Error('No access token found')
+      await axios.put(
+        `${API_URL}api/user/${data.id}/`,
+        {
+          notify_org_starts_studying: notifyOrgStudying,
+          notify_user_leaves_zone: notifyUserLeaves,
+          notify_study_deadline_approaching: notifyDeadline,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+      if (refreshDashboard) await refreshDashboard()
+      setModalVisible(false)
+    } catch (error) {
+      // Optionally show a toast or error UI
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (isLoading) {
     return <LoadingScreen />
@@ -80,7 +115,9 @@ const Profile = () => {
               <Text className="text-gray-700 ml-2">Change Password</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity className="flex-row items-center py-2 border-b border-gray-200">
+            <TouchableOpacity className="flex-row items-center py-2 border-b border-gray-200"
+              onPress={() => setModalVisible(true)}
+            >
               <Ionicons name="notifications-outline" size={20} color="#4B5563" className="mr-2" />
               <Text className="text-gray-700 ml-2">Notification Settings</Text>
             </TouchableOpacity>
@@ -90,6 +127,70 @@ const Profile = () => {
               <Text className="text-gray-700 ml-2">Help & Support</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Notification Settings Modal */}
+          <Modal
+            visible={modalVisible}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setModalVisible(false)}
+          >
+            <View className="flex-1 justify-center items-center bg-black/40">
+              <View className="bg-white p-6 rounded-lg w-11/12 max-w-xl">
+                <Text className="text-xl font-bold mb-4 text-center">Notification Settings</Text>
+                <View className="flex-row justify-between items-center mb-4">
+                  <Text className="text-gray-700 flex-1">Notify when someone in your org starts studying</Text>
+                  <Switch value={notifyOrgStudying} onValueChange={setNotifyOrgStudying} />
+                </View>
+                <View className="flex-row justify-between items-center mb-4">
+                  <Text className="text-gray-700 flex-1">Notify when a user leaves the study zone</Text>
+                  <Switch value={notifyUserLeaves} onValueChange={setNotifyUserLeaves} />
+                </View>
+                <View className="flex-row justify-between items-center mb-4">
+                  <Text className="text-gray-700 flex-1">Notify when a study period deadline is approaching</Text>
+                  <Switch value={notifyDeadline} onValueChange={setNotifyDeadline} />
+                </View>
+                <View className="flex-row justify-end mt-6">
+                  <TouchableOpacity
+                    onPress={() => setModalVisible(false)}
+                    className="px-4 py-2 rounded-lg bg-gray-200 mr-2"
+                  >
+                    <Text className="text-gray-700 font-bold">Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setSaving(true)
+                      try {
+                        const token = await AsyncStorage.getItem('accessToken')
+                        if (!token) throw new Error('No access token found')
+                        await axios.put(
+                          `${API_URL}api/user/${data.id}/`,
+                          {
+                            notify_org_starts_studying: notifyOrgStudying,
+                            notify_user_leaves_zone: notifyUserLeaves,
+                            notify_study_deadline_approaching: notifyDeadline,
+                          },
+                          {
+                            headers: { Authorization: `Bearer ${token}` },
+                          }
+                        )
+                        if (refreshDashboard) await refreshDashboard()
+                        setModalVisible(false)
+                      } catch (error) {
+                        // Optionally show a toast or error UI
+                      } finally {
+                        setSaving(false)
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-lg bg-green-600 ${saving ? 'opacity-60' : ''}`}
+                    disabled={saving}
+                  >
+                    <Text className="text-white font-bold">{saving ? 'Saving...' : 'Save'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </View>
 
         <TouchableOpacity 

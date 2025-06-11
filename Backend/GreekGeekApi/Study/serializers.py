@@ -66,10 +66,14 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(min_length=8, write_only=True, required=True)
     registration_code = serializers.CharField(write_only=True, required=True)
     last_location = LocationSerializer(read_only=True)
+    notify_org_starts_studying = serializers.BooleanField(required=False)
+    notify_user_leaves_zone = serializers.BooleanField(required=False)
+    notify_study_deadline_approaching = serializers.BooleanField(required=False)
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code', 'is_staff', 'live', 'last_location')
+        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code', 'is_staff', 'live', 'last_location',
+                  'notify_org_starts_studying', 'notify_user_leaves_zone', 'notify_study_deadline_approaching')
         read_only_fields = ('is_staff', 'live', 'last_location')
 
     def create(self, validated_data):
@@ -78,7 +82,6 @@ class UserSerializer(serializers.ModelSerializer):
             org = Org.objects.get(reg_code=registration_code)  # Assuming Org has a field `code`
         except Org.DoesNotExist:
             raise serializers.ValidationError("Invalid registration code.")
-        
         try:
             user = User.objects.create_user(
                 email=validated_data['email'],
@@ -161,7 +164,8 @@ class UserDashboardSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'first_name', 'last_name', 'phone_number', 
                  'is_staff', 'live', 'org', 'org_locations', 'org_users', 
                  'user_sessions', 'org_period_instances', 'active_period_setting',
-                 'last_location', 'total_hours')
+                 'last_location', 'total_hours',
+                 'notify_org_starts_studying', 'notify_user_leaves_zone', 'notify_study_deadline_approaching')
 
     def get_org_users(self, obj):
         from .utils import calculate_user_hours, get_or_create_period_instance

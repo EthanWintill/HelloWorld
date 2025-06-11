@@ -346,6 +346,17 @@ class UserDetail(APIView):
         serializer = UpdateUserSerializer(user, data=request.data)
         if serializer.is_valid():
             serializer.save()
+            # Add notification fields to update
+            notify_org_starts_studying = request.data.get('notify_org_starts_studying')
+            notify_user_leaves_zone = request.data.get('notify_user_leaves_zone')
+            notify_study_deadline_approaching = request.data.get('notify_study_deadline_approaching')
+            if notify_org_starts_studying is not None:
+                user.notify_org_starts_studying = notify_org_starts_studying
+            if notify_user_leaves_zone is not None:
+                user.notify_user_leaves_zone = notify_user_leaves_zone
+            if notify_study_deadline_approaching is not None:
+                user.notify_study_deadline_approaching = notify_study_deadline_approaching
+            user.save()
             return Response(serializer.data)
         raise exceptions.ParseError(detail="Invalid data")
 

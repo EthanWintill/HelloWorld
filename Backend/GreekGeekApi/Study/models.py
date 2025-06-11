@@ -106,6 +106,11 @@ class User(AbstractBaseUser):
     live = models.BooleanField(default=False)
     last_location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
 
+    # Notification settings
+    notify_org_starts_studying = models.BooleanField(default=True, help_text="Notify when someone in the same org starts studying.")
+    notify_user_leaves_zone = models.BooleanField(default=True, help_text="Notify when a user leaves the study zone.")
+    notify_study_deadline_approaching = models.BooleanField(default=True, help_text="Notify when a study period deadline is approaching.")
+
     USERNAME_FIELD = 'email'
 
     objects = UserManager()
