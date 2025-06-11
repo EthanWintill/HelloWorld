@@ -7,10 +7,10 @@ import uuid
 # Organization Model
 class Org(models.Model):
     name = models.CharField(max_length=255)
-    reg_code = models.CharField(max_length=255)
+    reg_code = models.CharField(max_length=255, unique=True)
     school = models.CharField(max_length=255)
-    study_req = models.FloatField()
-    study_goal = models.FloatField()
+    study_req = models.FloatField(default=2)
+    study_goal = models.FloatField(default=4)
 
     class Meta:
         ordering = ['id']

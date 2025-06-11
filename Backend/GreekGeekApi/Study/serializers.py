@@ -339,4 +339,69 @@ class StaffStatusSerializer(serializers.ModelSerializer):
         model = User
         fields = ('is_staff',)
 
+class OrgOwnerSignupSerializer(serializers.Serializer):
+    """
+    Serializer for creating a new organization and its owner user
+    """
+    # User fields
+    first_name = serializers.CharField(max_length=255)
+    last_name = serializers.CharField(max_length=255)
+    email = serializers.EmailField(
+        validators=[UniqueValidator(queryset=User.objects.all())]
+    )
+    password = serializers.CharField(min_length=8, write_only=True)
+    phone_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    
+    # Organization fields
+    org_name = serializers.CharField(max_length=255)
+    school = serializers.CharField(max_length=255)
+    reg_code = serializers.CharField(max_length=255)
+    
+    def validate_reg_code(self, value):
+        """Check if registration code is already in use"""
+        if Org.objects.filter(reg_code=value).exists():
+            raise serializers.ValidationError("Registration code is already in use.")
+        return value
+    
+    def create(self, validated_data):
+        """Create both the organization and the owner user"""
+        # Extract org data
+        org_data = {
+            'name': validated_data['org_name'],
+            'school': validated_data['school'],
+            'reg_code': validated_data['reg_code'],
+            'study_req': 2.0,  # Default values
+            'study_goal': 4.0,
+        }
+        
+        # Create organization
+        org = Org.objects.create(**org_data)
+        
+        # Extract user data
+        user_data = {
+            'first_name': validated_data['first_name'],
+            'last_name': validated_data['last_name'],
+            'email': validated_data['email'],
+            'phone_number': validated_data.get('phone_number', ''),
+            'org': org,
+            'is_staff': True,  # Org owner is staff/admin
+        }
+        
+        # Create user
+        user = User.objects.create_user(
+            email=user_data['email'],
+            password=validated_data['password'],
+            first_name=user_data['first_name'],
+            last_name=user_data['last_name'],
+            phone_number=user_data['phone_number'],
+            org=user_data['org']
+        )
+        user.is_staff = True
+        user.save()
+        
+        return {
+            'user': user,
+            'org': org
+        }
+
 

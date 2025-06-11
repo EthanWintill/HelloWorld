@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+
+{% block title %}Welcome to GreekGeek{% endblock %}
+
+{% block content %}
+<div class="hero-section bg-primary text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">Welcome to GreekGeek</h1>
+                <p class="lead mb-4">Your comprehensive study management platform for Greek organizations.</p>
+                <div id="hero-buttons">
+                    <!-- Buttons will be populated by JavaScript based on auth state -->
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="text-center">
+                    <i class="fas fa-graduation-cap" style="font-size: 8rem; opacity: 0.8;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock text-primary mb-3" style="font-size: 3rem;"></i>
+                    <h5 class="card-title">Time Tracking</h5>
+                    <p class="card-text">Clock in and out seamlessly. Track your study sessions and manage your time effectively.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-users text-primary mb-3" style="font-size: 3rem;"></i>
+                    <h5 class="card-title">Organization Management</h5>
+                    <p class="card-text">Manage your Greek organization with powerful tools for member coordination and administration.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-bar text-primary mb-3" style="font-size: 3rem;"></i>
+                    <h5 class="card-title">Analytics & Reports</h5>
+                    <p class="card-text">Get insights into study patterns and organizational performance with detailed reports.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="dashboard-section" class="container my-5" style="display: none;">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4">Your Dashboard</h2>
+            <div id="dashboard-content">
+                <!-- Dashboard content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="pricing-section" class="container my-5" style="display: none;">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">Join an Organization</h2>
+                <p class="lead">Subscribe to GreekGeek to get access to all features and join your organization.</p>
+            </div>
+            <div class="card shadow-lg">
+                <div class="card-body p-5 text-center">
+                    <h3 class="card-title mb-3">Annual Subscription</h3>
+                    <div class="display-4 fw-bold text-primary mb-3">$99<small class="fs-5 text-muted">/year</small></div>
+                    <ul class="list-unstyled mb-4">
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Time tracking and study management</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Organization coordination tools</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Analytics and reports</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Mobile app access</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>24/7 support</li>
+                    </ul>
+                    <button class="btn btn-primary btn-lg" onclick="purchaseSubscription()">
+                        <i class="fas fa-credit-card me-2"></i>Subscribe Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    .hero-section {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    }
+    .card {
+        transition: transform 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    .user-info-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    .org-info-card {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    updateLandingPage();
+});
+
+function updateLandingPage() {
+    const token = localStorage.getItem('access_token');
+    const heroButtons = document.getElementById('hero-buttons');
+    const dashboardSection = document.getElementById('dashboard-section');
+    const pricingSection = document.getElementById('pricing-section');
+    
+    if (token) {
+        heroButtons.innerHTML = `
+            <button class="btn btn-light btn-lg me-3" onclick="openApp()">
+                <i class="fas fa-mobile-alt me-2"></i>Open App
+            </button>
+            <button class="btn btn-outline-light btn-lg" onclick="logout()">
+                <i class="fas fa-sign-out-alt me-2"></i>Logout
+            </button>
+        `;
+        dashboardSection.style.display = 'block';
+        pricingSection.style.display = 'none';
+        loadUserDashboard();
+    } else {
+        heroButtons.innerHTML = `
+            <a href="/login/" class="btn btn-light btn-lg me-3">
+                <i class="fas fa-sign-in-alt me-2"></i>Admin Sign In
+            </a>
+            <a href="/register/" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-plus me-2"></i>Start Free Trial
+            </a>
+        `;
+        dashboardSection.style.display = 'none';
+        pricingSection.style.display = 'none';
+    }
+}
+
+function loadUserDashboard() {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+    
+    fetch('/api/dashboard/', {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const dashboardContent = document.getElementById('dashboard-content');
+        const pricingSection = document.getElementById('pricing-section');
+        
+        if (!data.org) {
+            // User doesn't have an organization - show pricing
+            dashboardContent.style.display = 'none';
+            pricingSection.style.display = 'block';
+        } else {
+            // User has an organization - show dashboard
+            dashboardContent.style.display = 'block';
+            pricingSection.style.display = 'none';
+            
+            dashboardContent.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card user-info-card">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-user text-primary me-2"></i>Welcome back, ${data.first_name}!
+                                </h5>
+                                <div class="mb-2">
+                                    <strong>Name:</strong> ${data.first_name} ${data.last_name}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Email:</strong> ${data.email}
+                                </div>
+                                ${data.phone_number ? `<div class="mb-2"><strong>Phone:</strong> ${data.phone_number}</div>` : ''}
+                                <div class="mb-2">
+                                    <strong>Role:</strong> 
+                                    <span class="badge ${data.is_staff ? 'bg-success' : 'bg-primary'}">${data.is_staff ? 'Staff Member' : 'Member'}</span>
+                                </div>
+                                ${data.group ? `<div class="mb-2"><strong>Group:</strong> ${data.group.name}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <div class="card org-info-card">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="fas fa-university text-primary me-2"></i>Organization Info
+                                </h5>
+                                <div class="mb-2">
+                                    <strong>Organization:</strong> ${data.org.name}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>School:</strong> ${data.org.school}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Registration Code:</strong> 
+                                    <code>${data.org.reg_code}</code>
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Study Requirement:</strong> ${data.org.study_req} hours
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Study Goal:</strong> ${data.org.study_goal} hours
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Ready to start studying?</h5>
+                                <p class="card-text">Use the GreekGeek mobile app to track your study time and manage your activities.</p>
+                                <button class="btn btn-primary btn-lg" onclick="openApp()">
+                                    <i class="fas fa-mobile-alt me-2"></i>Open App
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error loading dashboard:', error);
+        const dashboardContent = document.getElementById('dashboard-content');
+        dashboardContent.innerHTML = `
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error loading dashboard information. Please try refreshing the page.
+            </div>
+        `;
+    });
+}
+
+function openApp() {
+    // This would redirect to the mobile app or main application
+    alert('This would open the GreekGeek application. All study tracking and organization management is done in the app.');
+}
+
+function purchaseSubscription() {
+    // Redirect to the subscription purchase page
+    window.location.href = '/purchase/';
+}
+
+function logout() {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    window.location.reload();
+}
+</script>
+{% endblock %} 

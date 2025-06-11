@@ -1,6 +1,6 @@
 from rest_framework import permissions, viewsets, status, exceptions
 
-from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer, NotificationTokenSerializer, GroupSerializer, CreateGroupSerializer, UpdateGroupSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer, NotificationTokenSerializer, GroupSerializer, CreateGroupSerializer, UpdateGroupSerializer, OrgOwnerSignupSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 
@@ -814,6 +814,31 @@ class GroupManagementView(APIView):
             {"detail": f"Group '{group_name}' has been deleted"}, 
             status=status.HTTP_200_OK
         )
+
+class OrgOwnerSignupView(CreateAPIView):
+    """
+    View for creating a new organization and its owner user account.
+    This is intended for website signup where someone wants to create a new organization.
+    """
+    permission_classes = (AllowAny,)
+    serializer_class = OrgOwnerSignupSerializer
+    
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            result = serializer.save()
+            
+            # Prepare response data
+            user_data = UserSerializer(result['user']).data
+            org_data = OrgSerializer(result['org']).data
+            
+            return Response({
+                'detail': 'Organization and owner account created successfully',
+                'user': user_data,
+                'organization': org_data
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 

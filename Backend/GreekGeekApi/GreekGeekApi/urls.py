@@ -4,7 +4,7 @@ from rest_framework import routers
 from rest_framework_simplejwt.views import TokenRefreshView, TokenObtainPairView
 
 
-from Study import views, admin
+from Study import views, admin, web_views
 
 
 router = routers.DefaultRouter()
@@ -14,8 +14,16 @@ router = routers.DefaultRouter()
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
+    # Web routes
+    path('', web_views.landing_page, name='landing-page'),
+    path('login/', web_views.login_page, name='login-page'),
+    path('register/', web_views.register_page, name='register-page'),
+    path('success/', web_views.success_page, name='success-page'),
+    
+    # API routes
     path('admin/', admin.admin.site.urls),
     path('api/signup/', views.Signup.as_view(), name='signup'),
+    path('api/org-owner-signup/', views.OrgOwnerSignupView.as_view(), name='org-owner-signup'),
     path('api/token/', TokenObtainPairView.as_view()),
     path('api/token/refresh/', TokenRefreshView.as_view()),
     path('api/user/<int:pk>/', views.UserDetail.as_view(), name='user-detail'),
