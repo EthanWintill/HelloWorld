@@ -126,7 +126,7 @@ const Profile = () => {
                   <Ionicons name="mail" size={24} color="#16A34A" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sm text-gray-500 mb-1">Email Address</Text>
+                  <Text className="text-sm text-gray-500 mb-1">Email Address lil bruh</Text>
                   <Text className="text-gray-900 font-medium text-lg">{data.email}</Text>
                 </View>
               </View>
