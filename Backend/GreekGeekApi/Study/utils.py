@@ -184,56 +184,59 @@ def send_push_notification(token_list, title, body, data=None):
     except Exception as e:
         return {"error": str(e)}
 
-def send_notification_to_users(user_ids, title, body, data=None):
+def should_notify_user(user, notification_type):
     """
-    Sends notifications to specified users
-    
-    Args:
-        user_ids (list): List of user IDs to send notifications to
-        title (str): Notification title
-        body (str): Notification body
-        data (dict, optional): Additional data to send with the notification
-    
-    Returns:
-        dict: Result of the notification sending operation
+    Checks if a user should receive a notification of the given type based on their settings.
+    notification_type: str, one of 'org_starts_studying', 'user_leaves_zone', 'study_deadline_approaching'
     """
-    from .models import NotificationToken
+    if notification_type == 'org_starts_studying':
+        return getattr(user, 'notify_org_starts_studying', True)
+    elif notification_type == 'user_leaves_zone':
+        return getattr(user, 'notify_user_leaves_zone', True)
+    elif notification_type == 'study_deadline_approaching':
+        return getattr(user, 'notify_study_deadline_approaching', True)
+    return True
+
+def send_notification_to_users(user_ids, title, body, data=None, notification_type=None):
+    """
+    Sends notifications to specified users, respecting their notification settings if notification_type is provided.
+    """
+    from .models import NotificationToken, User
     
+    if notification_type:
+        users = User.objects.filter(id__in=user_ids)
+        filtered_ids = [u.id for u in users if should_notify_user(u, notification_type)]
+    else:
+        filtered_ids = user_ids
+    if not filtered_ids:
+        return {"warning": "No valid user IDs provided or no users found with the specified IDs, this could be from notification settings"}
     tokens = NotificationToken.objects.filter(
-        user__id__in=user_ids,
+        user__id__in=filtered_ids,
         is_active=True
     ).values_list('token', flat=True)
-    
     token_list = list(tokens)
-    
     if not token_list:
         return {"error": "No active tokens found for the specified users"}
-    
     return send_push_notification(token_list, title, body, data)
 
-def send_notification_to_org(org_id, title, body, data=None):
+
+def send_notification_to_org(org_id, title, body, data=None, notification_type=None):
     """
-    Sends notifications to all active users in an organization
-    
-    Args:
-        org_id (int): Organization ID
-        title (str): Notification title
-        body (str): Notification body
-        data (dict, optional): Additional data to send with the notification
-    
-    Returns:
-        dict: Result of the notification sending operation
+    Sends notifications to all active users in an organization, respecting their notification settings if notification_type is provided.
     """
-    from .models import NotificationToken
+    from .models import NotificationToken, User
     
+    if notification_type:
+        users = User.objects.filter(org_id=org_id)
+        filtered_ids = [u.id for u in users if should_notify_user(u, notification_type)]
+    else:
+        filtered_ids = list(User.objects.filter(org_id=org_id).values_list('id', flat=True))
+
     tokens = NotificationToken.objects.filter(
-        user__org_id=org_id,
+        user__id__in=filtered_ids,
         is_active=True
     ).values_list('token', flat=True)
-    
     token_list = list(tokens)
-    
     if not token_list:
         return {"error": "No active tokens found for the specified organization"}
-    
-    return send_push_notification(token_list, title, body, data) 
+    return send_push_notification(token_list, title, body, data)

@@ -22,7 +22,7 @@ from datetime import timedelta
 import json
 import requests
 
-from .utils import get_or_create_period_instance, send_notification_to_users
+from .utils import get_or_create_period_instance, send_notification_to_users, send_notification_to_org
 
 @api_view(['GET'])
 def debug(request):
@@ -218,7 +218,7 @@ class ClockOut(APIView):
             current_user.save()
 
             #Send Notification to user
-            send_notification_to_users([current_user.id], "Clocked Out", f"Your study session at {last_session.location.name} has been ended")
+            send_notification_to_users([current_user.id], "Clocked Out", f"Your study session at {last_session.location.name} has been ended", notification_type='user_leaves_zone')
 
             return Response({
                 "detail": "Successfully clocked out.",
@@ -269,6 +269,22 @@ class ClockIn(APIView):
         current_user.last_location = location
         current_user.save()
 
+        # Notify all users in the org except the one who just clocked in
+        location_name = location.name if location else "Unknown location"
+        user_name = f"{current_user.first_name} {current_user.last_name}".strip()
+        send_notification_to_org(
+            org_id=org.id,
+            title="Someone Started Studying!",
+            body=f"{user_name} is now studying at {location_name}.",
+            data={
+                "type": "user_studying",
+                "user_id": current_user.id,
+                "user_name": user_name,
+                "location": location_name
+            },
+            notification_type='org_starts_studying'
+        )
+
         return Response({
             "detail": "Successfully clocked in.",
             "start_time": current_time,
@@ -311,7 +327,9 @@ class GetOrgByCode(RetrieveAPIView):
         except Org.DoesNotExist:
             raise Http404
         serializer = self.get_serializer(org)
-        return Response(serializer.data)
+        data = serializer.data
+        data['test'] = True
+        return Response(data)
             
 
 
@@ -344,6 +362,17 @@ class UserDetail(APIView):
         serializer = UpdateUserSerializer(user, data=request.data)
         if serializer.is_valid():
             serializer.save()
+            # Add notification fields to update
+            notify_org_starts_studying = request.data.get('notify_org_starts_studying')
+            notify_user_leaves_zone = request.data.get('notify_user_leaves_zone')
+            notify_study_deadline_approaching = request.data.get('notify_study_deadline_approaching')
+            if notify_org_starts_studying is not None:
+                user.notify_org_starts_studying = notify_org_starts_studying
+            if notify_user_leaves_zone is not None:
+                user.notify_user_leaves_zone = notify_user_leaves_zone
+            if notify_study_deadline_approaching is not None:
+                user.notify_study_deadline_approaching = notify_study_deadline_approaching
+            user.save()
             return Response(serializer.data)
         raise exceptions.ParseError(detail="Invalid data")
 
