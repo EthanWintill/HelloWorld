@@ -15,11 +15,13 @@ const SignIn = () => {
         email: '',
         password: '',
     })
+    const [formError, setFormError] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
 
     const submit = async () => {
         setIsSubmitting(true);
+        setFormError(false)
         try {
             const response = await axios.post(`${API_URL}api/token/`, {
                 email: form.email.toLowerCase(),
@@ -33,10 +35,10 @@ const SignIn = () => {
                 await AsyncStorage.setItem('refreshToken', data.refresh);
                 router.replace('/study');
             } else {
-                Alert.alert('Invalid Credentials', 'Please check your email and password.');
+                setFormError(true)
             }
-        } catch (error) {
-            Alert.alert('Error', 'Something went wrong. Please try again later.');
+        } catch (error: any) {
+            setFormError(true)
         } finally {
             setIsSubmitting(false);
         }
@@ -71,6 +73,7 @@ const SignIn = () => {
                                 })}
                                 otherStyles="mt-7"
                                 keyboardType="email-address"
+                                required={false}
                             />
                             <FormField
                                 title="Password"
@@ -81,12 +84,17 @@ const SignIn = () => {
                                     password: e
                                 })}
                                 otherStyles="mt-7"
+                                required={false}
                             />
+                            {formError && (
+                                <Text className="text-m text-red-500 mt-4 font-pregular text-center">No account found with those credentials, please try again.</Text>
+                            )}
 
                             <CustomButton
                                 title="Sign In"
                                 handlePress={submit}
                                 containerStyles='mt-7'
+                                isLoading={isSubmitting}
                             />
                             <View className="justify-center pt-5 flex-row gap-2">
                                 <Text className="text-lg text-gray-600 font-pregular">

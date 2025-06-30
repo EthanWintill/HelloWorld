@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+
+{% block title %}Subscribe - GreekGeek{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">Subscribe to GreekGeek</h2>
+                <p class="lead">Get access to all features and join your Greek organization.</p>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-lg">
+                        <div class="card-body p-4 text-center">
+                            <h3 class="card-title mb-3">Annual Subscription</h3>
+                            <div class="display-4 fw-bold text-primary mb-3">$99<small class="fs-5 text-muted">/year</small></div>
+                            <ul class="list-unstyled mb-4 text-start">
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Time tracking and study management</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Organization coordination tools</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Analytics and reports</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Mobile app access</li>
+                                <li class="mb-2"><i class="fas fa-check text-success me-2"></i>24/7 support</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow">
+                        <div class="card-body p-4">
+                            <h5 class="card-title mb-4">Payment Information</h5>
+                            
+                            <div id="error-message" class="alert alert-danger d-none" role="alert">
+                                <!-- Error messages will be displayed here -->
+                            </div>
+                            
+                            <div id="success-message" class="alert alert-success d-none" role="alert">
+                                <!-- Success message will be displayed here -->
+                            </div>
+                            
+                            <form id="payment-form">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email Address</label>
+                                    <input type="email" class="form-control" id="email" name="email" required readonly>
+                                    <div class="form-text">This will be linked to your account</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="organization_code" class="form-label">Organization Registration Code (Optional)</label>
+                                    <input type="text" class="form-control" id="organization_code" name="organization_code" placeholder="Enter your organization's code">
+                                    <div class="form-text">Enter the code to automatically join your organization after payment</div>
+                                </div>
+                                
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Credit Card Information</h6>
+                                        <div class="mb-3">
+                                            <label for="card_number" class="form-label">Card Number</label>
+                                            <input type="text" class="form-control" id="card_number" name="card_number" placeholder="1234 5678 9012 3456" required>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <label for="expiry_date" class="form-label">Expiry Date</label>
+                                                <input type="text" class="form-control" id="expiry_date" name="expiry_date" placeholder="MM/YY" required>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <label for="cvv" class="form-label">CVV</label>
+                                                <input type="text" class="form-control" id="cvv" name="cvv" placeholder="123" required>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="card_name" class="form-label">Name on Card</label>
+                                            <input type="text" class="form-control" id="card_name" name="card_name" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary btn-lg" id="purchase-btn">
+                                        <span id="purchase-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                        <span id="purchase-text">
+                                            <i class="fas fa-credit-card me-2"></i>Subscribe for $99/year
+                                        </span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <p class="text-muted">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    Your payment information is secure and encrypted. You can cancel your subscription at any time.
+                </p>
+                <a href="/" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<style>
+    .card {
+        transition: transform 0.2s;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if user is logged in
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        window.location.href = '/login/';
+        return;
+    }
+    
+    // Load user email
+    loadUserEmail();
+    
+    const form = document.getElementById('payment-form');
+    const errorMessage = document.getElementById('error-message');
+    const successMessage = document.getElementById('success-message');
+    const purchaseBtn = document.getElementById('purchase-btn');
+    const purchaseSpinner = document.getElementById('purchase-spinner');
+    const purchaseText = document.getElementById('purchase-text');
+    
+    // Format card number input
+    document.getElementById('card_number').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\s/g, '').replace(/[^0-9]/gi, '');
+        let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+        this.value = formattedValue;
+    });
+    
+    // Format expiry date
+    document.getElementById('expiry_date').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length >= 2) {
+            value = value.substring(0, 2) + '/' + value.substring(2, 4);
+        }
+        this.value = value;
+    });
+    
+    // CVV input restriction
+    document.getElementById('cvv').addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^0-9]/g, '').substring(0, 4);
+    });
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Show loading state
+        purchaseBtn.disabled = true;
+        purchaseSpinner.classList.remove('d-none');
+        purchaseText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Processing...';
+        errorMessage.classList.add('d-none');
+        successMessage.classList.add('d-none');
+        
+        const formData = new FormData(form);
+        const data = {
+            organization_code: formData.get('organization_code') || null,
+            payment_method: {
+                card_number: formData.get('card_number').replace(/\s/g, ''),
+                expiry_date: formData.get('expiry_date'),
+                cvv: formData.get('cvv'),
+                name: formData.get('card_name')
+            }
+        };
+        
+        try {
+            const response = await fetch('/api/subscribe/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                // Show success message
+                successMessage.textContent = 'Subscription successful! Welcome to GreekGeek. Redirecting to your dashboard...';
+                successMessage.classList.remove('d-none');
+                
+                // Redirect to home page after a delay
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 3000);
+            } else {
+                // Show error message
+                let errorText = 'Payment failed. Please check your information and try again.';
+                
+                if (result.detail) {
+                    errorText = result.detail;
+                } else if (result.error) {
+                    errorText = result.error;
+                } else if (result.organization_code) {
+                    errorText = `Organization Code: ${result.organization_code.join(' ')}`;
+                }
+                
+                errorMessage.textContent = errorText;
+                errorMessage.classList.remove('d-none');
+            }
+        } catch (error) {
+            console.error('Purchase error:', error);
+            errorMessage.textContent = 'An error occurred while processing your payment. Please try again.';
+            errorMessage.classList.remove('d-none');
+        } finally {
+            // Reset loading state
+            purchaseBtn.disabled = false;
+            purchaseSpinner.classList.add('d-none');
+            purchaseText.innerHTML = '<i class="fas fa-credit-card me-2"></i>Subscribe for $99/year';
+        }
+    });
+});
+
+async function loadUserEmail() {
+    const token = localStorage.getItem('access_token');
+    try {
+        const response = await fetch('/api/dashboard/', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const userData = await response.json();
+            document.getElementById('email').value = userData.email;
+        }
+    } catch (error) {
+        console.error('Error loading user email:', error);
+    }
+}
+</script>
+{% endblock %} 

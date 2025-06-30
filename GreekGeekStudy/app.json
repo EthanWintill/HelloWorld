@@ -4,35 +4,45 @@
     "slug": "GreekGeekStudy",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sambryant.GreekGeekStudy"
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+      "bundleIdentifier": "com.sambryant.GreekGeekStudy",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "gimme dat shi",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
+    "owner": "greekgeek",
+    "android": {},
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "output": "static"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "gimme dat shi.",
+          "locationWhenInUsePermission": "gimme dat shi.",
+          "locationAlwaysPermission": "gimme dat shi.",
+          "isIosBackgroundLocationEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "e02cfc27-5220-4245-965f-135f68bcb3ac"
+      }
     }
   }
 }

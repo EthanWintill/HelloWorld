@@ -1,0 +1,397 @@
+{% extends 'base.html' %}
+
+{% block title %}Start Free Trial - GreekGeek{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <h2 class="card-title">Start Your Free Trial</h2>
+                        <p class="text-muted">Create your organization and admin account</p>
+                    </div>
+                    
+                    <div id="error-container">
+                        <!-- Error messages will be displayed here -->
+                    </div>
+                    
+                    <div id="success-message" class="alert alert-success d-none" role="alert">
+                        <!-- Success message will be displayed here -->
+                    </div>
+                    
+                    <form id="register-form">
+                        <h5 class="mb-3 text-primary border-bottom pb-2">Personal Information</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password_confirm" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                            <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="phone_number" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="phone_number" name="phone_number">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <h5 class="mb-3 text-primary border-bottom pb-2">Organization Information</h5>
+                        
+                        <div class="mb-3">
+                            <label for="org_name" class="form-label">Organization Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="org_name" name="org_name" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="school" class="form-label">School/University <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="school" name="school" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reg_code" class="form-label">Custom Registration Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="reg_code" name="reg_code" required placeholder="Create a unique code for your members">
+                            <div class="form-text">This code will be used by your members to join your organization.</div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="register-btn">
+                                <span id="register-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                <span id="register-text">Start Free Trial</span>
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-3">
+                        <p class="mb-0">Already have an admin account? <a href="/login/">Admin Sign In</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Redirect if already logged in
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        window.location.href = '/';
+        return;
+    }
+    
+    const form = document.getElementById('register-form');
+    const errorContainer = document.getElementById('error-container');
+    const successMessage = document.getElementById('success-message');
+    const registerBtn = document.getElementById('register-btn');
+    const registerSpinner = document.getElementById('register-spinner');
+    const registerText = document.getElementById('register-text');
+    
+    // Clear field errors on input
+    form.addEventListener('input', function(e) {
+        if (e.target.classList.contains('is-invalid')) {
+            e.target.classList.remove('is-invalid');
+            const feedback = e.target.nextElementSibling;
+            if (feedback && feedback.classList.contains('invalid-feedback')) {
+                feedback.textContent = '';
+            }
+        }
+    });
+    
+    // Real-time password confirmation validation
+    const passwordField = document.getElementById('password');
+    const confirmPasswordField = document.getElementById('password_confirm');
+    
+    function validatePasswordMatch() {
+        const password = passwordField.value;
+        const confirmPassword = confirmPasswordField.value;
+        
+        if (confirmPassword && password !== confirmPassword) {
+            confirmPasswordField.classList.add('is-invalid');
+            confirmPasswordField.nextElementSibling.textContent = 'Passwords do not match.';
+        } else if (confirmPassword) {
+            confirmPasswordField.classList.remove('is-invalid');
+            confirmPasswordField.nextElementSibling.textContent = '';
+        }
+    }
+    
+    passwordField.addEventListener('input', validatePasswordMatch);
+    confirmPasswordField.addEventListener('input', validatePasswordMatch);
+    
+    function clearAllErrors() {
+        // Clear all field errors
+        const invalidFields = form.querySelectorAll('.is-invalid');
+        invalidFields.forEach(field => {
+            field.classList.remove('is-invalid');
+            const feedback = field.nextElementSibling;
+            if (feedback && feedback.classList.contains('invalid-feedback')) {
+                feedback.textContent = '';
+            }
+        });
+        
+        // Clear error messages
+        errorContainer.innerHTML = '';
+        successMessage.classList.add('d-none');
+    }
+    
+    function displayErrors(errors) {
+        errorContainer.innerHTML = '';
+        errors.forEach(error => {
+            // Remove trailing periods for consistency
+            const cleanError = error.replace(/\.+$/, '');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'alert alert-danger mb-2';
+            errorDiv.textContent = cleanError;
+            errorContainer.appendChild(errorDiv);
+        });
+    }
+    
+    function scrollToTop() {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+    
+    function highlightFieldError(fieldName, errorText) {
+        const field = document.getElementById(fieldName);
+        if (field) {
+            field.classList.add('is-invalid');
+            const feedback = field.nextElementSibling;
+            if (feedback && feedback.classList.contains('invalid-feedback')) {
+                feedback.textContent = errorText;
+            }
+        }
+    }
+    
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Clear previous errors
+        clearAllErrors();
+        
+        // Show loading state
+        registerBtn.disabled = true;
+        registerSpinner.classList.remove('d-none');
+        registerText.textContent = 'Creating Organization...';
+        
+        const formData = new FormData(form);
+        const password = formData.get('password');
+        const passwordConfirm = formData.get('password_confirm');
+        
+        // Frontend validation
+        let hasErrors = false;
+        
+        // Check if passwords match
+        if (password !== passwordConfirm) {
+            highlightFieldError('password_confirm', 'Passwords do not match.');
+            hasErrors = true;
+        }
+        
+        // Check required fields
+        const requiredFields = ['first_name', 'last_name', 'email', 'password', 'password_confirm', 'org_name', 'school', 'reg_code'];
+        requiredFields.forEach(fieldName => {
+            const value = formData.get(fieldName);
+            if (!value || value.trim() === '') {
+                highlightFieldError(fieldName, 'This field is required.');
+                hasErrors = true;
+            }
+        });
+        
+        // Check email format
+        const email = formData.get('email');
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (email && !emailRegex.test(email)) {
+            highlightFieldError('email', 'Please enter a valid email address.');
+            hasErrors = true;
+        }
+        
+        if (hasErrors) {
+            displayErrors(['Please correct the highlighted fields above']);
+            scrollToTop();
+            
+            // Reset loading state
+            registerBtn.disabled = false;
+            registerSpinner.classList.add('d-none');
+            registerText.textContent = 'Start Free Trial';
+            return;
+        }
+        
+        const data = {
+            first_name: formData.get('first_name').trim(),
+            last_name: formData.get('last_name').trim(),
+            email: formData.get('email').trim(),
+            password: password,
+            phone_number: formData.get('phone_number')?.trim() || '',
+            org_name: formData.get('org_name').trim(),
+            school: formData.get('school').trim(),
+            reg_code: formData.get('reg_code').trim()
+        };
+        
+        try {
+            const response = await fetch('/api/org-owner-signup/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok) {
+                // Auto-login the newly created user
+                registerText.textContent = 'Signing you in...';
+                
+                try {
+                    const loginResponse = await fetch('/api/token/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: data.email,
+                            password: data.password
+                        })
+                    });
+                    
+                    if (loginResponse.ok) {
+                        const loginResult = await loginResponse.json();
+                        
+                        // Store tokens
+                        localStorage.setItem('access_token', loginResult.access);
+                        localStorage.setItem('refresh_token', loginResult.refresh);
+                        
+                        // Store organization data for success page
+                        sessionStorage.setItem('new_org_data', JSON.stringify({
+                            user: result.user,
+                            organization: result.organization
+                        }));
+                        
+                        // Redirect to success page
+                        window.location.href = '/success/';
+                    } else {
+                        // Login failed, show success message and redirect to login
+                        successMessage.innerHTML = `
+                            <strong>Success!</strong> Your organization and admin account have been created successfully!<br>
+                            <strong>Organization:</strong> ${result.organization.name}<br>
+                            <strong>Registration Code:</strong> <code>${result.organization.reg_code}</code><br>
+                            Please <a href="/login/">sign in</a> to continue.
+                        `;
+                        successMessage.classList.remove('d-none');
+                        scrollToTop();
+                        
+                        setTimeout(() => {
+                            window.location.href = '/login/';
+                        }, 3000);
+                    }
+                } catch (loginError) {
+                    console.error('Auto-login error:', loginError);
+                    // Show success message and redirect to login as fallback
+                    successMessage.innerHTML = `
+                        <strong>Success!</strong> Your organization and admin account have been created successfully!<br>
+                        <strong>Organization:</strong> ${result.organization.name}<br>
+                        <strong>Registration Code:</strong> <code>${result.organization.reg_code}</code><br>
+                        Please <a href="/login/">sign in</a> to continue.
+                    `;
+                    successMessage.classList.remove('d-none');
+                    scrollToTop();
+                    
+                    setTimeout(() => {
+                        window.location.href = '/login/';
+                    }, 3000);
+                }
+            } else {
+                // Map API field names to form field names
+                const fieldMapping = {
+                    'first_name': 'first_name',
+                    'last_name': 'last_name',
+                    'email': 'email',
+                    'password': 'password',
+                    'phone_number': 'phone_number',
+                    'org_name': 'org_name',
+                    'school': 'school',
+                    'reg_code': 'reg_code'
+                };
+                
+                let allErrors = [];
+                
+                // Handle field-specific errors
+                Object.keys(fieldMapping).forEach(apiField => {
+                    if (result[apiField]) {
+                        const formField = fieldMapping[apiField];
+                        let errorText = Array.isArray(result[apiField]) ? result[apiField].join(' ') : result[apiField];
+                        errorText = errorText.replace(/\.+$/, ''); // Remove trailing periods
+                        
+                        highlightFieldError(formField, errorText);
+                        
+                        // Collect field errors for top messages
+                        const fieldLabel = document.querySelector(`label[for="${formField}"]`)?.textContent.replace(' *', '') || formField;
+                        allErrors.push(`${fieldLabel}: ${errorText}`);
+                    }
+                });
+                
+                // Handle general errors
+                if (result.detail) {
+                    let detailError = result.detail;
+                    detailError = detailError.replace(/\.+$/, ''); // Remove trailing periods
+                    allErrors.unshift(detailError); // Add to beginning
+                } else if (result.non_field_errors) {
+                    const nonFieldErrors = Array.isArray(result.non_field_errors) ? result.non_field_errors : [result.non_field_errors];
+                    nonFieldErrors.forEach(error => {
+                        const cleanError = error.replace(/\.+$/, ''); // Remove trailing periods
+                        allErrors.unshift(cleanError); // Add to beginning
+                    });
+                }
+                
+                // If no errors collected, add generic message
+                if (allErrors.length === 0) {
+                    allErrors.push('Registration failed. Please check your information and try again');
+                }
+                
+                displayErrors(allErrors);
+                scrollToTop();
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            displayErrors(['An error occurred while creating your account. Please try again']);
+            scrollToTop();
+        } finally {
+            // Reset loading state
+            registerBtn.disabled = false;
+            registerSpinner.classList.add('d-none');
+            registerText.textContent = 'Start Free Trial';
+        }
+    });
+});
+</script>
+{% endblock %} 

@@ -3,6 +3,228 @@ from .models import Org, User, Group, Location, Session
 from rest_framework import status
 from rest_framework.test import APIClient
 from django.urls import reverse
+from datetime import datetime, timedelta
+from django.utils import timezone
+
+
+class UserDashboardTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        
+        # Create two organizations
+        self.org1 = Org.objects.create(
+            name="Test Organization 1",
+            reg_code="12345",
+            school="Test School 1",
+            study_req=10.0,
+            study_goal=20.0
+        )
+        
+        self.org2 = Org.objects.create(
+            name="Test Organization 2",
+            reg_code="67890",
+            school="Test School 2",
+            study_req=15.0,
+            study_goal=25.0
+        )
+        
+        # Create locations for each org
+        self.location1_org1 = Location.objects.create(
+            name="Location 1 Org1",
+            org=self.org1,
+            gps_lat=40.0,
+            gps_long=75.0,
+            gps_radius=10.0
+        )
+        
+        self.location2_org1 = Location.objects.create(
+            name="Location 2 Org1",
+            org=self.org1,
+            gps_lat=41.0,
+            gps_long=76.0,
+            gps_radius=10.0
+        )
+        
+        self.location_org2 = Location.objects.create(
+            name="Location Org2",
+            org=self.org2,
+            gps_lat=42.0,
+            gps_long=77.0,
+            gps_radius=10.0
+        )
+        
+        # Create users for each org
+        self.user1_org1 = User.objects.create_user(
+            email="user1@org1.com",
+            password="password123",
+            first_name="User1",
+            last_name="Org1",
+            org=self.org1
+        )
+        
+        self.user2_org1 = User.objects.create_user(
+            email="user2@org1.com",
+            password="password123",
+            first_name="User2",
+            last_name="Org1",
+            org=self.org1
+        )
+        
+        self.user_org2 = User.objects.create_user(
+            email="user@org2.com",
+            password="password123",
+            first_name="User",
+            last_name="Org2",
+            org=self.org2
+        )
+        
+        # Create sessions for users
+        self.session1_user1 = Session.objects.create(
+            start_time=timezone.now() - timedelta(hours=2),
+            hours=2.0,
+            user=self.user1_org1,
+            org=self.org1,
+            location=self.location1_org1
+        )
+        
+        self.session2_user1 = Session.objects.create(
+            start_time=timezone.now() - timedelta(hours=4),
+            hours=1.5,
+            user=self.user1_org1,
+            org=self.org1,
+            location=self.location2_org1
+        )
+        
+        self.session_user2 = Session.objects.create(
+            start_time=timezone.now() - timedelta(hours=3),
+            hours=3.0,
+            user=self.user2_org1,
+            org=self.org1,
+            location=self.location1_org1
+        )
+        
+        self.session_user_org2 = Session.objects.create(
+            start_time=timezone.now() - timedelta(hours=1),
+            hours=1.0,
+            user=self.user_org2,
+            org=self.org2,
+            location=self.location_org2
+        )
+
+    def test_dashboard_authentication_required(self):
+        """Test that unauthenticated users cannot access the dashboard"""
+        url = reverse('dashboard')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_dashboard_data_user1(self):
+        """Test that user1 gets correct data from their org and only their sessions"""
+        self.client.force_authenticate(user=self.user1_org1)
+        url = reverse('dashboard')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Check org data
+        self.assertEqual(response.data['org']['id'], self.org1.id)
+        self.assertEqual(response.data['org']['name'], self.org1.name)
+        
+        # Check locations (should only see org1 locations)
+        locations = response.data['org_locations']
+        self.assertEqual(len(locations), 2)
+        location_names = {loc['name'] for loc in locations}
+        self.assertEqual(location_names, {'Location 1 Org1', 'Location 2 Org1'})
+        
+        # Check users (should only see org1 users)
+        users = response.data['org_users']
+        self.assertEqual(len(users), 2)
+        user_emails = {user['email'] for user in users}
+        self.assertEqual(user_emails, {'user1@org1.com', 'user2@org1.com'})
+        
+        # Check sessions (should only see user1's sessions)
+        sessions = response.data['user_sessions']
+        self.assertEqual(len(sessions), 2)
+        session_hours = {session['hours'] for session in sessions}
+        self.assertEqual(session_hours, {2.0, 1.5})
+
+    def test_dashboard_data_user2(self):
+        """Test that user2 gets correct data from their org and only their sessions"""
+        self.client.force_authenticate(user=self.user2_org1)
+        url = reverse('dashboard')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Check sessions (should only see user2's session)
+        sessions = response.data['user_sessions']
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(sessions[0]['hours'], 3.0)
+
+    def test_dashboard_data_org2_user(self):
+        """Test that org2 user gets correct data from their org"""
+        self.client.force_authenticate(user=self.user_org2)
+        url = reverse('dashboard')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Check org data
+        self.assertEqual(response.data['org']['id'], self.org2.id)
+        
+        # Check locations (should only see org2 location)
+        locations = response.data['org_locations']
+        self.assertEqual(len(locations), 1)
+        self.assertEqual(locations[0]['name'], 'Location Org2')
+        
+        # Check users (should only see org2 users)
+        users = response.data['org_users']
+        self.assertEqual(len(users), 1)
+        self.assertEqual(users[0]['email'], 'user@org2.com')
+        
+        # Check sessions (should only see org2 user's session)
+        sessions = response.data['user_sessions']
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(sessions[0]['hours'], 1.0)
+
+    def test_dashboard_data_completeness(self):
+        """Test that all required fields are present in the response"""
+        self.client.force_authenticate(user=self.user1_org1)
+        url = reverse('dashboard')
+        response = self.client.get(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Check user data
+        self.assertIn('id', response.data)
+        self.assertIn('email', response.data)
+        self.assertIn('first_name', response.data)
+        self.assertIn('last_name', response.data)
+        
+        # Check org data
+        self.assertIn('org', response.data)
+        org_data = response.data['org']
+        self.assertIn('name', org_data)
+        self.assertIn('reg_code', org_data)
+        self.assertIn('school', org_data)
+        self.assertIn('study_req', org_data)
+        self.assertIn('study_goal', org_data)
+        
+        # Check location data
+        self.assertIn('org_locations', response.data)
+        if response.data['org_locations']:
+            location = response.data['org_locations'][0]
+            self.assertIn('name', location)
+            self.assertIn('gps_lat', location)
+            self.assertIn('gps_long', location)
+            self.assertIn('gps_radius', location)
+        
+        # Check session data
+        self.assertIn('user_sessions', response.data)
+        if response.data['user_sessions']:
+            session = response.data['user_sessions'][0]
+            self.assertIn('start_time', session)
+            self.assertIn('hours', session)
+            self.assertIn('location', session)
 
 class ClockInClockOutTestCase(TestCase):
     def setUp(self):
@@ -40,7 +262,7 @@ class ClockInClockOutTestCase(TestCase):
         self.assertEqual(Session.objects.count(), 1)
 
         response = self.client.post(self.inUrl, {"location_id":self.location.id})
-        self.assertEqual(response.status_code, status.HTTP_208_ALREADY_REPORTED)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Session.objects.count(), 1)
 
         response = self.client.post(self.outUrl)
@@ -79,7 +301,8 @@ class LocationCrudTestCase(TestCase):
             "org": self.org1.id,
             "gps_lat": 40.0,
             "gps_long": 75.0,
-            "gps_radius": 10.0
+            "gps_radius": 10.0,
+            "gps_address": "123 Test Street, Test City, TC 12345"
         }
         self.location1_org1 = Location.objects.create(
             name = "Test Location Org1",
@@ -174,6 +397,34 @@ class LocationCrudTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['name'], self.location1_org1.name)
+        
+    def test_create_location_with_address(self):
+        self.client.force_authenticate(user=self.staffuser_org1)
+        url = reverse('location-create')
+        response = self.client.post(url, self.location_data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Location.objects.count(), 3)
+        
+        # Verify the address was saved
+        created_location = Location.objects.get(name="Test Location")
+        self.assertEqual(created_location.gps_address, "123 Test Street, Test City, TC 12345")
+        
+    def test_create_location_without_address(self):
+        self.client.force_authenticate(user=self.staffuser_org1)
+        url = reverse('location-create')
+        location_data_no_address = {
+            "name": "Test Location No Address",
+            "org": self.org1.id,
+            "gps_lat": 41.0,
+            "gps_long": 76.0,
+            "gps_radius": 15.0
+        }
+        response = self.client.post(url, location_data_no_address)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        
+        # Verify the address is None/null
+        created_location = Location.objects.get(name="Test Location No Address")
+        self.assertIsNone(created_location.gps_address)
         
         
     
@@ -315,7 +566,10 @@ class UserDetailTestCase(TestCase):
         
         # API client to simulate requests
         self.client = APIClient()
-    
+        
+        # Add staff management URL
+        self.staff_management_url = '/api/users/{}/staff-status/'
+
     def get_token(self, user):
         """Helper function to get JWT token for a user."""
         url = self.token_url
@@ -421,6 +675,70 @@ class UserDetailTestCase(TestCase):
         response = self.client.delete(url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_user_details_includes_staff_status(self):
+        """Test: User details response should include is_staff field"""
+        token = self.get_token(self.user1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = reverse('user-detail', args=[self.user1.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('is_staff', response.data)
+        self.assertEqual(response.data['is_staff'], False)
+
+    def test_staff_promotion_by_admin_same_org(self):
+        """Test: Admin can promote a user to staff in the same org"""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = self.staff_management_url.format(self.user1.id)
+        response = self.client.patch(url, {'is_staff': True}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user1.refresh_from_db()
+        self.assertTrue(self.user1.is_staff)
+
+    def test_staff_demotion_by_admin_same_org(self):
+        """Test: Admin can demote a staff user in the same org"""
+        # First promote a user to staff
+        self.user1.is_staff = True
+        self.user1.save()
+        
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = self.staff_management_url.format(self.user1.id)
+        response = self.client.patch(url, {'is_staff': False}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user1.refresh_from_db()
+        self.assertFalse(self.user1.is_staff)
+
+    def test_staff_promotion_by_admin_different_org(self):
+        """Test: Admin cannot promote a user in a different org"""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = self.staff_management_url.format(self.user3.id)
+        response = self.client.patch(url, {'is_staff': True}, format='json')
+        self.assertNotEqual(response.status_code, status.HTTP_200_OK)
+        self.user3.refresh_from_db()
+        self.assertFalse(self.user3.is_staff)
+
+    def test_staff_promotion_by_non_admin(self):
+        """Test: Non-admin users cannot promote others to staff"""
+        token = self.get_token(self.user1)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = self.staff_management_url.format(self.user2.id)
+        response = self.client.patch(url, {'is_staff': True}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.user2.refresh_from_db()
+        self.assertFalse(self.user2.is_staff)
+
+    def test_admin_cannot_modify_own_staff_status(self):
+        """Test: Admin cannot modify their own staff status"""
+        token = self.get_token(self.staff_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        url = self.staff_management_url.format(self.staff_user.id)
+        response = self.client.patch(url, {'is_staff': False}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.staff_user.refresh_from_db()
+        self.assertTrue(self.staff_user.is_staff)
+
     
 class SignupTestCase(TestCase):
     def setUp(self):
@@ -489,6 +807,17 @@ class SignupTestCase(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(User.objects.count(), 0)
+
+    def test_new_user_not_staff(self):
+        """Test that newly registered users are not staff by default"""
+        response = self.client.post(
+            self.signup_url,
+            data=self.valid_payload,
+            format='json'
+        )
+        self.assertEqual(response.status_code, 201)
+        user = User.objects.get(email=self.valid_payload['email'])
+        self.assertFalse(user.is_staff)
 
 class OrganizationTestCase(TestCase):
     
@@ -603,4 +932,6 @@ class OrganizationTestCase(TestCase):
         # Verify that the location is correctly assigned
         self.assertEqual(self.user1.last_location, location)
         self.assertEqual(self.user1.last_location.name, "Test Location")
+
+
 

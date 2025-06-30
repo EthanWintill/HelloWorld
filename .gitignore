@@ -6,3 +6,5 @@ Backend/.venv
 .DS_Store
 
 .env
+*.tar.gz
+GreekGeekStudy.app
