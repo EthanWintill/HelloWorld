@@ -327,7 +327,9 @@ class GetOrgByCode(RetrieveAPIView):
         except Org.DoesNotExist:
             raise Http404
         serializer = self.get_serializer(org)
-        return Response(serializer.data)
+        data = serializer.data
+        data['test'] = True
+        return Response(data)
             
 
 
