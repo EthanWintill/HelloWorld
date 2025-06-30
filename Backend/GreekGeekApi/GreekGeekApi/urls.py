@@ -19,6 +19,8 @@ urlpatterns = [
     path('login/', web_views.login_page, name='login-page'),
     path('register/', web_views.register_page, name='register-page'),
     path('success/', web_views.success_page, name='success-page'),
+    path('forgot-password/', web_views.forgot_password_page, name='forgot-password-page'),
+    path('reset-password/<str:token>/', web_views.reset_password_page, name='reset-password-page'),
     
     # API routes
     path('admin/', admin.admin.site.urls),
@@ -39,6 +41,11 @@ urlpatterns = [
     path('api/location/<int:pk>/', views.GetLocation.as_view(), name='location-detail'),
     path('api/dashboard/', views.UserDashboard.as_view(), name='dashboard'),
     path('api/users/<int:pk>/staff-status/', views.ManageStaffStatus.as_view(), name='manage-staff-status'),
+    
+    # Password reset API routes
+    path('api/password-reset/request/', views.PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('api/password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path('api/password-reset/validate/<str:token>/', views.PasswordResetTokenValidationView.as_view(), name='password-reset-validate'),
     
     # Period-related URLs
     path('api/period-settings/', views.PeriodSettingViewSet.as_view({'get': 'list', 'post': 'create'}), name='period-settings'),

@@ -30,4 +30,13 @@ def register_page(request):
 
 def success_page(request):
     """Success page function-based view"""
-    return render(request, 'success.html') 
+    return render(request, 'success.html')
+
+def forgot_password_page(request):
+    """Forgot password page function-based view"""
+    return render(request, 'forgot-password.html')
+
+def reset_password_page(request, token):
+    """Reset password page function-based view"""
+    # The token validation will be handled by JavaScript on the frontend
+    return render(request, 'reset-password.html', {'token': token}) 

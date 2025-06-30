@@ -840,6 +840,198 @@ class OrgOwnerSignupView(CreateAPIView):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class PasswordResetRequestView(APIView):
+    """
+    API view to request a password reset via email
+    """
+    permission_classes = (AllowAny,)
+    
+    def post(self, request, format=None):
+        email = request.data.get('email')
+        
+        if not email:
+            return Response(
+                {"detail": "Email is required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            user = User.objects.get(email=email)
+            
+            # Deactivate any existing password reset tokens for this user
+            from .models import PasswordResetToken
+            PasswordResetToken.objects.filter(user=user, is_used=False).update(is_used=True)
+            
+            # Generate a new reset token
+            import secrets
+            reset_token = secrets.token_urlsafe(32)
+            
+            # Set expiration time (1 hour from now)
+            expires_at = timezone.now() + timedelta(hours=1)
+            
+            # Create password reset token record
+            password_reset = PasswordResetToken.objects.create(
+                user=user,
+                token=reset_token,
+                expires_at=expires_at
+            )
+            
+            # Send email
+            from .email_service import EmailService
+            email_service = EmailService()
+            
+            user_name = f"{user.first_name} {user.last_name}".strip()
+            if user_name == "":
+                user_name = None
+                
+            email_sent = email_service.send_password_reset_email(
+                user_email=user.email,
+                reset_token=reset_token,
+                user_name=user_name
+            )
+            
+            if email_sent:
+                return Response({
+                    "detail": "Password reset email sent successfully. Please check your email for instructions."
+                }, status=status.HTTP_200_OK)
+            else:
+                # Clean up the token if email failed
+                password_reset.delete()
+                return Response(
+                    {"detail": "Failed to send email. Please try again later."}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+                
+        except User.DoesNotExist:
+            # For security, we don't reveal whether an email exists or not
+            return Response({
+                "detail": "If an account with this email exists, a password reset email has been sent."
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response(
+                {"detail": "An error occurred. Please try again later."}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    API view to confirm password reset with token and set new password
+    """
+    permission_classes = (AllowAny,)
+    
+    def post(self, request, format=None):
+        token = request.data.get('token')
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+        
+        if not all([token, new_password, confirm_password]):
+            return Response(
+                {"detail": "Token, new password, and confirm password are required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if new_password != confirm_password:
+            return Response(
+                {"detail": "Passwords do not match"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if len(new_password) < 8:
+            return Response(
+                {"detail": "Password must be at least 8 characters long"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            from .models import PasswordResetToken
+            
+            # Find the password reset token
+            password_reset = PasswordResetToken.objects.get(
+                token=token,
+                is_used=False
+            )
+            
+            # Check if token is expired
+            if password_reset.is_expired():
+                return Response(
+                    {"detail": "Password reset token has expired. Please request a new one."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Reset the password
+            user = password_reset.user
+            user.set_password(new_password)
+            user.save()
+            
+            # Mark token as used
+            password_reset.is_used = True
+            password_reset.save()
+            
+            # Send confirmation email
+            from .email_service import EmailService
+            email_service = EmailService()
+            
+            user_name = f"{user.first_name} {user.last_name}".strip()
+            if user_name == "":
+                user_name = None
+                
+            email_service.send_password_reset_confirmation_email(
+                user_email=user.email,
+                user_name=user_name
+            )
+            
+            return Response({
+                "detail": "Password has been reset successfully. You can now log in with your new password."
+            }, status=status.HTTP_200_OK)
+            
+        except PasswordResetToken.DoesNotExist:
+            return Response(
+                {"detail": "Invalid or expired password reset token"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except Exception as e:
+            return Response(
+                {"detail": "An error occurred. Please try again later."}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class PasswordResetTokenValidationView(APIView):
+    """
+    API view to validate a password reset token (for frontend to check if token is valid)
+    """
+    permission_classes = (AllowAny,)
+    
+    def get(self, request, token, format=None):
+        try:
+            from .models import PasswordResetToken
+            
+            password_reset = PasswordResetToken.objects.get(
+                token=token,
+                is_used=False
+            )
+            
+            if password_reset.is_expired():
+                return Response(
+                    {"valid": False, "detail": "Token has expired"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            return Response({
+                "valid": True,
+                "user_email": password_reset.user.email,
+                "expires_at": password_reset.expires_at
+            }, status=status.HTTP_200_OK)
+            
+        except PasswordResetToken.DoesNotExist:
+            return Response(
+                {"valid": False, "detail": "Invalid token"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 
 
 

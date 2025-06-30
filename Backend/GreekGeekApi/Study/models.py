@@ -192,3 +192,19 @@ class NotificationToken(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.token[:10]}..."
 
+class PasswordResetToken(models.Model):
+    """
+    Stores password reset tokens for users
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_reset_tokens')
+    token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    def is_expired(self):
+        return now() > self.expires_at
+
+    def __str__(self):
+        return f"Password reset for {self.user.email} - {self.token[:10]}..."
+

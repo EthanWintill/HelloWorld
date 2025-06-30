@@ -7,12 +7,17 @@ django-rest-framework==0.1.0
 djangorestframework==3.15.2
 djangorestframework-simplejwt==5.3.1
 drf-standardized-errors==0.14.1
+ecdsa==0.19.1
 exponent_server_sdk==2.1.0
 idna==3.10
+MarkupSafe==3.0.2
 psycopg2-binary==2.9.9
 PyJWT==2.10.0
 python-dotenv==1.0.1
+python-http-client==3.3.7
 requests==2.32.3
+sendgrid==6.12.4
 six==1.17.0
 sqlparse==0.5.1
 urllib3==2.3.0
+Werkzeug==3.1.3
