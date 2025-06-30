@@ -183,3 +183,6 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_ALL_ORIGINS = True  # For development only - remove in production
+
+# Frontend URL for password reset emails
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8000')  # Default to Django dev server
