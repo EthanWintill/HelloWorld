@@ -328,7 +328,7 @@ class GetOrgByCode(RetrieveAPIView):
             raise Http404
         serializer = self.get_serializer(org)
         data = serializer.data
-        data['test'] = True
+        data['thug'] = 'shake'
         return Response(data)
             
 
