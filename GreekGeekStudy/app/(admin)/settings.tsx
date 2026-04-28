@@ -1,44 +1,127 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Switch } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { Ionicons } from '@expo/vector-icons'
+import axios from 'axios'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import API_URL from '../../constants/api'
+
+type AdminSettingsState = {
+  requireLocationVerification: boolean
+  allowManualEntry: boolean
+  requirePhotos: boolean
+  photoFrequency: number
+  sendReminderEmails: boolean
+  reminderFrequency: string
+  sendProgressReports: boolean
+  progressReportFrequency: string
+  requirePasswordReset: number
+  sessionTimeout: number
+  allowMultipleDevices: boolean
+  debugMode: boolean
+  maintenanceMode: boolean
+}
+
+const defaultSettings: AdminSettingsState = {
+  requireLocationVerification: true,
+  allowManualEntry: false,
+  requirePhotos: false,
+  photoFrequency: 60,
+  sendReminderEmails: true,
+  reminderFrequency: 'daily',
+  sendProgressReports: true,
+  progressReportFrequency: 'weekly',
+  requirePasswordReset: 90,
+  sessionTimeout: 30,
+  allowMultipleDevices: true,
+  debugMode: false,
+  maintenanceMode: false,
+}
+
+const mapApiToSettings = (apiSettings: any): AdminSettingsState => ({
+  requireLocationVerification: apiSettings.require_location_verification,
+  allowManualEntry: apiSettings.allow_manual_entry,
+  requirePhotos: false,
+  photoFrequency: apiSettings.photo_frequency,
+  sendReminderEmails: apiSettings.send_reminder_emails,
+  reminderFrequency: apiSettings.reminder_frequency,
+  sendProgressReports: apiSettings.send_progress_reports,
+  progressReportFrequency: apiSettings.progress_report_frequency,
+  requirePasswordReset: apiSettings.require_password_reset_days,
+  sessionTimeout: apiSettings.session_timeout_minutes,
+  allowMultipleDevices: apiSettings.allow_multiple_devices,
+  debugMode: apiSettings.debug_mode,
+  maintenanceMode: apiSettings.maintenance_mode,
+})
+
+const mapSettingsToApi = (settings: AdminSettingsState) => ({
+  require_location_verification: settings.requireLocationVerification,
+  allow_manual_entry: settings.allowManualEntry,
+  require_photos: false,
+  maintenance_mode: settings.maintenanceMode,
+})
 
 const AdminSettings = () => {
-  const { dashboardState } = useDashboard()
+  const { dashboardState, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
-  
-  // Settings state
-  const [settings, setSettings] = useState({
-    // Verification settings
-    requireLocationVerification: true,
-    allowManualEntry: false,
-    requirePhotos: false,
-    photoFrequency: 60, // minutes
-    
-    // Notification settings
-    sendReminderEmails: true,
-    reminderFrequency: 'daily', // 'daily', 'weekly', 'never'
-    sendProgressReports: true,
-    progressReportFrequency: 'weekly', // 'daily', 'weekly', 'monthly', 'never'
-    
-    // Security settings
-    requirePasswordReset: 90, // days
-    sessionTimeout: 30, // minutes
-    allowMultipleDevices: true,
-    
-    // Advanced settings
-    debugMode: false,
-    maintenanceMode: false,
-  })
+  const [settings, setSettings] = useState<AdminSettingsState>(defaultSettings)
+  const [settingsLoading, setSettingsLoading] = useState(true)
+  const [savingSettings, setSavingSettings] = useState(false)
 
-  const handleSaveSettings = () => {
-    // This would normally call an API to update the settings
-    Alert.alert(
-      "Success",
-      "Settings have been saved.",
-      [{ text: "OK" }]
-    )
+  const fetchSettings = async () => {
+    try {
+      setSettingsLoading(true)
+      const token = await AsyncStorage.getItem('accessToken')
+      if (!token) throw new Error('No access token found')
+
+      const response = await axios.get(`${API_URL}api/org-settings/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setSettings(mapApiToSettings(response.data))
+    } catch (error: any) {
+      console.error('Error loading settings:', error)
+      if (error.response?.status === 401) {
+        await handleUnauthorized()
+      } else {
+        Alert.alert("Error", "Failed to load settings. Defaults are shown until this is fixed.")
+      }
+    } finally {
+      setSettingsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!isLoading && data?.is_staff) {
+      fetchSettings()
+    } else if (!isLoading) {
+      setSettingsLoading(false)
+    }
+  }, [isLoading, data?.is_staff])
+
+  const handleSaveSettings = async () => {
+    try {
+      setSavingSettings(true)
+      const token = await AsyncStorage.getItem('accessToken')
+      if (!token) throw new Error('No access token found')
+
+      const response = await axios.put(
+        `${API_URL}api/org-settings/`,
+        mapSettingsToApi(settings),
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setSettings(mapApiToSettings(response.data))
+      Alert.alert("Success", "Settings have been saved.", [{ text: "OK" }])
+    } catch (error: any) {
+      console.error('Error saving settings:', error)
+      if (error.response?.status === 401) {
+        await handleUnauthorized()
+      } else {
+        Alert.alert("Error", error.response?.data?.detail || "Failed to save settings. Please try again.")
+      }
+    } finally {
+      setSavingSettings(false)
+    }
   }
 
   const handleResetSettings = () => {
@@ -50,31 +133,34 @@ const AdminSettings = () => {
         { 
           text: "Reset", 
           style: "destructive",
-          onPress: () => {
-            setSettings({
-              requireLocationVerification: true,
-              allowManualEntry: false,
-              requirePhotos: false,
-              photoFrequency: 60,
-              sendReminderEmails: true,
-              reminderFrequency: 'daily',
-              sendProgressReports: true,
-              progressReportFrequency: 'weekly',
-              requirePasswordReset: 90,
-              sessionTimeout: 30,
-              allowMultipleDevices: true,
-              debugMode: false,
-              maintenanceMode: false,
-            })
-            
-            Alert.alert("Success", "Settings have been reset to defaults.")
+          onPress: async () => {
+            try {
+              setSavingSettings(true)
+              const token = await AsyncStorage.getItem('accessToken')
+              if (!token) throw new Error('No access token found')
+
+              const response = await axios.delete(`${API_URL}api/org-settings/`, {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              setSettings(mapApiToSettings(response.data))
+              Alert.alert("Success", "Settings have been reset to defaults.")
+            } catch (error: any) {
+              console.error('Error resetting settings:', error)
+              if (error.response?.status === 401) {
+                await handleUnauthorized()
+              } else {
+                Alert.alert("Error", "Failed to reset settings. Please try again.")
+              }
+            } finally {
+              setSavingSettings(false)
+            }
           }
         }
       ]
     )
   }
 
-  if (isLoading) {
+  if (isLoading || settingsLoading) {
     return <LoadingScreen />
   }
 
@@ -134,11 +220,11 @@ const AdminSettings = () => {
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
               <Text className="font-psemibold">Require Photos</Text>
-              <Text className="text-gray-600 text-sm">Require periodic photos during study sessions</Text>
+              <Text className="text-gray-600 text-sm">Photo verification is not available yet</Text>
             </View>
             <Switch
-              value={settings.requirePhotos}
-              onValueChange={(value) => setSettings({...settings, requirePhotos: value})}
+              value={false}
+              onValueChange={() => Alert.alert("Coming Soon", "Photo verification is intentionally deferred for now.")}
               trackColor={{ false: "#767577", true: "#16A34A" }}
               thumbColor="#f4f3f4"
             />
@@ -165,143 +251,79 @@ const AdminSettings = () => {
         
         {/* Notification Settings */}
         <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <Text className="text-xl font-psemibold mb-4">Notifications</Text>
+          <Text className="text-xl font-psemibold mb-4">Planned Notifications</Text>
           
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
-              <Text className="font-psemibold">Send Reminder Emails</Text>
-              <Text className="text-gray-600 text-sm">Send emails to remind users to study</Text>
+              <Text className="font-psemibold text-gray-500">Reminder Emails</Text>
+              <Text className="text-gray-500 text-sm">Not active yet. Reminder scheduling is not enabled.</Text>
             </View>
             <Switch
-              value={settings.sendReminderEmails}
-              onValueChange={(value) => setSettings({...settings, sendReminderEmails: value})}
+              value={false}
+              disabled={true}
               trackColor={{ false: "#767577", true: "#16A34A" }}
               thumbColor="#f4f3f4"
             />
           </View>
           
-          {settings.sendReminderEmails && (
-            <View className="mb-4">
-              <Text className="font-psemibold mb-1">Reminder Frequency</Text>
-              <View className="flex-row mt-1">
-                <TouchableOpacity 
-                  onPress={() => setSettings({...settings, reminderFrequency: 'daily'})}
-                  className={`px-4 py-2 rounded-lg mr-2 ${settings.reminderFrequency === 'daily' ? 'bg-green-600' : 'bg-gray-200'}`}
-                >
-                  <Text className={settings.reminderFrequency === 'daily' ? 'text-white' : 'text-gray-700'}>Daily</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setSettings({...settings, reminderFrequency: 'weekly'})}
-                  className={`px-4 py-2 rounded-lg mr-2 ${settings.reminderFrequency === 'weekly' ? 'bg-green-600' : 'bg-gray-200'}`}
-                >
-                  <Text className={settings.reminderFrequency === 'weekly' ? 'text-white' : 'text-gray-700'}>Weekly</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setSettings({...settings, reminderFrequency: 'never'})}
-                  className={`px-4 py-2 rounded-lg ${settings.reminderFrequency === 'never' ? 'bg-green-600' : 'bg-gray-200'}`}
-                >
-                  <Text className={settings.reminderFrequency === 'never' ? 'text-white' : 'text-gray-700'}>Never</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-          
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
-              <Text className="font-psemibold">Send Progress Reports</Text>
-              <Text className="text-gray-600 text-sm">Send emails with study progress reports</Text>
+              <Text className="font-psemibold text-gray-500">Progress Report Emails</Text>
+              <Text className="text-gray-500 text-sm">Not active yet. Report generation is manual from Reports.</Text>
             </View>
             <Switch
-              value={settings.sendProgressReports}
-              onValueChange={(value) => setSettings({...settings, sendProgressReports: value})}
+              value={false}
+              disabled={true}
               trackColor={{ false: "#767577", true: "#16A34A" }}
               thumbColor="#f4f3f4"
             />
           </View>
-          
-          {settings.sendProgressReports && (
-            <View className="mb-4">
-              <Text className="font-psemibold mb-1">Progress Report Frequency</Text>
-              <View className="flex-row flex-wrap mt-1">
-                <TouchableOpacity 
-                  onPress={() => setSettings({...settings, progressReportFrequency: 'daily'})}
-                  className={`px-4 py-2 rounded-lg mr-2 mb-2 ${settings.progressReportFrequency === 'daily' ? 'bg-green-600' : 'bg-gray-200'}`}
-                >
-                  <Text className={settings.progressReportFrequency === 'daily' ? 'text-white' : 'text-gray-700'}>Daily</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setSettings({...settings, progressReportFrequency: 'weekly'})}
-                  className={`px-4 py-2 rounded-lg mr-2 mb-2 ${settings.progressReportFrequency === 'weekly' ? 'bg-green-600' : 'bg-gray-200'}`}
-                >
-                  <Text className={settings.progressReportFrequency === 'weekly' ? 'text-white' : 'text-gray-700'}>Weekly</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setSettings({...settings, progressReportFrequency: 'monthly'})}
-                  className={`px-4 py-2 rounded-lg mr-2 mb-2 ${settings.progressReportFrequency === 'monthly' ? 'bg-green-600' : 'bg-gray-200'}`}
-                >
-                  <Text className={settings.progressReportFrequency === 'monthly' ? 'text-white' : 'text-gray-700'}>Monthly</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  onPress={() => setSettings({...settings, progressReportFrequency: 'never'})}
-                  className={`px-4 py-2 rounded-lg mb-2 ${settings.progressReportFrequency === 'never' ? 'bg-green-600' : 'bg-gray-200'}`}
-                >
-                  <Text className={settings.progressReportFrequency === 'never' ? 'text-white' : 'text-gray-700'}>Never</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
         </View>
         
         {/* Security Settings */}
         <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <Text className="text-xl font-psemibold mb-4">Security</Text>
+          <Text className="text-xl font-psemibold mb-4">Planned Security Controls</Text>
           
           <View className="mb-4">
-            <Text className="font-psemibold mb-1">Password Reset Period (days)</Text>
+            <Text className="font-psemibold mb-1 text-gray-500">Password Reset Period</Text>
             <View className="flex-row items-center">
               <TextInput
                 value={settings.requirePasswordReset.toString()}
-                onChangeText={(text) => {
-                  const days = parseInt(text) || 90
-                  setSettings({...settings, requirePasswordReset: days})
-                }}
-                className="border border-gray-300 rounded-lg p-2 w-20 mr-2"
+                editable={false}
+                className="border border-gray-200 bg-gray-100 rounded-lg p-2 w-20 mr-2 text-gray-500"
                 keyboardType="numeric"
               />
-              <Text className="text-gray-600">days (0 = never)</Text>
+              <Text className="text-gray-500">not active yet</Text>
             </View>
             <Text className="text-gray-500 text-sm mt-1">
-              Require users to reset their password after this many days
+              Password age enforcement needs an auth policy pass before launch.
             </Text>
           </View>
           
           <View className="mb-4">
-            <Text className="font-psemibold mb-1">Session Timeout (minutes)</Text>
+            <Text className="font-psemibold mb-1 text-gray-500">Session Timeout</Text>
             <View className="flex-row items-center">
               <TextInput
                 value={settings.sessionTimeout.toString()}
-                onChangeText={(text) => {
-                  const minutes = parseInt(text) || 30
-                  setSettings({...settings, sessionTimeout: minutes})
-                }}
-                className="border border-gray-300 rounded-lg p-2 w-20 mr-2"
+                editable={false}
+                className="border border-gray-200 bg-gray-100 rounded-lg p-2 w-20 mr-2 text-gray-500"
                 keyboardType="numeric"
               />
-              <Text className="text-gray-600">minutes</Text>
+              <Text className="text-gray-500">not active yet</Text>
             </View>
             <Text className="text-gray-500 text-sm mt-1">
-              Automatically log out inactive users after this many minutes
+              Current JWT tokens do not support server-side inactivity timeout.
             </Text>
           </View>
           
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
-              <Text className="font-psemibold">Allow Multiple Devices</Text>
-              <Text className="text-gray-600 text-sm">Allow users to be logged in on multiple devices</Text>
+              <Text className="font-psemibold text-gray-500">Allow Multiple Devices</Text>
+              <Text className="text-gray-500 text-sm">Not active yet. Device session tracking is not enabled.</Text>
             </View>
             <Switch
-              value={settings.allowMultipleDevices}
-              onValueChange={(value) => setSettings({...settings, allowMultipleDevices: value})}
+              value={false}
+              disabled={true}
               trackColor={{ false: "#767577", true: "#16A34A" }}
               thumbColor="#f4f3f4"
             />
@@ -314,12 +336,12 @@ const AdminSettings = () => {
           
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
-              <Text className="font-psemibold">Debug Mode</Text>
-              <Text className="text-gray-600 text-sm">Enable detailed logging for troubleshooting</Text>
+              <Text className="font-psemibold text-gray-500">Debug Mode</Text>
+              <Text className="text-gray-500 text-sm">Not active yet. Server logging is configured outside the app.</Text>
             </View>
             <Switch
-              value={settings.debugMode}
-              onValueChange={(value) => setSettings({...settings, debugMode: value})}
+              value={false}
+              disabled={true}
               trackColor={{ false: "#767577", true: "#16A34A" }}
               thumbColor="#f4f3f4"
             />
@@ -359,16 +381,18 @@ const AdminSettings = () => {
         <View className="flex-row justify-between mb-4">
           <TouchableOpacity 
             onPress={handleResetSettings}
-            className="bg-red-500 p-3 rounded-lg flex-1 mr-2 items-center"
+            disabled={savingSettings}
+            className={`p-3 rounded-lg flex-1 mr-2 items-center ${savingSettings ? 'bg-red-300' : 'bg-red-500'}`}
           >
             <Text className="text-white font-psemibold">Reset to Defaults</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
             onPress={handleSaveSettings}
-            className="bg-green-600 p-3 rounded-lg flex-1 ml-2 items-center"
+            disabled={savingSettings}
+            className={`p-3 rounded-lg flex-1 ml-2 items-center ${savingSettings ? 'bg-green-300' : 'bg-green-600'}`}
           >
-            <Text className="text-white font-psemibold">Save Settings</Text>
+            <Text className="text-white font-psemibold">{savingSettings ? 'Saving...' : 'Save Settings'}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -376,4 +400,4 @@ const AdminSettings = () => {
   )
 }
 
-export default AdminSettings 
+export default AdminSettings

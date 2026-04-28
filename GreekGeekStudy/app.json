@@ -11,7 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.sambryant.GreekGeekStudy",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "gimme dat shi",
+        "NSLocationWhenInUseUsageDescription": "GreekGeek uses your location to verify that study sessions are started from approved study locations.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -26,9 +26,9 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "gimme dat shi.",
-          "locationWhenInUsePermission": "gimme dat shi.",
-          "locationAlwaysPermission": "gimme dat shi.",
+          "locationAlwaysAndWhenInUsePermission": "GreekGeek uses background location to detect when you leave an approved study location and end your active study session.",
+          "locationWhenInUsePermission": "GreekGeek uses your location to verify that study sessions are started from approved study locations.",
+          "locationAlwaysPermission": "GreekGeek uses background location to detect when you leave an approved study location and end your active study session.",
           "isIosBackgroundLocationEnabled": true
         }
       ]

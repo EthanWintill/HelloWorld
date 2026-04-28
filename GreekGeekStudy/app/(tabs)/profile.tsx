@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, Modal } from 'react-native'
+import { Alert, Linking, StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, Modal } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URL } from '@/constants';
@@ -31,6 +31,41 @@ const Profile = () => {
   const navigateToAdmin = () => {
     router.push('/(admin)');
   };
+
+  const openUrl = async (path: string) => {
+    await Linking.openURL(`${API_URL}${path}`)
+  }
+
+  const handleChangePassword = async () => {
+    await Linking.openURL(`${API_URL}forgot-password/`)
+  }
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your GreekGeek account and sign you out. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('accessToken')
+              if (!token) throw new Error('No access token found')
+              await axios.delete(`${API_URL}api/me/`, {
+                headers: { Authorization: `Bearer ${token}` },
+              })
+              await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'dashboardData'])
+              router.replace('/(auth)/sign-in')
+            } catch (error) {
+              Alert.alert("Error", "Unable to delete your account. Please try again or contact support.")
+            }
+          }
+        }
+      ]
+    )
+  }
 
   // Save notification settings
   const handleSaveNotifications = async () => {
@@ -126,7 +161,7 @@ const Profile = () => {
                   <Ionicons name="mail" size={24} color="#16A34A" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sm text-gray-500 mb-1">Email Address lil bruh</Text>
+                  <Text className="text-sm text-gray-500 mb-1">Email Address</Text>
                   <Text className="text-gray-900 font-medium text-lg">{data.email}</Text>
                 </View>
               </View>
@@ -162,13 +197,40 @@ const Profile = () => {
                 <Ionicons name="notifications-outline" size={20} color="#4B5563" className="mr-2" />
                 <Text className="text-gray-700 ml-2 font-semibold">Notification Settings</Text>
               </TouchableOpacity>
-              <TouchableOpacity className="flex-row items-center p-4 bg-gray-50 rounded-xl">
+              <TouchableOpacity
+                className="flex-row items-center p-4 bg-gray-50 rounded-xl"
+                onPress={handleChangePassword}
+              >
                 <Ionicons name="lock-closed-outline" size={20} color="#4B5563" className="mr-2" />
                 <Text className="text-gray-700 ml-2 font-semibold">Change Password</Text>
               </TouchableOpacity>
-              <TouchableOpacity className="flex-row items-center p-4 bg-gray-50 rounded-xl">
+              <TouchableOpacity
+                className="flex-row items-center p-4 bg-gray-50 rounded-xl"
+                onPress={() => Linking.openURL('mailto:support@greekgeek.app')}
+              >
                 <Ionicons name="help-circle-outline" size={20} color="#4B5563" className="mr-2" />
                 <Text className="text-gray-700 ml-2 font-semibold">Help & Support</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-row items-center p-4 bg-gray-50 rounded-xl"
+                onPress={() => openUrl('privacy/')}
+              >
+                <Ionicons name="shield-checkmark-outline" size={20} color="#4B5563" className="mr-2" />
+                <Text className="text-gray-700 ml-2 font-semibold">Privacy Policy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-row items-center p-4 bg-gray-50 rounded-xl"
+                onPress={() => openUrl('terms/')}
+              >
+                <Ionicons name="document-text-outline" size={20} color="#4B5563" className="mr-2" />
+                <Text className="text-gray-700 ml-2 font-semibold">Terms of Service</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="flex-row items-center p-4 bg-red-50 rounded-xl"
+                onPress={handleDeleteAccount}
+              >
+                <Ionicons name="trash-outline" size={20} color="#EF4444" className="mr-2" />
+                <Text className="text-red-600 ml-2 font-semibold">Delete Account</Text>
               </TouchableOpacity>
             </View>
           </View>

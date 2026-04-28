@@ -1,7 +1,7 @@
 import { Text, View, ScrollView, StyleSheet } from "react-native";
 import { Link, Redirect, router } from 'expo-router'
 import { SafeAreaView } from "react-native-safe-area-context";
-import { images } from "@/constants";
+import { images, API_URL } from "@/constants";
 import { Image } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import CustomButton from "@/components/CustomButton";
@@ -37,7 +37,7 @@ export default function Index() {
                 handlePress={() => { router.push('/sign-in') }}
                 containerStyles="w-full mt-3 mb-2"
               />
-              <Link href="https://www.google.com">
+              <Link href={`${API_URL}register/`}>
                 <Text className="text-m font-pregular text-blue-500 underline text-center">Register your organization</Text>
               </Link>
             </View>

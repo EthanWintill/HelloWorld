@@ -1,272 +1,309 @@
 {% extends 'base.html' %}
 
-{% block title %}Welcome to GreekGeek{% endblock %}
+{% block title %}GreekGeek | Study Hour Tracking for Greek Organizations{% endblock %}
+{% block meta_description %}GreekGeek helps fraternities, sororities, and campus organizations set study requirements, verify study sessions, and track chapter progress from one clean scorecard.{% endblock %}
+{% block og_title %}GreekGeek | The study scorecard for Greek organizations{% endblock %}
+{% block og_description %}Set study requirements, verify sessions, and track chapter progress before deadlines become a problem.{% endblock %}
 
 {% block content %}
-<div class="hero-section bg-primary text-white py-5">
+<section class="landing-hero">
     <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-6">
-                <h1 class="display-4 fw-bold mb-4">Welcome to GreekGeek</h1>
-                <p class="lead mb-4">Your comprehensive study management platform for Greek organizations.</p>
-                <div id="hero-buttons">
-                    <!-- Buttons will be populated by JavaScript based on auth state -->
+        <div class="hero-grid">
+            <div class="hero-copy">
+                <p class="eyebrow">Study hour accountability for campus organizations</p>
+                <h1>The study scorecard for Greek organizations.</h1>
+                <p class="hero-lede">
+                    GreekGeek helps chapters set study requirements, verify sessions at approved locations,
+                    and see who is on track before deadlines become a problem.
+                </p>
+                <div class="hero-actions">
+                    <a class="btn btn-primary btn-lg" href="/register/" data-track="org_register_clicked">Register your organization</a>
+                    <a class="btn btn-outline-dark btn-lg" href="#member-access" data-track="member_register_clicked">Register with code</a>
                 </div>
+                <p class="hero-note">Already managing a chapter? <a href="/login/">Sign in to the admin portal</a>.</p>
             </div>
-            <div class="col-lg-6">
-                <div class="text-center">
-                    <i class="fas fa-graduation-cap" style="font-size: 8rem; opacity: 0.8;"></i>
+            <div class="hero-media" aria-label="GreekGeek product preview">
+                <div class="media-placeholder media-placeholder-large">
+                    <span>Product screenshot placeholder</span>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="container my-5">
-    <div class="row">
-        <div class="col-lg-4 mb-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="fas fa-clock text-primary mb-3" style="font-size: 3rem;"></i>
-                    <h5 class="card-title">Time Tracking</h5>
-                    <p class="card-text">Clock in and out seamlessly. Track your study sessions and manage your time effectively.</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4 mb-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="fas fa-users text-primary mb-3" style="font-size: 3rem;"></i>
-                    <h5 class="card-title">Organization Management</h5>
-                    <p class="card-text">Manage your Greek organization with powerful tools for member coordination and administration.</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4 mb-4">
-            <div class="card h-100 shadow-sm">
-                <div class="card-body text-center">
-                    <i class="fas fa-chart-bar text-primary mb-3" style="font-size: 3rem;"></i>
-                    <h5 class="card-title">Analytics & Reports</h5>
-                    <p class="card-text">Get insights into study patterns and organizational performance with detailed reports.</p>
+                <div class="phone-placeholder">
+                    <div class="phone-top"></div>
+                    <div class="phone-screen">
+                        <span class="screen-label">Study Scorecard</span>
+                        <div class="progress-line"></div>
+                        <div class="progress-line short"></div>
+                        <div class="metric-row"><span>Hours</span><strong>3.5 / 4</strong></div>
+                        <div class="metric-row"><span>Status</span><strong>On track</strong></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</section>
 
-<div id="dashboard-section" class="container my-5" style="display: none;">
-    <div class="row">
-        <div class="col-12">
-            <h2 class="mb-4">Your Dashboard</h2>
-            <div id="dashboard-content">
-                <!-- Dashboard content will be loaded here -->
+<section class="section section-tight">
+    <div class="container">
+        <div class="problem-panel">
+            <div>
+                <p class="eyebrow">The current workflow</p>
+                <h2>Study requirements are easy to set and hard to track.</h2>
             </div>
+            <p>
+                Hours get logged in spreadsheets, proof gets sent through group chats, and officers only
+                realize who is behind when it is already late.
+            </p>
+        </div>
+        <div class="feature-grid three">
+            <article class="feature-card">
+                <span class="feature-icon">01</span>
+                <h3>Manual tracking</h3>
+                <p>Replace scattered forms, spreadsheets, and messages with a single source of truth.</p>
+            </article>
+            <article class="feature-card">
+                <span class="feature-icon">02</span>
+                <h3>Late visibility</h3>
+                <p>See member progress during the study period, not after the deadline has passed.</p>
+            </article>
+            <article class="feature-card">
+                <span class="feature-icon">03</span>
+                <h3>Unverified hours</h3>
+                <p>Use approved study locations and clock-in behavior to make accountability clearer.</p>
+            </article>
         </div>
     </div>
-</div>
+</section>
 
-<div id="pricing-section" class="container my-5" style="display: none;">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="text-center mb-5">
-                <h2 class="display-5 fw-bold">Join an Organization</h2>
-                <p class="lead">Subscribe to GreekGeek to get access to all features and join your organization.</p>
-            </div>
-            <div class="card shadow-lg">
-                <div class="card-body p-5 text-center">
-                    <h3 class="card-title mb-3">Annual Subscription</h3>
-                    <div class="display-4 fw-bold text-primary mb-3">$99<small class="fs-5 text-muted">/year</small></div>
-                    <ul class="list-unstyled mb-4">
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Time tracking and study management</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Organization coordination tools</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Analytics and reports</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>Mobile app access</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i>24/7 support</li>
-                    </ul>
-                    <button class="btn btn-primary btn-lg" onclick="purchaseSubscription()">
-                        <i class="fas fa-credit-card me-2"></i>Subscribe Now
-                    </button>
+<section class="section" id="how-it-works">
+    <div class="container">
+        <div class="section-heading">
+            <p class="eyebrow">How it works</p>
+            <h2>One clean loop for requirements, study sessions, and progress.</h2>
+        </div>
+        <div class="workflow-grid">
+            <article class="workflow-step">
+                <span>1</span>
+                <h3>Set requirements</h3>
+                <p>Admins create study periods, required hours, groups, and approved study locations.</p>
+            </article>
+            <article class="workflow-step">
+                <span>2</span>
+                <h3>Members clock in</h3>
+                <p>Members start study sessions from the app when they are at an approved location.</p>
+            </article>
+            <article class="workflow-step">
+                <span>3</span>
+                <h3>Track progress</h3>
+                <p>Officers review leaderboards, live study activity, reports, and progress by period.</p>
+            </article>
+        </div>
+        <div class="media-strip">
+            <div class="media-placeholder"><span>Clock-in screen placeholder</span></div>
+            <div class="media-placeholder"><span>Leaderboard placeholder</span></div>
+            <div class="media-placeholder"><span>Reports placeholder</span></div>
+        </div>
+    </div>
+</section>
+
+<section class="section surface-band" id="member-access">
+    <div class="container">
+        <div class="split-grid">
+            <div>
+                <p class="eyebrow">Member experience</p>
+                <h2>Simple enough for every member to actually use.</h2>
+                <p>
+                    Members register with their organization code, check their current requirement,
+                    clock in at study locations, review history, and see where they stand on the leaderboard.
+                </p>
+                <div class="action-row">
+                    <a class="btn btn-primary" href="#member-code-note">Register with code</a>
+                    <a class="btn btn-link-dark" href="/login/">Admin sign in</a>
                 </div>
+                <p class="small-note" id="member-code-note">
+                    Member code registration currently happens inside the mobile app. This section is ready
+                    for App Store, TestFlight, or deep-link buttons when those links are finalized.
+                </p>
+            </div>
+            <div class="media-placeholder vertical-placeholder"><span>Member app screenshot placeholder</span></div>
+        </div>
+    </div>
+</section>
+
+<section class="section" id="for-organizations">
+    <div class="container">
+        <div class="split-grid reverse">
+            <div class="media-placeholder dashboard-placeholder"><span>Admin dashboard placeholder</span></div>
+            <div>
+                <p class="eyebrow">Organization admin experience</p>
+                <h2>Built for the people responsible for chapter accountability.</h2>
+                <ul class="check-list">
+                    <li>Manage users, groups, and organization settings.</li>
+                    <li>Create weekly, monthly, or custom study periods.</li>
+                    <li>Add approved study locations for verified clock-ins.</li>
+                    <li>Review reports by user, group, period, and location.</li>
+                    <li>Reduce manual follow-up before study deadlines.</li>
+                </ul>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+</section>
 
-{% block extra_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-<style>
-    .hero-section {
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+<section class="section section-tight">
+    <div class="container">
+        <div class="section-heading narrow">
+            <p class="eyebrow">Product proof</p>
+            <h2>Specific tools for study-hour accountability.</h2>
+        </div>
+        <div class="feature-grid four">
+            <article class="feature-card compact">
+                <h3>Location-aware clock-ins</h3>
+                <p>Members clock study sessions at approved locations.</p>
+            </article>
+            <article class="feature-card compact">
+                <h3>Period-based requirements</h3>
+                <p>Admins set the study period and required hours.</p>
+            </article>
+            <article class="feature-card compact">
+                <h3>Live study status</h3>
+                <p>See who is currently studying and how hours rank.</p>
+            </article>
+            <article class="feature-card compact">
+                <h3>Organization reports</h3>
+                <p>Review progress across members, groups, and locations.</p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="section pricing-section" id="pricing">
+    <div class="container">
+        <div class="pricing-card">
+            <div>
+                <p class="eyebrow">Pilot access</p>
+                <h2>Start with one chapter and one study period.</h2>
+                <p>
+                    Early organization access includes setup help, a registration code, admin access,
+                    study locations, user onboarding, and first-period configuration.
+                </p>
+            </div>
+            <div class="pricing-action">
+                <p class="price-label">Chapter pricing</p>
+                <strong>Request access</strong>
+                <a class="btn btn-primary btn-lg w-100" href="/register/">Register your organization</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section" id="faq">
+    <div class="container">
+        <div class="section-heading narrow">
+            <p class="eyebrow">FAQ</p>
+            <h2>Answers for chapters and organization admins.</h2>
+        </div>
+        <div class="faq-grid">
+            <details open>
+                <summary>What is GreekGeek?</summary>
+                <p>GreekGeek is a study hour tracking app for fraternities, sororities, and campus organizations.</p>
+            </details>
+            <details>
+                <summary>Can members sign up without an organization code?</summary>
+                <p>No. Members need an organization registration code so their account connects to the correct chapter or group.</p>
+            </details>
+            <details>
+                <summary>How does location-based study verification work?</summary>
+                <p>Admins define approved study locations, and members use the mobile app to clock in when they are at those locations.</p>
+            </details>
+            <details>
+                <summary>Can admins set custom study periods?</summary>
+                <p>Yes. GreekGeek supports organization study periods and required hours for tracking member progress.</p>
+            </details>
+            <details>
+                <summary>Is this only for Greek life?</summary>
+                <p>The product is built around Greek organization workflows, but it can also support campus groups with required study hours.</p>
+            </details>
+            <details>
+                <summary>How do we start?</summary>
+                <p>Register your organization to create an admin account, set up your chapter, and share your registration code with members.</p>
+            </details>
+        </div>
+    </div>
+</section>
+
+<section class="final-cta">
+    <div class="container">
+        <div class="final-cta-inner">
+            <h2>Give your chapter a cleaner way to manage study accountability.</h2>
+            <div class="hero-actions justify-content-center">
+                <a class="btn btn-primary btn-lg" href="/register/">Register your organization</a>
+                <a class="btn btn-outline-dark btn-lg" href="#member-access">Register with code</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "GreekGeek",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "iOS, Android, Web",
+    "description": "GreekGeek is a study hour tracking app for Greek organizations and campus groups.",
+    "offers": {
+        "@type": "Offer",
+        "availability": "https://schema.org/LimitedAvailability",
+        "priceSpecification": {
+            "@type": "PriceSpecification",
+            "priceCurrency": "USD"
+        }
     }
-    .card {
-        transition: transform 0.2s;
-    }
-    .card:hover {
-        transform: translateY(-5px);
-    }
-    .user-info-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    }
-    .org-info-card {
-        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-    }
-</style>
+}
+</script>
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "What is GreekGeek?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "GreekGeek is a study hour tracking app for fraternities, sororities, and campus organizations."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Can members sign up without an organization code?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Members need an organization registration code so their account connects to the correct chapter or group."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How does location-based study verification work?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Admins define approved study locations, and members use the mobile app to clock in when they are at those locations."
+            }
+        }
+    ]
+}
+</script>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    updateLandingPage();
-});
+document.addEventListener('click', function(event) {
+    const trackedElement = event.target.closest('[data-track]');
+    if (!trackedElement) return;
 
-function updateLandingPage() {
-    const token = localStorage.getItem('access_token');
-    const heroButtons = document.getElementById('hero-buttons');
-    const dashboardSection = document.getElementById('dashboard-section');
-    const pricingSection = document.getElementById('pricing-section');
-    
-    if (token) {
-        heroButtons.innerHTML = `
-            <button class="btn btn-light btn-lg me-3" onclick="openApp()">
-                <i class="fas fa-mobile-alt me-2"></i>Open App
-            </button>
-            <button class="btn btn-outline-light btn-lg" onclick="logout()">
-                <i class="fas fa-sign-out-alt me-2"></i>Logout
-            </button>
-        `;
-        dashboardSection.style.display = 'block';
-        pricingSection.style.display = 'none';
-        loadUserDashboard();
-    } else {
-        heroButtons.innerHTML = `
-            <a href="/login/" class="btn btn-light btn-lg me-3">
-                <i class="fas fa-sign-in-alt me-2"></i>Admin Sign In
-            </a>
-            <a href="/register/" class="btn btn-outline-light btn-lg">
-                <i class="fas fa-plus me-2"></i>Start Free Trial
-            </a>
-        `;
-        dashboardSection.style.display = 'none';
-        pricingSection.style.display = 'none';
+    const eventName = trackedElement.getAttribute('data-track');
+    if (window.dataLayer) {
+        window.dataLayer.push({ event: eventName });
     }
-}
-
-function loadUserDashboard() {
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-    
-    fetch('/api/dashboard/', {
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        const dashboardContent = document.getElementById('dashboard-content');
-        const pricingSection = document.getElementById('pricing-section');
-        
-        if (!data.org) {
-            // User doesn't have an organization - show pricing
-            dashboardContent.style.display = 'none';
-            pricingSection.style.display = 'block';
-        } else {
-            // User has an organization - show dashboard
-            dashboardContent.style.display = 'block';
-            pricingSection.style.display = 'none';
-            
-            dashboardContent.innerHTML = `
-                <div class="row">
-                    <div class="col-md-6 mb-4">
-                        <div class="card user-info-card">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="fas fa-user text-primary me-2"></i>Welcome back, ${data.first_name}!
-                                </h5>
-                                <div class="mb-2">
-                                    <strong>Name:</strong> ${data.first_name} ${data.last_name}
-                                </div>
-                                <div class="mb-2">
-                                    <strong>Email:</strong> ${data.email}
-                                </div>
-                                ${data.phone_number ? `<div class="mb-2"><strong>Phone:</strong> ${data.phone_number}</div>` : ''}
-                                <div class="mb-2">
-                                    <strong>Role:</strong> 
-                                    <span class="badge ${data.is_staff ? 'bg-success' : 'bg-primary'}">${data.is_staff ? 'Staff Member' : 'Member'}</span>
-                                </div>
-                                ${data.group ? `<div class="mb-2"><strong>Group:</strong> ${data.group.name}</div>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-4">
-                        <div class="card org-info-card">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <i class="fas fa-university text-primary me-2"></i>Organization Info
-                                </h5>
-                                <div class="mb-2">
-                                    <strong>Organization:</strong> ${data.org.name}
-                                </div>
-                                <div class="mb-2">
-                                    <strong>School:</strong> ${data.org.school}
-                                </div>
-                                <div class="mb-2">
-                                    <strong>Registration Code:</strong> 
-                                    <code>${data.org.reg_code}</code>
-                                </div>
-                                <div class="mb-2">
-                                    <strong>Study Requirement:</strong> ${data.org.study_req} hours
-                                </div>
-                                <div class="mb-2">
-                                    <strong>Study Goal:</strong> ${data.org.study_goal} hours
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body text-center">
-                                <h5 class="card-title">Ready to start studying?</h5>
-                                <p class="card-text">Use the GreekGeek mobile app to track your study time and manage your activities.</p>
-                                <button class="btn btn-primary btn-lg" onclick="openApp()">
-                                    <i class="fas fa-mobile-alt me-2"></i>Open App
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-    })
-    .catch(error => {
-        console.error('Error loading dashboard:', error);
-        const dashboardContent = document.getElementById('dashboard-content');
-        dashboardContent.innerHTML = `
-            <div class="alert alert-danger" role="alert">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Error loading dashboard information. Please try refreshing the page.
-            </div>
-        `;
-    });
-}
-
-function openApp() {
-    // This would redirect to the mobile app or main application
-    alert('This would open the GreekGeek application. All study tracking and organization management is done in the app.');
-}
-
-function purchaseSubscription() {
-    // Redirect to the subscription purchase page
-    window.location.href = '/purchase/';
-}
-
-function logout() {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    window.location.reload();
-}
+    console.log('Tracked:', eventName);
+});
 </script>
-{% endblock %} 
+{% endblock %}

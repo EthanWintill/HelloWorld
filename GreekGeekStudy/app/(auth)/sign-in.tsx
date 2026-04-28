@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, Alert } from 'react-native'
+import { View, Text, ScrollView, Image, Alert, Linking } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { images } from "@/constants";
@@ -89,6 +89,14 @@ const SignIn = () => {
                             {formError && (
                                 <Text className="text-m text-red-500 mt-4 font-pregular text-center">No account found with those credentials, please try again.</Text>
                             )}
+                            <View className="items-end mt-4">
+                                <Text
+                                    onPress={() => Linking.openURL(`${API_URL}forgot-password/`)}
+                                    className="text-base font-psemibold text-green-500"
+                                >
+                                    Forgot password?
+                                </Text>
+                            </View>
 
                             <CustomButton
                                 title="Sign In"

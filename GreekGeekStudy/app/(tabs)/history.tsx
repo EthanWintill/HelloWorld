@@ -16,8 +16,21 @@ interface Location {
 interface Session {
   id: number;
   start_time: string;
-  hours: number;
-  location: number;
+  hours: number | null;
+  location: number | Location | null;
+  period_instance?: PeriodInstance | null;
+}
+
+interface PeriodInstance {
+  id: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+}
+
+interface SessionGroup {
+  period: PeriodInstance | null;
+  sessions: Session[];
 }
 
 const History = () => {
@@ -38,7 +51,10 @@ const History = () => {
     return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
   }
 
-  const getLocationName = (locationId: number) => {
+  const getLocationName = (locationValue: number | Location | null) => {
+    if (!locationValue) return 'Manual Entry'
+    if (typeof locationValue === 'object') return locationValue.name
+    const locationId = locationValue
     const location = data?.org_locations?.find((loc: Location) => loc.id === locationId)
     return location ? location.name : 'N/A'
   }
@@ -47,15 +63,15 @@ const History = () => {
     if (!data?.user_sessions) return []
 
     // Sort all sessions by start_time in descending order
-    const sortedSessions = [...data.user_sessions].sort((a, b) => 
+    const sortedSessions = [...data.user_sessions].sort((a: Session, b: Session) =>
       new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
     )
 
     // Initialize groups array
-    const grouped: any[] = []
+    const grouped: SessionGroup[] = []
     
     // Helper function to check if a date falls within a period
-    const isDateInPeriod = (date: Date, period: any) => {
+    const isDateInPeriod = (date: Date, period: PeriodInstance) => {
       const sessionDate = date.getTime()
       const periodStart = new Date(period.start_date).getTime()
       const periodEnd = new Date(period.end_date).getTime()
@@ -64,17 +80,17 @@ const History = () => {
 
     // Get all unique periods
     const allPeriods = data.user_sessions
-      .filter(s => s.period_instance)
-      .map(s => s.period_instance)
-      .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
-      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+      .filter((s: Session) => s.period_instance)
+      .map((s: Session) => s.period_instance as PeriodInstance)
+      .filter((p: PeriodInstance, i: number, arr: PeriodInstance[]) => arr.findIndex((x: PeriodInstance) => x.id === p.id) === i)
+      .sort((a: PeriodInstance, b: PeriodInstance) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
 
     // Process each session
-    sortedSessions.forEach(session => {
+    sortedSessions.forEach((session: Session) => {
       const sessionDate = new Date(session.start_time)
       
       // Find the period this session belongs to based on its date
-      const matchingPeriod = allPeriods.find(period => 
+      const matchingPeriod = allPeriods.find((period: PeriodInstance) =>
         isDateInPeriod(sessionDate, period)
       )
 

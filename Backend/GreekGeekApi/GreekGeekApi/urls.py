@@ -21,6 +21,8 @@ urlpatterns = [
     path('success/', web_views.success_page, name='success-page'),
     path('forgot-password/', web_views.forgot_password_page, name='forgot-password-page'),
     path('reset-password/<str:token>/', web_views.reset_password_page, name='reset-password-page'),
+    path('privacy/', web_views.privacy_page, name='privacy-page'),
+    path('terms/', web_views.terms_page, name='terms-page'),
     
     # API routes
     path('admin/', admin.admin.site.urls),
@@ -29,12 +31,16 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view()),
     path('api/token/refresh/', TokenRefreshView.as_view()),
     path('api/user/<int:pk>/', views.UserDetail.as_view(), name='user-detail'),
+    path('api/user/<int:user_id>/reset-password/', views.AdminPasswordResetView.as_view(), name='admin-password-reset'),
+    path('api/me/', views.CurrentUserAccount.as_view(), name='current-user-account'),
     path('api/orgs/', views.ListOrgs.as_view(), name='list-orgs'),
     path('api/org/<int:pk>/', views.OrgDetail.as_view(), name='org-detail'),
     path('api/org-by-code/', views.GetOrgByCode.as_view(), name='get-org-by-code'),
     path('api/my-org/', views.ModifyOrgDetails.as_view(), name='modify-my-org'),
+    path('api/org-settings/', views.OrgSettingsView.as_view(), name='org-settings'),
     path('api/clockin/', views.ClockIn.as_view(), name='clock-in'),
     path('api/clockout/', views.ClockOut.as_view(), name='clock-out'),
+    path('api/manual-session/', views.ManualSessionView.as_view(), name='manual-session'),
     path('api/locations/', views.ListLocations.as_view(), name='location-list'), 
     path('api/locations/create/', views.CreateLocation.as_view(), name='location-create'),
     path('api/location/<int:pk>/modify', views.ModifyLocation.as_view(), name='location-modify'),
@@ -49,7 +55,7 @@ urlpatterns = [
     
     # Period-related URLs
     path('api/period-settings/', views.PeriodSettingViewSet.as_view({'get': 'list', 'post': 'create'}), name='period-settings'),
-    path('api/period-settings/<int:pk>/', views.PeriodSettingViewSet.as_view({
+    path('api/period-settings/<uuid:pk>/', views.PeriodSettingViewSet.as_view({
         'get': 'retrieve',
         'put': 'update',
         'patch': 'partial_update',

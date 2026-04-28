@@ -31,12 +31,7 @@ export default function _layout() {
       if (!fontsLoaded) return;
       
       try {
-        const keys = await AsyncStorage.getAllKeys();
-        const items = await AsyncStorage.multiGet(keys);
-        console.log('All AsyncStorage Items:', items);
-        
         const accessToken = await AsyncStorage.getItem('accessToken');
-        console.log('AccessToken:', accessToken);
         
         if (accessToken) {
           router.replace('/(tabs)/study');

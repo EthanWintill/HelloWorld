@@ -83,6 +83,10 @@ const SignUp = () => {
         hasErrors = true;
       }
     }
+    if (form.password && form.confirmPassword && form.password !== form.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+      hasErrors = true;
+    }
     setFormErrors(errors)
     return hasErrors
 

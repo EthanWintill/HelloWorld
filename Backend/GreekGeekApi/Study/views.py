@@ -1,6 +1,6 @@
 from rest_framework import permissions, viewsets, status, exceptions
 
-from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer, NotificationTokenSerializer, GroupSerializer, CreateGroupSerializer, UpdateGroupSerializer, OrgOwnerSignupSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, OrgSettingsSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer, NotificationTokenSerializer, GroupSerializer, CreateGroupSerializer, UpdateGroupSerializer, OrgOwnerSignupSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 
@@ -13,16 +13,28 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import User, Org, Session, Location, PeriodSetting, PeriodInstance, NotificationToken, Group
+from .models import User, Org, OrgSettings, Session, Location, PeriodSetting, PeriodInstance, NotificationToken, Group
 
 from django.http import Http404 
+from django.conf import settings
 from django.utils import timezone
 
 from datetime import timedelta
 import json
 import requests
+from math import radians, sin, cos, sqrt, atan2
 
 from .utils import get_or_create_period_instance, send_notification_to_users, send_notification_to_org
+
+def distance_meters(lat1, lon1, lat2, lon2):
+    earth_radius_meters = 6371000
+    d_lat = radians(lat2 - lat1)
+    d_lon = radians(lon2 - lon1)
+    a = (
+        sin(d_lat / 2) ** 2
+        + cos(radians(lat1)) * cos(radians(lat2)) * sin(d_lon / 2) ** 2
+    )
+    return earth_radius_meters * 2 * atan2(sqrt(a), sqrt(1 - a))
 
 @api_view(['GET'])
 def debug(request):
@@ -169,7 +181,8 @@ class UserDashboard(RetrieveAPIView):
             'org__locations',
             'org__users',
             'org__users__last_location',
-            'org__period_settings'
+            'org__period_settings',
+            'org__settings'
         ).get(id=self.request.user.id)
 
 class GetLocation(RetrieveAPIView):
@@ -184,6 +197,9 @@ class ModifyLocation(UpdateAPIView, DestroyAPIView):
     permission_classes = (IsAdminUser,)
     serializer_class = UpdateLocationSerializer
     queryset = Location.objects.all()
+
+    def get_queryset(self):
+        return Location.objects.filter(org=self.request.user.org)
 class CreateLocation(CreateAPIView):
     permission_classes = (IsAdminUser,)
     serializer_class = LocationSerializer
@@ -205,11 +221,14 @@ class ClockOut(APIView):
         org = current_user.org
         if not org:
             raise exceptions.ValidationError(detail="Must be apart of an org to clock out")
+        org_settings, _ = OrgSettings.objects.get_or_create(org=org)
+        if org_settings.maintenance_mode and not current_user.is_staff:
+            raise exceptions.PermissionDenied(detail="Your organization is temporarily in maintenance mode")
         current_time = timezone.now()
 
-        last_session = Session.objects.filter(user=current_user).last()
-        start_time = last_session.start_time
+        last_session = Session.objects.filter(user=current_user, hours__isnull=True).last()
         if last_session and not last_session.hours:
+            start_time = last_session.start_time
             # Clock out logic
             hours = (current_time - start_time).total_seconds() / 3600
             last_session.hours = hours
@@ -218,7 +237,8 @@ class ClockOut(APIView):
             current_user.save()
 
             #Send Notification to user
-            send_notification_to_users([current_user.id], "Clocked Out", f"Your study session at {last_session.location.name} has been ended", notification_type='user_leaves_zone')
+            location_name = last_session.location.name if last_session.location else "your study location"
+            send_notification_to_users([current_user.id], "Clocked Out", f"Your study session at {location_name} has been ended", notification_type='user_leaves_zone')
 
             return Response({
                 "detail": "Successfully clocked out.",
@@ -236,20 +256,41 @@ class ClockIn(APIView):
         org = current_user.org
         if not org:
             raise exceptions.ValidationError(detail="Must be apart of an org to clock in")
+        org_settings, _ = OrgSettings.objects.get_or_create(org=org)
+        if org_settings.maintenance_mode and not current_user.is_staff:
+            raise exceptions.PermissionDenied(detail="Your organization is temporarily in maintenance mode")
         current_time = timezone.now()
 
         location_id = request.data.get("location_id")
+        latitude = request.data.get("latitude")
+        longitude = request.data.get("longitude")
+        location = None
 
-        if not location_id:
+        if org_settings.require_location_verification and not location_id:
             raise exceptions.ValidationError(detail="Location ID is required")
-        try:
-            location = Location.objects.get(id=location_id)
-            if location.org != org:  # Ensure the location belongs to the user's organization
-                raise exceptions.ValidationError(detail="Location does not belong to your organization")
-        except Location.DoesNotExist:
-            raise exceptions.ValidationError(detail="Invalid Location ID")
+        if org_settings.require_location_verification and (latitude is None or longitude is None):
+            raise exceptions.ValidationError(detail="Current latitude and longitude are required")
+        if location_id:
+            try:
+                location = Location.objects.get(id=location_id)
+                if location.org != org:
+                    raise exceptions.ValidationError(detail="Location does not belong to your organization")
+            except Location.DoesNotExist:
+                raise exceptions.ValidationError(detail="Invalid Location ID")
+        if org_settings.require_location_verification:
+            try:
+                latitude = float(latitude)
+                longitude = float(longitude)
+            except (TypeError, ValueError):
+                raise exceptions.ValidationError(detail="Current latitude and longitude must be valid numbers")
+
+            distance = distance_meters(latitude, longitude, location.gps_lat, location.gps_long)
+            if distance > location.gps_radius:
+                raise exceptions.ValidationError(
+                    detail=f"You must be inside {location.name} to clock in"
+                )
         
-        last_session = Session.objects.filter(user=current_user).last()
+        last_session = Session.objects.filter(user=current_user, hours__isnull=True).last()
         if last_session and not last_session.hours:
             raise exceptions.ValidationError(detail="Already clocked in")
         
@@ -270,7 +311,7 @@ class ClockIn(APIView):
         current_user.save()
 
         # Notify all users in the org except the one who just clocked in
-        location_name = location.name if location else "Unknown location"
+        location_name = location.name if location else "an unverified location"
         user_name = f"{current_user.first_name} {current_user.last_name}".strip()
         send_notification_to_org(
             org_id=org.id,
@@ -289,6 +330,52 @@ class ClockIn(APIView):
             "detail": "Successfully clocked in.",
             "start_time": current_time,
         }, status=status.HTTP_200_OK)
+
+class ManualSessionView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, format=None):
+        current_user = request.user
+        org = current_user.org
+        if not org:
+            raise exceptions.ValidationError(detail="Must be apart of an org to add manual study time")
+        org_settings, _ = OrgSettings.objects.get_or_create(org=org)
+        if org_settings.maintenance_mode and not current_user.is_staff:
+            raise exceptions.PermissionDenied(detail="Your organization is temporarily in maintenance mode")
+        if not org_settings.allow_manual_entry:
+            raise exceptions.PermissionDenied(detail="Manual study entry is disabled for your organization")
+
+        hours = request.data.get("hours")
+        try:
+            hours = float(hours)
+        except (TypeError, ValueError):
+            raise exceptions.ValidationError(detail="Hours must be a valid number")
+        if hours <= 0 or hours > 24:
+            raise exceptions.ValidationError(detail="Hours must be greater than 0 and no more than 24")
+
+        start_time = request.data.get("start_time")
+        if start_time:
+            try:
+                parsed_start = timezone.datetime.fromisoformat(str(start_time).replace("Z", "+00:00"))
+            except ValueError:
+                raise exceptions.ValidationError(detail="Start time must be a valid ISO timestamp")
+            if timezone.is_naive(parsed_start):
+                parsed_start = timezone.make_aware(parsed_start)
+        else:
+            parsed_start = timezone.now()
+        if parsed_start > timezone.now() + timedelta(minutes=1):
+            raise exceptions.ValidationError(detail="Manual study time cannot be in the future")
+
+        period_instance = get_or_create_period_instance(current_user, parsed_start)
+        session = Session.objects.create(
+            start_time=parsed_start,
+            hours=hours,
+            user=current_user,
+            org=org,
+            location=None,
+            period_instance=period_instance,
+        )
+        return Response(SessionSerializer(session).data, status=status.HTTP_201_CREATED)
         
 
 
@@ -330,6 +417,38 @@ class GetOrgByCode(RetrieveAPIView):
         data = serializer.data
         data['testnum'] = 2
         return Response(data)
+
+class OrgSettingsView(APIView):
+    permission_classes = (IsAdminUser,)
+
+    def get_org_settings(self, request):
+        if not request.user.org:
+            raise exceptions.ValidationError(detail="Admin user must belong to an organization")
+        org_settings, _ = OrgSettings.objects.get_or_create(org=request.user.org)
+        return org_settings
+
+    def get(self, request, format=None):
+        serializer = OrgSettingsSerializer(self.get_org_settings(request))
+        return Response(serializer.data)
+
+    def put(self, request, format=None):
+        org_settings = self.get_org_settings(request)
+        serializer = OrgSettingsSerializer(org_settings, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(org=request.user.org)
+        return Response(serializer.data)
+
+    def patch(self, request, format=None):
+        return self.put(request, format=format)
+
+    def delete(self, request, format=None):
+        org = request.user.org
+        if not org:
+            raise exceptions.ValidationError(detail="Admin user must belong to an organization")
+        OrgSettings.objects.filter(org=org).delete()
+        org_settings = OrgSettings.objects.create(org=org)
+        serializer = OrgSettingsSerializer(org_settings)
+        return Response(serializer.data)
             
 
 
@@ -388,6 +507,61 @@ class UserDetail(APIView):
             return Response({"detail": f"Deleted user #{pk}"}, 
                         status=status.HTTP_202_ACCEPTED)
         raise exceptions.PermissionDenied(detail="Only admins can delete users of their org")
+
+class CurrentUserAccount(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    def delete(self, request, format=None):
+        user = request.user
+        user_id = user.id
+        user.delete()
+        return Response({"detail": f"Deleted account #{user_id}"}, status=status.HTTP_200_OK)
+
+class AdminPasswordResetView(APIView):
+    permission_classes = (IsAdminUser,)
+
+    def post(self, request, user_id, format=None):
+        try:
+            user = User.objects.get(id=user_id, org=request.user.org)
+        except User.DoesNotExist:
+            raise Http404
+
+        from .models import PasswordResetToken
+        import secrets
+
+        PasswordResetToken.objects.filter(user=user, is_used=False).update(is_used=True)
+        reset_token = secrets.token_urlsafe(32)
+        PasswordResetToken.objects.create(
+            user=user,
+            token=reset_token,
+            expires_at=timezone.now() + timedelta(hours=1)
+        )
+
+        from .email_service import EmailService
+        email_service = EmailService()
+        user_name = f"{user.first_name} {user.last_name}".strip() or None
+        email_sent = email_service.send_password_reset_email(
+            user_email=user.email,
+            reset_token=reset_token,
+            user_name=user_name
+        )
+
+        if email_sent:
+            return Response({
+                "detail": "Password reset email has been sent to the user."
+            }, status=status.HTTP_200_OK)
+
+        if settings.DEBUG:
+            reset_url = f"{settings.FRONTEND_URL}/reset-password/{reset_token}/"
+            return Response({
+                "detail": "Password reset link was created, but email was not sent in this local environment.",
+                "reset_url": reset_url,
+            }, status=status.HTTP_200_OK)
+
+        return Response(
+            {"detail": "Failed to send password reset email. Please try again later."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 class ManageStaffStatus(UpdateAPIView):
     permission_classes = (IsAdminUser,)
@@ -1060,11 +1234,5 @@ class PasswordResetTokenValidationView(APIView):
                 {"valid": False, "detail": "Invalid token"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-
-
-
-
-
 
 

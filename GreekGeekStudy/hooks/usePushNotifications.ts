@@ -11,15 +11,68 @@ export interface PushNotificationState {
   notification?: Notifications.Notification;
 }
 
-export const usePushNotifications = (): PushNotificationState => {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldPlaySound: false,
-      shouldShowAlert: false, 
-      shouldSetBadge: false,
-    }),
-  });
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: false,
+    shouldShowAlert: true,
+    shouldSetBadge: false,
+  }),
+});
 
+async function getPushTokenAsync() {
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== "granted") {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== "granted") {
+    return undefined;
+  }
+
+  return Notifications.getExpoPushTokenAsync({
+    projectId: Constants.expoConfig?.extra?.eas.projectId,
+  });
+}
+
+export async function registerPushTokenWithBackend() {
+  const token = await AsyncStorage.getItem('accessToken');
+  if (!token) {
+    return undefined;
+  }
+
+  const pushToken = await getPushTokenAsync();
+  if (!pushToken?.data) {
+    return undefined;
+  }
+
+  try {
+    await axios.post(
+      `${API_URL}api/notifications/token/`,
+      {
+        device_id: Device.deviceName || Device.modelName || "unknown-device",
+        token: pushToken.data,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'dashboardData']);
+      return undefined;
+    }
+    throw error;
+  }
+
+  return pushToken;
+}
+
+export const usePushNotifications = (): PushNotificationState => {
   const [expoPushToken, setExpoPushToken] = useState<
     Notifications.ExpoPushToken | undefined
   >();
@@ -31,55 +84,16 @@ export const usePushNotifications = (): PushNotificationState => {
   const notificationListener = useRef<Notifications.Subscription>();
   const responseListener = useRef<Notifications.Subscription>();
 
-  async function registerForPushNotificationsAsync() {
-    let token;
-    if (true) {
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      if (finalStatus !== "granted") {
-        alert("Failed to get push token for push notification");
-        return;
-      }
-
-      token = await Notifications.getExpoPushTokenAsync({
-        projectId: Constants.expoConfig?.extra?.eas.projectId,
-      });
-    } else {
-      alert("Must be using a physical device for Push notifications");
-    }
-
-
-    return token;
-  }
-
   useEffect(() => {
-    registerForPushNotificationsAsync().then(async (pushToken) => {
-      console.log("Push token: ", pushToken?.data);
-      const token = await AsyncStorage.getItem('accessToken');
-      
-      if (!token) throw new Error('No access token found')
-
-      await axios.post(
-        `${API_URL}api/notifications/token/`,
-        {
-          "device_id": Device.deviceName,
-          "token": pushToken?.data
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+    registerPushTokenWithBackend()
+      .then(setExpoPushToken)
+      .catch((error) => {
+        if (axios.isAxiosError(error)) {
+          console.warn("Push notification registration failed:", error.response?.status, error.response?.data);
+        } else {
+          console.warn("Push notification registration failed:", error);
         }
-      )
-      
-      setExpoPushToken(pushToken);
-    });
+      });
 
     notificationListener.current =
       Notifications.addNotificationReceivedListener((notification) => {
@@ -92,11 +106,13 @@ export const usePushNotifications = (): PushNotificationState => {
       });
 
     return () => {
-      Notifications.removeNotificationSubscription(
-        notificationListener.current!
-      );
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(notificationListener.current);
+      }
 
-      Notifications.removeNotificationSubscription(responseListener.current!);
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
     };
   }, []);
 

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Alert, Linking, Image, TouchableOpacity, AppState, Modal } from 'react-native'
+import { View, Text, ScrollView, Alert, Linking, Image, TouchableOpacity, AppState, Modal, TextInput } from 'react-native'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -88,6 +88,8 @@ const Study = () => {
   
   // New state for study locations list
   const [locationsListVisible, setLocationsListVisible] = useState(false);
+  const [manualEntryVisible, setManualEntryVisible] = useState(false);
+  const [manualHours, setManualHours] = useState('');
   
   // Use our reimplemented stopwatch
   const {
@@ -99,6 +101,10 @@ const Study = () => {
     reset  } = useStopWatch();
 
   const [appState, setAppState] = useState(AppState.currentState);
+  const orgSettings = data?.org_settings;
+  const requiresLocationVerification = orgSettings?.require_location_verification !== false;
+  const allowManualEntry = orgSettings?.allow_manual_entry === true;
+  const maintenanceMode = orgSettings?.maintenance_mode === true && !data?.is_staff;
 
   // --- Location Related Functions ---
   const showSettingsAlert = () => {
@@ -194,10 +200,23 @@ const Study = () => {
   };
 
   const getStudyLocationGPS = async () => {
+    if (!requiresLocationVerification) {
+      const fallbackLocation = dashboardState.data?.org_locations?.[0] || null;
+      setCurrentStudyLocation(fallbackLocation);
+      return {
+        studyLocation: fallbackLocation,
+        userCoords: null,
+      };
+    }
+
     await handleLocationPermission();
     if (!backgroundStatus) return null;
     const location = await Location.getCurrentPositionAsync();
     console.log('Current location:', location);
+    const userCoords = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
     
     // Update map region when we get user location
     updateMapRegion(location.coords.latitude, location.coords.longitude);
@@ -211,7 +230,7 @@ const Study = () => {
       console.log('Distance to', studyLocation['name'], ':', distance);
       if (distance < studyLocation['gps_radius']) {
         setCurrentStudyLocation(studyLocation);
-        return studyLocation;
+        return { studyLocation, userCoords };
       }
     }
     setCurrentStudyLocation(null);
@@ -233,27 +252,40 @@ const Study = () => {
   // --- Clock Related Functions ---
   const clockIn = async () => {
     try {
-      let studyLocation = await getStudyLocationGPS();
+      let studyLocationResult = await getStudyLocationGPS();
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
 
-      if (!studyLocation) {
+      if (requiresLocationVerification && !studyLocationResult) {
         Alert.alert('No Study Location Found', 'Please go to a study location to clock in.');
         return;
       }
+      const { studyLocation, userCoords } = studyLocationResult || { studyLocation: null, userCoords: null };
 
       // Start Geofence monitoring
-      await Location.startGeofencingAsync(GEOFENCE_TASK, [{
-        latitude: studyLocation['gps_lat'],
-        longitude: studyLocation['gps_long'],
-        radius: studyLocation['gps_radius'],
-        notifyOnExit: true
-      }]);
-      console.log('Geofence started');
+      if (requiresLocationVerification && studyLocation) {
+        await Location.startGeofencingAsync(GEOFENCE_TASK, [{
+          latitude: studyLocation['gps_lat'],
+          longitude: studyLocation['gps_long'],
+          radius: studyLocation['gps_radius'],
+          notifyOnExit: true
+        }]);
+        console.log('Geofence started');
+      }
 
 
       // Send clock-in request to the server
-      const response = await axios.post(API_URL + 'api/clockin/', { "location_id": studyLocation?.id }, {
+      const payload = requiresLocationVerification
+        ? {
+            "location_id": studyLocation?.id,
+            "latitude": userCoords?.latitude,
+            "longitude": userCoords?.longitude,
+          }
+        : {
+            "location_id": studyLocation?.id,
+          };
+
+      const response = await axios.post(API_URL + 'api/clockin/', payload, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -267,6 +299,8 @@ const Study = () => {
       console.log(error);
       if (error instanceof AxiosError && error.response?.status === 401) {
         await handleUnauthorized();
+      } else if (error instanceof AxiosError) {
+        Alert.alert('Clock In Failed', error.response?.data?.errors?.[0]?.detail || error.response?.data?.detail || 'Unable to clock in.');
       }
     }
   };
@@ -284,13 +318,52 @@ const Study = () => {
       eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
       eventEmitter.emit(EVENTS.CLOCK_OUT);
 
-      await Location.stopGeofencingAsync(GEOFENCE_TASK);
-      console.log('Geofence stopped');
+      const geofenceStarted = await Location.hasStartedGeofencingAsync(GEOFENCE_TASK);
+      if (geofenceStarted) {
+        await Location.stopGeofencingAsync(GEOFENCE_TASK);
+        console.log('Geofence stopped');
+      }
       
     } catch (error) {
       console.log(error)
       if (error instanceof AxiosError && error.response?.status === 401) {
         await handleUnauthorized()
+      } else if (error instanceof AxiosError) {
+        Alert.alert('Clock Out Failed', error.response?.data?.errors?.[0]?.detail || error.response?.data?.detail || 'Unable to clock out.');
+      }
+    }
+  }
+
+  const submitManualEntry = async () => {
+    try {
+      const hours = Number(manualHours);
+      if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
+        Alert.alert('Invalid Hours', 'Enter a number greater than 0 and no more than 24.');
+        return;
+      }
+
+      const token = await AsyncStorage.getItem('accessToken');
+      if (!token) throw new Error('No access token found');
+
+      await axios.post(API_URL + 'api/manual-session/', {
+        hours,
+        start_time: new Date().toISOString(),
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setManualHours('');
+      setManualEntryVisible(false);
+      eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
+      Alert.alert('Study Time Added', 'Your manual study time has been saved.');
+    } catch (error) {
+      console.log(error);
+      if (error instanceof AxiosError && error.response?.status === 401) {
+        await handleUnauthorized();
+      } else if (error instanceof AxiosError) {
+        Alert.alert('Manual Entry Failed', error.response?.data?.errors?.[0]?.detail || error.response?.data?.detail || 'Unable to save manual study time.');
       }
     }
   }
@@ -319,8 +392,9 @@ const Study = () => {
   const getClockTime = () => {
     if (!checkIsStudying()) return 0
 
-    const lastSession = data.user_sessions[data.user_sessions.length - 1];
-    return new Date(lastSession.start_time).getTime()
+    const openSessions = data.user_sessions.filter((session: any) => session.hours === null);
+    const latestOpenSession = openSessions[openSessions.length - 1];
+    return latestOpenSession ? new Date(latestOpenSession.start_time).getTime() : 0
   }
 
   const refreshClock = async () => {
@@ -506,6 +580,12 @@ const Study = () => {
       clockOutAndRefresh();
     };
 
+    if (!requiresLocationVerification) {
+      setBackgroundStatus(true);
+      setForegroundStatus(true);
+      return;
+    }
+
     // Initial permission check
     handleLocationPermission();
     
@@ -544,7 +624,7 @@ const Study = () => {
       }
       //TaskManager.unregisterTaskAsync(GEOFENCE_TASK);
     };
-  }, [backgroundStatus, foregroundStatus]);
+  }, [backgroundStatus, foregroundStatus, requiresLocationVerification]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -572,7 +652,7 @@ const Study = () => {
 
   // Add effect to check location periodically when not studying
   useEffect(() => {
-    if (!isStudying && backgroundStatus && foregroundStatus && !isLoading) {
+    if (!isStudying && backgroundStatus && foregroundStatus && !isLoading && requiresLocationVerification) {
       // Update location initially
       getStudyLocationGPS();
       
@@ -583,7 +663,7 @@ const Study = () => {
       
       return () => clearInterval(locationInterval);
     }
-  }, [isStudying, backgroundStatus, foregroundStatus, isLoading]);
+  }, [isStudying, backgroundStatus, foregroundStatus, isLoading, requiresLocationVerification]);
 
   if (error) {
     return (
@@ -596,6 +676,13 @@ const Study = () => {
 
   return (
     <SafeAreaView className="bg-white h-full">
+      {maintenanceMode && (
+        <View className="bg-red-600 px-4 py-3">
+          <Text className="text-white font-psemibold text-center">
+            Your organization is temporarily in maintenance mode.
+          </Text>
+        </View>
+      )}
       {/* New Header Bar */}
       <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
         <View className="flex-row items-center">
@@ -673,14 +760,35 @@ const Study = () => {
               </TouchableOpacity>
             </View>
           )}
+          {allowManualEntry && (
+            <View className="px-4 pt-4">
+              <TouchableOpacity
+                onPress={() => setManualEntryVisible(true)}
+                className="bg-gray-900 p-4 rounded-xl shadow-sm"
+              >
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center flex-1">
+                    <View className="bg-white/20 p-2 rounded-full mr-3">
+                      <Ionicons name="create" size={20} color="white" />
+                    </View>
+                    <View>
+                      <Text className="text-white font-psemibold text-lg">Add Study Time</Text>
+                      <Text className="text-white/90 text-sm">Manual entry is enabled</Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="white" />
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
           <View className='h-[33vh] w-full justify-center items-center px-4'>
-            {backgroundStatus && foregroundStatus ? (
+            {(backgroundStatus && foregroundStatus) ? (
               <ClockButton
-                title={!isStudying ? "Start Studying" : "Stop"}
+                title={maintenanceMode ? "Maintenance" : (!isStudying ? "Start Studying" : "Stop")}
                 secondaryTitle={!isStudying 
-                  ? (currentStudyLocation ? currentStudyLocation.name : "Not in a study area") 
+                  ? (!requiresLocationVerification ? "Location verification off" : (currentStudyLocation ? currentStudyLocation.name : "Not in a study area"))
                   : undefined}
-                handlePress={handleClock}
+                handlePress={maintenanceMode ? () => Alert.alert('Maintenance Mode', 'Your organization is temporarily in maintenance mode.') : handleClock}
                 isStarted={isStudying}
                 percentComplete={calculatePercentComplete()}
                 time={time} // Use the actual stopwatch time
@@ -693,7 +801,7 @@ const Study = () => {
           </View>
           
           {/* Permission Error Message Area */}
-          {(!backgroundStatus || !foregroundStatus) && (
+          {requiresLocationVerification && (!backgroundStatus || !foregroundStatus) && (
             <View className="mx-4 mb-4 p-4 bg-red-50 rounded-lg border border-red-200">
               <Text className="font-psemibold text-center text-red-700 mb-2">
                 Location Permission Required
@@ -852,10 +960,12 @@ const Study = () => {
               )}
               
               {/* Show an overlay when map isn't available */}
-              {(!mapRegion || !backgroundStatus || !foregroundStatus) && (
+              {(!mapRegion || !backgroundStatus || !foregroundStatus || !requiresLocationVerification) && (
                 <View className="absolute inset-0 bg-gray-100 items-center justify-center">
                   <Text className="text-gray-500 font-psemibold">
-                    {!backgroundStatus || !foregroundStatus
+                    {!requiresLocationVerification
+                      ? "Location verification is disabled"
+                      : !backgroundStatus || !foregroundStatus
                       ? "Location permissions required to view map"
                       : "Loading map..."}
                   </Text>
@@ -944,6 +1054,38 @@ const Study = () => {
               {/* Add some bottom padding for the last item */}
               <View className="h-4" />
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={manualEntryVisible}
+        onRequestClose={() => setManualEntryVisible(false)}
+      >
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.25)' }}>
+          <View className="bg-white rounded-t-3xl p-5">
+            <View className="flex-row justify-between items-center mb-4">
+              <Text className="text-xl font-psemibold">Add Study Time</Text>
+              <TouchableOpacity onPress={() => setManualEntryVisible(false)} className="p-2">
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <Text className="text-gray-600 mb-2">Hours studied</Text>
+            <TextInput
+              value={manualHours}
+              onChangeText={setManualHours}
+              keyboardType="decimal-pad"
+              placeholder="1.5"
+              className="border border-gray-300 rounded-lg p-3 text-lg mb-4"
+            />
+            <TouchableOpacity
+              onPress={submitManualEntry}
+              className="bg-green-600 p-4 rounded-lg items-center"
+            >
+              <Text className="text-white font-psemibold">Save Study Time</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

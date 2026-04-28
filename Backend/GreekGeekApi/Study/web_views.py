@@ -39,4 +39,12 @@ def forgot_password_page(request):
 def reset_password_page(request, token):
     """Reset password page function-based view"""
     # The token validation will be handled by JavaScript on the frontend
-    return render(request, 'reset-password.html', {'token': token}) 
+    return render(request, 'reset-password.html', {'token': token})
+
+def privacy_page(request):
+    """Privacy policy page."""
+    return render(request, 'privacy.html')
+
+def terms_page(request):
+    """Terms of service page."""
+    return render(request, 'terms.html')

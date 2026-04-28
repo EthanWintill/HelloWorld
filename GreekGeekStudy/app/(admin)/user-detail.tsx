@@ -311,7 +311,7 @@ const UserDetail = () => {
               const token = await AsyncStorage.getItem('accessToken')
               if (!token) throw new Error('No access token found')
 
-              await axios.post(
+              const response = await axios.post(
                 `${API_URL}api/user/${userId}/reset-password/`,
                 {},
                 {
@@ -323,7 +323,9 @@ const UserDetail = () => {
               
               Alert.alert(
                 "Success",
-                "Password reset email has been sent to the user.",
+                response.data?.reset_url
+                  ? `${response.data.detail}\n\nLocal reset link:\n${response.data.reset_url}`
+                  : response.data?.detail || "Password reset email has been sent to the user.",
                 [{ text: "OK" }]
               )
             } catch (error: any) {
@@ -748,4 +750,4 @@ const UserDetail = () => {
   )
 }
 
-export default UserDetail 
+export default UserDetail

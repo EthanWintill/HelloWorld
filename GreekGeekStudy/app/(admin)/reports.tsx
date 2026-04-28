@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Dimensions } from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Dimensions, Share } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -191,12 +191,76 @@ const Reports = () => {
     return date.toLocaleDateString()
   }
 
-  const handleExportData = () => {
-    Alert.alert(
-      "Export Data",
-      "This would export the report data to CSV or PDF format.",
-      [{ text: "OK" }]
-    )
+  const csvEscape = (value: string | number | null | undefined) => {
+    const stringValue = value === null || value === undefined ? '' : String(value)
+    return `"${stringValue.replace(/"/g, '""')}"`
+  }
+
+  const rowsToCsv = (rows: (string | number | null | undefined)[][]) => {
+    return rows.map(row => row.map(csvEscape).join(',')).join('\n')
+  }
+
+  const handleExportData = async () => {
+    if (!orgReport) {
+      Alert.alert("Error", "Report data is not loaded yet.")
+      return
+    }
+
+    try {
+      const periodLabel = hasPeriodsData && selectedPeriod
+        ? `${formatDate(selectedPeriod.start_date)} - ${formatDate(selectedPeriod.end_date)}`
+        : 'Lifetime'
+
+      let rows: (string | number | null | undefined)[][] = []
+      let title = `${orgReport.org_name} ${periodLabel} Report`
+
+      if (activeTab === 'users') {
+        title = `${title} - Users`
+        rows = [
+          ['User', 'Group', 'Hours', hasPeriodsData ? 'Goal %' : 'Goal %'],
+          ...userStats.map(user => [
+            user.name,
+            user.group?.name || 'No Group',
+            user.hours.toFixed(1),
+            hasPeriodsData ? user.goal_percentage : '',
+          ]),
+        ]
+      } else if (activeTab === 'groups') {
+        title = `${title} - Groups`
+        rows = [
+          ['Group', 'Members', 'Active Members', 'Total Hours', 'Average Hours', hasPeriodsData ? 'Goal %' : 'Goal %'],
+          ...groupStats.map(group => [
+            group.name,
+            group.member_count,
+            group.active_members,
+            group.total_hours.toFixed(1),
+            group.average_hours.toFixed(1),
+            hasPeriodsData ? group.goal_percentage : '',
+          ]),
+        ]
+      } else {
+        title = `${title} - Locations`
+        rows = [
+          ['Location', 'Sessions', 'Hours', 'Usage %', 'GPS Radius', 'Address'],
+          ...locationStats.map(location => [
+            location.name,
+            location.sessions,
+            location.hours.toFixed(1),
+            location.utilization_rate,
+            location.gps_radius,
+            location.gps_address || '',
+          ]),
+        ]
+      }
+
+      await Share.share({
+        title,
+        message: rowsToCsv(rows),
+      })
+    } catch (error) {
+      console.error('Error exporting report:', error)
+      Alert.alert("Error", "Failed to export report data. Please try again.")
+    }
   }
 
   // Compute stats data for selected period
@@ -703,4 +767,4 @@ const Reports = () => {
   )
 }
 
-export default Reports 
+export default Reports

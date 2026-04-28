@@ -144,7 +144,7 @@ function updateNavbar() {
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="/">
-                            <i class="fas fa-home me-2"></i>Dashboard
+                            <i class="fas fa-home me-2"></i>Home
                         </a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" onclick="logout()">
@@ -162,7 +162,7 @@ function updateNavbar() {
                     </a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="/">
-                            <i class="fas fa-home me-2"></i>Dashboard
+                            <i class="fas fa-home me-2"></i>Home
                         </a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="#" onclick="logout()">
@@ -176,12 +176,12 @@ function updateNavbar() {
         navbarAuth.innerHTML = `
             <li class="nav-item">
                 <a class="nav-link" href="/login/">
-                    <i class="fas fa-sign-in-alt me-1"></i>Admin Sign In
+                    <i class="fas fa-sign-in-alt me-1"></i>Sign in
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="/register/">
-                    <i class="fas fa-plus me-1"></i>Start Free Trial
+                    <i class="fas fa-plus me-1"></i>Register organization
                 </a>
             </li>
         `;
@@ -236,17 +236,32 @@ async function verifyAdminStatus() {
 
 // Initialize authentication on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // If user is authenticated, verify admin status
-    if (isAuthenticated()) {
-        verifyAdminStatus().then(isValidAdmin => {
-            if (isValidAdmin) {
-                updateNavbar();
+    updateNavbar();
+
+    document.querySelectorAll('.site-navbar .nav-link').forEach(link => {
+        link.addEventListener('click', event => {
+            const href = link.getAttribute('href') || '';
+            const hash = href.startsWith('/#') ? href.slice(1) : '';
+            const navbarCollapse = document.getElementById('navbarNav');
+
+            if (hash && window.location.pathname === '/') {
+                const target = document.querySelector(hash);
+                if (target) {
+                    event.preventDefault();
+                    if (navbarCollapse && navbarCollapse.classList.contains('show') && window.bootstrap) {
+                        const collapse = window.bootstrap.Collapse.getOrCreateInstance(navbarCollapse);
+                        collapse.hide();
+                    }
+                    window.history.pushState(null, '', hash);
+                    window.setTimeout(() => target.scrollIntoView({ block: 'start' }), 180);
+                    return;
+                }
             }
-            // If not valid admin, verifyAdminStatus will handle logout
+
+            if (!navbarCollapse || !navbarCollapse.classList.contains('show') || !window.bootstrap) return;
+            window.bootstrap.Collapse.getOrCreateInstance(navbarCollapse).hide();
         });
-    } else {
-        updateNavbar();
-    }
+    });
     
     // Set up periodic token refresh (every 30 minutes)
     setInterval(() => {

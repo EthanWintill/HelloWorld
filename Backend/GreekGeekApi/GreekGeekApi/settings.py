@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-a#1%ik&r*uv37o)yx_i#z@mtjap=%@_^=-^o7(!5kah3n@@#g7'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-local-dev-only-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -83,11 +86,6 @@ WSGI_APPLICATION = 'GreekGeekApi.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
-from dotenv import load_dotenv
-
-
-load_dotenv()
 
 DB_USER_NM = os.getenv('DB_USER_NM')
 DB_USER_PW = os.getenv('DB_USER_PW')

@@ -1,5 +1,5 @@
 from django.test import TestCase
-from .models import Org, User, Group, Location, Session
+from .models import Org, OrgSettings, User, Group, Location, Session
 from rest_framework import status
 from rest_framework.test import APIClient
 from django.urls import reverse
@@ -257,11 +257,17 @@ class ClockInClockOutTestCase(TestCase):
     def test_clock_in_out(self):
         self.client.force_authenticate(user=self.user)
 
-        response = self.client.post(self.inUrl, {"location_id":self.location.id})
+        clock_in_payload = {
+            "location_id": self.location.id,
+            "latitude": self.location.gps_lat,
+            "longitude": self.location.gps_long,
+        }
+
+        response = self.client.post(self.inUrl, clock_in_payload)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(Session.objects.count(), 1)
 
-        response = self.client.post(self.inUrl, {"location_id":self.location.id})
+        response = self.client.post(self.inUrl, clock_in_payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Session.objects.count(), 1)
 
@@ -273,9 +279,71 @@ class ClockInClockOutTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Session.objects.count(), 1)
 
-        response = self.client.post(self.inUrl, {"location_id":self.location.id})
+        response = self.client.post(self.inUrl, clock_in_payload)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(Session.objects.count(), 2)
+
+    def test_clock_in_without_location_when_verification_disabled(self):
+        self.client.force_authenticate(user=self.user)
+        OrgSettings.objects.create(
+            org=self.org,
+            require_location_verification=False,
+        )
+
+        response = self.client.post(self.inUrl, {})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        session = Session.objects.get()
+        self.assertIsNone(session.location)
+
+    def test_manual_session_requires_setting(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post('/api/manual-session/', {"hours": 1.5})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        OrgSettings.objects.update_or_create(
+            org=self.org,
+            defaults={"allow_manual_entry": True},
+        )
+        response = self.client.post('/api/manual-session/', {"hours": 1.5})
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Session.objects.count(), 1)
+        self.assertEqual(Session.objects.first().hours, 1.5)
+
+    def test_clock_out_finds_open_session_after_manual_entry(self):
+        self.client.force_authenticate(user=self.user)
+        OrgSettings.objects.create(
+            org=self.org,
+            allow_manual_entry=True,
+            require_location_verification=False,
+        )
+
+        response = self.client.post(self.inUrl, {})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        response = self.client.post('/api/manual-session/', {"hours": 0.25})
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        response = self.client.post(self.outUrl)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Session.objects.filter(hours__isnull=True).count(), 0)
+
+    def test_maintenance_blocks_non_staff_clock_in(self):
+        self.client.force_authenticate(user=self.user)
+        OrgSettings.objects.create(
+            org=self.org,
+            maintenance_mode=True,
+        )
+
+        response = self.client.post(self.inUrl, {
+            "location_id": self.location.id,
+            "latitude": self.location.gps_lat,
+            "longitude": self.location.gps_long,
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
         
 class LocationCrudTestCase(TestCase):
@@ -932,6 +1000,3 @@ class OrganizationTestCase(TestCase):
         # Verify that the location is correctly assigned
         self.assertEqual(self.user1.last_location, location)
         self.assertEqual(self.user1.last_location.name, "Test Location")
-
-
-

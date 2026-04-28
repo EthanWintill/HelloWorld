@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from .models import User, Org, Location, Session, PeriodSetting, PeriodInstance, NotificationToken, Group
+from .models import User, Org, OrgSettings, Location, Session, PeriodSetting, PeriodInstance, NotificationToken, Group
 from django.utils import timezone
 from .utils import get_or_create_period_instance
 
@@ -52,6 +52,33 @@ class OrgSerializer(serializers.ModelSerializer):
     class Meta:
         model = Org
         fields = '__all__'
+
+class OrgSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrgSettings
+        fields = (
+            'id',
+            'org',
+            'require_location_verification',
+            'allow_manual_entry',
+            'require_photos',
+            'photo_frequency',
+            'send_reminder_emails',
+            'reminder_frequency',
+            'send_progress_reports',
+            'progress_report_frequency',
+            'require_password_reset_days',
+            'session_timeout_minutes',
+            'allow_multiple_devices',
+            'debug_mode',
+            'maintenance_mode',
+        )
+        read_only_fields = ('id', 'org')
+
+    def validate_require_photos(self, value):
+        if value:
+            raise serializers.ValidationError("Photo verification is not available yet.")
+        return value
 
 class UpdateOrgSerializer(OrgSerializer):
     name = serializers.CharField(required=False)
@@ -221,13 +248,31 @@ class SessionSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
 class NotificationTokenSerializer(serializers.ModelSerializer):
+    token = serializers.CharField(validators=[])
+
     class Meta:
         model = NotificationToken
         fields = ['id', 'token', 'device_id', 'is_active', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    def validate_token(self, value):
+        if not value:
+            raise serializers.ValidationError("Notification token is required.")
+        return value
+
     def create(self, validated_data):
         user = self.context['request'].user
+        existing_by_token = NotificationToken.objects.filter(
+            token=validated_data['token']
+        ).first()
+
+        if existing_by_token:
+            existing_by_token.user = user
+            existing_by_token.device_id = validated_data.get('device_id')
+            existing_by_token.is_active = True
+            existing_by_token.save()
+            return existing_by_token
+
         # Check if token already exists for this user and device
         if 'device_id' in validated_data and validated_data['device_id']:
             existing = NotificationToken.objects.filter(
@@ -256,6 +301,7 @@ class UserDashboardSerializer(serializers.ModelSerializer):
     group = GroupSerializer(read_only=True)
     org_groups = serializers.SerializerMethodField()
     total_hours = serializers.SerializerMethodField()
+    org_settings = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -264,7 +310,13 @@ class UserDashboardSerializer(serializers.ModelSerializer):
                  'user_sessions', 'org_period_instances', 'active_period_setting',
                  'last_location', 'total_hours',
                  'notify_org_starts_studying', 'notify_user_leaves_zone', 'notify_study_deadline_approaching',
-                 'org_groups')
+                 'org_groups', 'org_settings')
+
+    def get_org_settings(self, obj):
+        if not obj.org:
+            return None
+        settings, _ = OrgSettings.objects.get_or_create(org=obj.org)
+        return OrgSettingsSerializer(settings).data
 
     def get_org_groups(self, obj):
         if obj.org:
@@ -408,5 +460,3 @@ class OrgOwnerSignupSerializer(serializers.Serializer):
             'user': user,
             'org': org
         }
-
-

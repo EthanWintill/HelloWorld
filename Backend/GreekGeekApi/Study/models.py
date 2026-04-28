@@ -18,6 +18,35 @@ class Org(models.Model):
     def __str__(self):
         return self.name
 
+class OrgSettings(models.Model):
+    FREQUENCY_CHOICES = [
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('never', 'Never'),
+    ]
+
+    org = models.OneToOneField(Org, on_delete=models.CASCADE, related_name="settings")
+    require_location_verification = models.BooleanField(default=True)
+    allow_manual_entry = models.BooleanField(default=False)
+    require_photos = models.BooleanField(default=False)
+    photo_frequency = models.PositiveIntegerField(default=60)
+    send_reminder_emails = models.BooleanField(default=True)
+    reminder_frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='daily')
+    send_progress_reports = models.BooleanField(default=True)
+    progress_report_frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='weekly')
+    require_password_reset_days = models.PositiveIntegerField(default=90)
+    session_timeout_minutes = models.PositiveIntegerField(default=30)
+    allow_multiple_devices = models.BooleanField(default=True)
+    debug_mode = models.BooleanField(default=False)
+    maintenance_mode = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name_plural = "org settings"
+
+    def __str__(self):
+        return f"Settings for {self.org.name}"
+
 # Period Model
 class Period(models.Model):
     org = models.ForeignKey(Org, on_delete=models.CASCADE, related_name="periods")
@@ -212,4 +241,3 @@ class PasswordResetToken(models.Model):
 
     def __str__(self):
         return f"Password reset for {self.user.email} - {self.token[:10]}..."
-

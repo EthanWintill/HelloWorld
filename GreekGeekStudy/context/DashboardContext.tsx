@@ -4,6 +4,7 @@ import axios, { AxiosError } from 'axios';
 import { router } from 'expo-router';
 import { API_URL } from '@/constants';
 import eventEmitter, { EVENTS } from '@/services/EventEmitter';
+import { registerPushTokenWithBackend } from '@/hooks/usePushNotifications';
 
 type DashboardState = {
   isLoading: boolean;
@@ -52,6 +53,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         error: null,
         data: response.data,
       }));
+      registerPushTokenWithBackend().catch((error) => {
+        console.warn('Push notification registration failed:', error);
+      });
       console.log('Dashboard Data:', JSON.stringify(response.data, null, 2));
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 401) {
@@ -78,9 +82,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const checkIsStudying = (): boolean => {
     const { data } = dashboardState;
     if (data && data.user_sessions && data.user_sessions.length > 0) {
-      const lastSession = data.user_sessions[data.user_sessions.length - 1];
-      
-      return lastSession.hours === null;
+      return data.user_sessions.some((session: any) => session.hours === null);
     }
     return false;
   };
@@ -114,4 +116,4 @@ export const useDashboard = () => {
     throw new Error('useDashboard must be used within a DashboardProvider');
   }
   return context;
-}; 
+};
