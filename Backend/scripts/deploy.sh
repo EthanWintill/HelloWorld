@@ -2,10 +2,10 @@
 set -euo pipefail
 
 cd /home/sammy/GreekGeek/Backend
+git fetch origin main
+git reset --hard origin/main
+
 source .venv/bin/activate
-cd GreekGeekApi/
-git pull --no-edit
-cd ..
 pip install -r requirements.txt
 cd GreekGeekApi/
 python3 manage.py collectstatic --noinput --clear
