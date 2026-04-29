@@ -21,7 +21,7 @@ const PermissionButton: React.FC<PermissionButtonProps> = ({ handlePress, contai
       className={`border-5 rounded-full justify-center items-center border-gray-500 ${containerStyles}`}>
       <Text
       style={styles.title}
-      className={`text-black text-xl font-medium font-plight mt-1 text-center`}
+      className={`text-gg-text text-xl font-medium font-plight mt-1 text-center`}
       >
       You must enable{'\n'}location sharing to use{'\n'}Greek Geek
       </Text>

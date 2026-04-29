@@ -9,3 +9,6 @@ Backend/.venv
 *.tar.gz
 GreekGeekStudy.app
 AppScreenshots/
+
+# Local Codex workspace/cache
+**/.codex-home/

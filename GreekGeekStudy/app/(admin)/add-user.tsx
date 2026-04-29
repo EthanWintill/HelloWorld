@@ -124,8 +124,8 @@ const AddUser = () => {
   if (error) {
     return (
       <ScrollView className="flex-1 p-4">
-        <Text className="text-red-500 text-lg font-bold">Error:</Text>
-        <Text className="text-red-500">{JSON.stringify(error, null, 2)}</Text>
+        <Text className="text-gg-error text-lg font-bold">Error:</Text>
+        <Text className="text-gg-error">{JSON.stringify(error, null, 2)}</Text>
       </ScrollView>
     );
   }
@@ -134,15 +134,15 @@ const AddUser = () => {
   if (!data?.is_staff) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center p-4">
-        <Ionicons name="alert-circle" size={64} color="#EF4444" />
+        <Ionicons name="alert-circle" size={64} color="#ba1a1a" />
         <Text className="text-xl font-psemibold text-center mt-4 mb-2">Access Denied</Text>
-        <Text className="text-gray-600 text-center">You don't have permission to access this page.</Text>
+        <Text className="text-gg-muted text-center">You don't have permission to access this page.</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-gg-bg">
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
@@ -158,59 +158,59 @@ const AddUser = () => {
             <Text className="text-2xl font-psemibold">Add New User</Text>
           </View>
 
-          <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
+          <View className="bg-gg-surface rounded-lg shadow-sm p-4 mb-4">
             <View className="mb-4">
-              <Text className="font-psemibold mb-1">First Name <Text className="text-red-500">*</Text></Text>
+              <Text className="font-psemibold mb-1">First Name <Text className="text-gg-error">*</Text></Text>
               <TextInput
                 value={formData.first_name}
                 onChangeText={(text) => handleInputChange('first_name', text)}
-                className="border border-gray-300 rounded-lg px-3 py-2"
+                className="border border-gg-outline rounded-lg px-3 py-2"
                 placeholder="Enter first name"
               />
               {formErrors.first_name && (
-                <Text className="text-red-500 text-sm mt-1">{formErrors.first_name}</Text>
+                <Text className="text-gg-error text-sm mt-1">{formErrors.first_name}</Text>
               )}
             </View>
 
             <View className="mb-4">
-              <Text className="font-psemibold mb-1">Last Name <Text className="text-red-500">*</Text></Text>
+              <Text className="font-psemibold mb-1">Last Name <Text className="text-gg-error">*</Text></Text>
               <TextInput
                 value={formData.last_name}
                 onChangeText={(text) => handleInputChange('last_name', text)}
-                className="border border-gray-300 rounded-lg px-3 py-2"
+                className="border border-gg-outline rounded-lg px-3 py-2"
                 placeholder="Enter last name"
               />
               {formErrors.last_name && (
-                <Text className="text-red-500 text-sm mt-1">{formErrors.last_name}</Text>
+                <Text className="text-gg-error text-sm mt-1">{formErrors.last_name}</Text>
               )}
             </View>
 
             <View className="mb-4">
-              <Text className="font-psemibold mb-1">Email <Text className="text-red-500">*</Text></Text>
+              <Text className="font-psemibold mb-1">Email <Text className="text-gg-error">*</Text></Text>
               <TextInput
                 value={formData.email}
                 onChangeText={(text) => handleInputChange('email', text)}
-                className="border border-gray-300 rounded-lg px-3 py-2"
+                className="border border-gg-outline rounded-lg px-3 py-2"
                 placeholder="Enter email address"
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
               {formErrors.email && (
-                <Text className="text-red-500 text-sm mt-1">{formErrors.email}</Text>
+                <Text className="text-gg-error text-sm mt-1">{formErrors.email}</Text>
               )}
             </View>
 
             <View className="mb-4">
-              <Text className="font-psemibold mb-1">Password <Text className="text-red-500">*</Text></Text>
+              <Text className="font-psemibold mb-1">Password <Text className="text-gg-error">*</Text></Text>
               <TextInput
                 value={formData.password}
                 onChangeText={(text) => handleInputChange('password', text)}
-                className="border border-gray-300 rounded-lg px-3 py-2"
+                className="border border-gg-outline rounded-lg px-3 py-2"
                 placeholder="Enter password"
                 secureTextEntry
               />
               {formErrors.password && (
-                <Text className="text-red-500 text-sm mt-1">{formErrors.password}</Text>
+                <Text className="text-gg-error text-sm mt-1">{formErrors.password}</Text>
               )}
             </View>
 
@@ -219,28 +219,28 @@ const AddUser = () => {
               <TextInput
                 value={formData.phone_number}
                 onChangeText={(text) => handleInputChange('phone_number', text)}
-                className="border border-gray-300 rounded-lg px-3 py-2"
+                className="border border-gg-outline rounded-lg px-3 py-2"
                 placeholder="Enter phone number (optional)"
                 keyboardType="phone-pad"
               />
               {formErrors.phone_number && (
-                <Text className="text-red-500 text-sm mt-1">{formErrors.phone_number}</Text>
+                <Text className="text-gg-error text-sm mt-1">{formErrors.phone_number}</Text>
               )}
             </View>
 
             <View className="mb-4">
-              <Text className="font-psemibold mb-1">Registration Code <Text className="text-red-500">*</Text></Text>
+              <Text className="font-psemibold mb-1">Registration Code <Text className="text-gg-error">*</Text></Text>
               <TextInput
                 value={formData.registration_code}
                 onChangeText={(text) => handleInputChange('registration_code', text)}
-                className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-100"
+                className="border border-gg-outline rounded-lg px-3 py-2 bg-gg-surfaceContainer"
                 placeholder="Organization registration code"
                 editable={false}
               />
               {formErrors.registration_code && (
-                <Text className="text-red-500 text-sm mt-1">{formErrors.registration_code}</Text>
+                <Text className="text-gg-error text-sm mt-1">{formErrors.registration_code}</Text>
               )}
-              <Text className="text-gray-500 text-sm mt-1">This code is automatically filled from your organization settings</Text>
+              <Text className="text-gg-muted text-sm mt-1">This code is automatically filled from your organization settings</Text>
             </View>
           </View>
 
@@ -248,7 +248,7 @@ const AddUser = () => {
             onPress={handleSubmit}
             disabled={isSubmitting}
             className={`p-3 rounded-lg flex-row items-center justify-center ${
-              isSubmitting ? 'bg-gray-400' : 'bg-green-600'
+              isSubmitting ? 'bg-gray-400' : 'bg-gg-primary'
             }`}
           >
             {isSubmitting ? (

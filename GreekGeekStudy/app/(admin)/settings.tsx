@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import API_URL from '../../constants/api'
+import { Card, ScreenHeader } from '../../components/Design'
 
 type AdminSettingsState = {
   requireLocationVerification: boolean
@@ -167,8 +168,8 @@ const AdminSettings = () => {
   if (error) {
     return (
       <ScrollView className="flex-1 p-4">
-        <Text className="text-red-500 text-lg font-bold">Error:</Text>
-        <Text className="text-red-500">{JSON.stringify(error, null, 2)}</Text>
+        <Text className="text-gg-error text-lg font-bold">Error:</Text>
+        <Text className="text-gg-error">{JSON.stringify(error, null, 2)}</Text>
       </ScrollView>
     )
   }
@@ -177,29 +178,32 @@ const AdminSettings = () => {
   if (!data.is_staff) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center p-4">
-        <Ionicons name="alert-circle" size={64} color="#EF4444" />
+        <Ionicons name="alert-circle" size={64} color="#ba1a1a" />
         <Text className="text-xl font-psemibold text-center mt-4 mb-2">Access Denied</Text>
-        <Text className="text-gray-600 text-center">You don't have permission to access this page.</Text>
+        <Text className="text-gg-muted text-center">You don't have permission to access this page.</Text>
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView className="flex-1 p-4">
-        {/* Study Verification Settings */}
-        <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <Text className="text-xl font-psemibold mb-4">Study Verification</Text>
+    <SafeAreaView className="flex-1 bg-gg-bg">
+      <ScreenHeader
+        title="Admin Settings"
+        subtitle="Verification, notifications, and operational controls"
+      />
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+        <Card className="mb-4">
+          <Text className="text-lg font-psemibold mb-4 text-gg-text">Study Verification</Text>
           
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
               <Text className="font-psemibold">Location Verification</Text>
-              <Text className="text-gray-600 text-sm">Require GPS location to verify study sessions</Text>
+              <Text className="text-gg-muted text-sm">Require GPS location to verify study sessions</Text>
             </View>
             <Switch
               value={settings.requireLocationVerification}
               onValueChange={(value) => setSettings({...settings, requireLocationVerification: value})}
-              trackColor={{ false: "#767577", true: "#16A34A" }}
+              trackColor={{ false: "#767577", true: "#006b2c" }}
               thumbColor="#f4f3f4"
             />
           </View>
@@ -207,12 +211,12 @@ const AdminSettings = () => {
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
               <Text className="font-psemibold">Allow Manual Entry</Text>
-              <Text className="text-gray-600 text-sm">Allow users to manually log study hours</Text>
+              <Text className="text-gg-muted text-sm">Allow users to manually log study hours</Text>
             </View>
             <Switch
               value={settings.allowManualEntry}
               onValueChange={(value) => setSettings({...settings, allowManualEntry: value})}
-              trackColor={{ false: "#767577", true: "#16A34A" }}
+              trackColor={{ false: "#767577", true: "#006b2c" }}
               thumbColor="#f4f3f4"
             />
           </View>
@@ -220,12 +224,12 @@ const AdminSettings = () => {
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
               <Text className="font-psemibold">Require Photos</Text>
-              <Text className="text-gray-600 text-sm">Photo verification is not available yet</Text>
+              <Text className="text-gg-muted text-sm">Photo verification is not available yet</Text>
             </View>
             <Switch
               value={false}
               onValueChange={() => Alert.alert("Coming Soon", "Photo verification is intentionally deferred for now.")}
-              trackColor={{ false: "#767577", true: "#16A34A" }}
+              trackColor={{ false: "#767577", true: "#006b2c" }}
               thumbColor="#f4f3f4"
             />
           </View>
@@ -240,109 +244,106 @@ const AdminSettings = () => {
                     const frequency = parseInt(text) || 60
                     setSettings({...settings, photoFrequency: frequency})
                   }}
-                  className="border border-gray-300 rounded-lg p-2 w-20 mr-2"
+                  className="border border-gg-outline rounded-lg p-2 w-20 mr-2"
                   keyboardType="numeric"
                 />
-                <Text className="text-gray-600">minutes</Text>
+                <Text className="text-gg-muted">minutes</Text>
               </View>
             </View>
           )}
-        </View>
+        </Card>
         
-        {/* Notification Settings */}
-        <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <Text className="text-xl font-psemibold mb-4">Planned Notifications</Text>
+        <Card className="mb-4">
+          <Text className="text-lg font-psemibold mb-4 text-gg-text">Planned Notifications</Text>
           
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
-              <Text className="font-psemibold text-gray-500">Reminder Emails</Text>
-              <Text className="text-gray-500 text-sm">Not active yet. Reminder scheduling is not enabled.</Text>
+              <Text className="font-psemibold text-gg-muted">Reminder Emails</Text>
+              <Text className="text-gg-muted text-sm">Not active yet. Reminder scheduling is not enabled.</Text>
             </View>
             <Switch
               value={false}
               disabled={true}
-              trackColor={{ false: "#767577", true: "#16A34A" }}
+              trackColor={{ false: "#767577", true: "#006b2c" }}
               thumbColor="#f4f3f4"
             />
           </View>
           
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
-              <Text className="font-psemibold text-gray-500">Progress Report Emails</Text>
-              <Text className="text-gray-500 text-sm">Not active yet. Report generation is manual from Reports.</Text>
+              <Text className="font-psemibold text-gg-muted">Progress Report Emails</Text>
+              <Text className="text-gg-muted text-sm">Not active yet. Report generation is manual from Reports.</Text>
             </View>
             <Switch
               value={false}
               disabled={true}
-              trackColor={{ false: "#767577", true: "#16A34A" }}
+              trackColor={{ false: "#767577", true: "#006b2c" }}
               thumbColor="#f4f3f4"
             />
           </View>
-        </View>
+        </Card>
         
-        {/* Security Settings */}
-        <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <Text className="text-xl font-psemibold mb-4">Planned Security Controls</Text>
+        <Card className="mb-4">
+          <Text className="text-lg font-psemibold mb-4 text-gg-text">Planned Security Controls</Text>
           
           <View className="mb-4">
-            <Text className="font-psemibold mb-1 text-gray-500">Password Reset Period</Text>
+            <Text className="font-psemibold mb-1 text-gg-muted">Password Reset Period</Text>
             <View className="flex-row items-center">
               <TextInput
                 value={settings.requirePasswordReset.toString()}
                 editable={false}
-                className="border border-gray-200 bg-gray-100 rounded-lg p-2 w-20 mr-2 text-gray-500"
+                className="border border-gg-outlineVariant bg-gg-surfaceContainer rounded-lg p-2 w-20 mr-2 text-gg-muted"
                 keyboardType="numeric"
               />
-              <Text className="text-gray-500">not active yet</Text>
+              <Text className="text-gg-muted">not active yet</Text>
             </View>
-            <Text className="text-gray-500 text-sm mt-1">
+            <Text className="text-gg-muted text-sm mt-1">
               Password age enforcement needs an auth policy pass before launch.
             </Text>
           </View>
           
           <View className="mb-4">
-            <Text className="font-psemibold mb-1 text-gray-500">Session Timeout</Text>
+            <Text className="font-psemibold mb-1 text-gg-muted">Session Timeout</Text>
             <View className="flex-row items-center">
               <TextInput
                 value={settings.sessionTimeout.toString()}
                 editable={false}
-                className="border border-gray-200 bg-gray-100 rounded-lg p-2 w-20 mr-2 text-gray-500"
+                className="border border-gg-outlineVariant bg-gg-surfaceContainer rounded-lg p-2 w-20 mr-2 text-gg-muted"
                 keyboardType="numeric"
               />
-              <Text className="text-gray-500">not active yet</Text>
+              <Text className="text-gg-muted">not active yet</Text>
             </View>
-            <Text className="text-gray-500 text-sm mt-1">
+            <Text className="text-gg-muted text-sm mt-1">
               Current JWT tokens do not support server-side inactivity timeout.
             </Text>
           </View>
           
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
-              <Text className="font-psemibold text-gray-500">Allow Multiple Devices</Text>
-              <Text className="text-gray-500 text-sm">Not active yet. Device session tracking is not enabled.</Text>
+              <Text className="font-psemibold text-gg-muted">Allow Multiple Devices</Text>
+              <Text className="text-gg-muted text-sm">Not active yet. Device session tracking is not enabled.</Text>
             </View>
             <Switch
               value={false}
               disabled={true}
-              trackColor={{ false: "#767577", true: "#16A34A" }}
+              trackColor={{ false: "#767577", true: "#006b2c" }}
               thumbColor="#f4f3f4"
             />
           </View>
-        </View>
+        </Card>
         
-        {/* Advanced Settings */}
-        <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <Text className="text-xl font-psemibold mb-4">Advanced</Text>
+        <Card className="mb-4">
+          <Text className="text-lg font-psemibold mb-4 text-gg-text">Advanced</Text>
           
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
-              <Text className="font-psemibold text-gray-500">Debug Mode</Text>
-              <Text className="text-gray-500 text-sm">Not active yet. Server logging is configured outside the app.</Text>
+              <Text className="font-psemibold text-gg-muted">Debug Mode</Text>
+              <Text className="text-gg-muted text-sm">Not active yet. Server logging is configured outside the app.</Text>
             </View>
             <Switch
               value={false}
               disabled={true}
-              trackColor={{ false: "#767577", true: "#16A34A" }}
+              trackColor={{ false: "#767577", true: "#006b2c" }}
               thumbColor="#f4f3f4"
             />
           </View>
@@ -350,7 +351,7 @@ const AdminSettings = () => {
           <View className="mb-4 flex-row justify-between items-center">
             <View className="flex-1">
               <Text className="font-psemibold">Maintenance Mode</Text>
-              <Text className="text-gray-600 text-sm">Temporarily disable the app for maintenance</Text>
+              <Text className="text-gg-muted text-sm">Temporarily disable the app for maintenance</Text>
             </View>
             <Switch
               value={settings.maintenanceMode}
@@ -371,18 +372,18 @@ const AdminSettings = () => {
                   setSettings({...settings, maintenanceMode: false})
                 }
               }}
-              trackColor={{ false: "#767577", true: "#16A34A" }}
+              trackColor={{ false: "#767577", true: "#006b2c" }}
               thumbColor="#f4f3f4"
             />
           </View>
-        </View>
+        </Card>
         
         {/* Action Buttons */}
         <View className="flex-row justify-between mb-4">
           <TouchableOpacity 
             onPress={handleResetSettings}
             disabled={savingSettings}
-            className={`p-3 rounded-lg flex-1 mr-2 items-center ${savingSettings ? 'bg-red-300' : 'bg-red-500'}`}
+            className={`min-h-[56px] rounded-lg flex-1 mr-2 items-center justify-center ${savingSettings ? 'bg-[#ffb4ab]' : 'bg-gg-error'}`}
           >
             <Text className="text-white font-psemibold">Reset to Defaults</Text>
           </TouchableOpacity>
@@ -390,7 +391,7 @@ const AdminSettings = () => {
           <TouchableOpacity 
             onPress={handleSaveSettings}
             disabled={savingSettings}
-            className={`p-3 rounded-lg flex-1 ml-2 items-center ${savingSettings ? 'bg-green-300' : 'bg-green-600'}`}
+            className={`min-h-[56px] rounded-lg flex-1 ml-2 items-center justify-center ${savingSettings ? 'bg-gg-surfaceHigh' : 'bg-gg-primary'}`}
           >
             <Text className="text-white font-psemibold">{savingSettings ? 'Saving...' : 'Save Settings'}</Text>
           </TouchableOpacity>

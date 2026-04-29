@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import API_URL from '../../constants/api'
+import { Card, EmptyState, ScreenHeader } from '../../components/Design'
 
 // Define types
 interface Group {
@@ -22,12 +23,12 @@ interface User {
   group?: {
     id: number;
     name: string;
-    org: number;
-  };
+    org?: number;
+  } | number | null;
 }
 
 const GroupsManagement = () => {
-  const { dashboardState } = useDashboard()
+  const { dashboardState, refreshDashboard } = useDashboard()
   const { isLoading, error, data } = dashboardState
   
   const [groups, setGroups] = useState<Group[]>([])
@@ -125,8 +126,9 @@ const GroupsManagement = () => {
       setSelectedUserIds([])
       setShowCreateModal(false)
       Alert.alert('Success', 'Group created successfully')
-      // Refresh data to update user assignments
-      fetchGroups()
+      // Refresh both sources so membership labels and unassigned counts stay in sync.
+      await fetchGroups()
+      await refreshDashboard()
     } catch (error) {
       console.error('Error creating group:', error)
       if (axios.isAxiosError(error)) {
@@ -185,8 +187,8 @@ const GroupsManagement = () => {
       setSelectedGroupForEdit(null)
       setSelectedUserIds([])
       Alert.alert('Success', 'Group updated successfully')
-      // Refresh data to update user assignments
-      fetchGroups()
+      await fetchGroups()
+      await refreshDashboard()
     } catch (error) {
       console.error('Error updating group:', error)
       if (axios.isAxiosError(error)) {
@@ -240,7 +242,8 @@ const GroupsManagement = () => {
 
                setGroups(groups.filter(g => g.id !== group.id))
                Alert.alert('Success', 'Group deleted successfully')
-               fetchGroups()
+               await fetchGroups()
+               await refreshDashboard()
              } catch (error) {
                console.error('Error deleting group:', error)
                if (axios.isAxiosError(error)) {
@@ -295,8 +298,22 @@ const GroupsManagement = () => {
     )
   }
 
+  const getUserAssignedGroup = (user: User) => {
+    if (user.group && typeof user.group === 'object') {
+      return user.group
+    }
+
+    const groupFromMembership = groups.find(group =>
+      group.users.some(groupUser => groupUser.id === user.id)
+    )
+
+    return groupFromMembership
+      ? { id: groupFromMembership.id, name: groupFromMembership.name }
+      : null
+  }
+
   const getUnassignedUsers = () => {
-    return allUsers.filter(user => !user.group)
+    return allUsers.filter(user => !getUserAssignedGroup(user))
   }
 
   if (isLoading) {
@@ -306,8 +323,8 @@ const GroupsManagement = () => {
   if (error) {
     return (
       <ScrollView className="flex-1 p-4">
-        <Text className="text-red-500 text-lg font-bold">Error:</Text>
-        <Text className="text-red-500">{JSON.stringify(error, null, 2)}</Text>
+        <Text className="text-gg-error text-lg font-bold">Error:</Text>
+        <Text className="text-gg-error">{JSON.stringify(error, null, 2)}</Text>
       </ScrollView>
     )
   }
@@ -316,23 +333,34 @@ const GroupsManagement = () => {
   if (!data?.is_staff) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center p-4">
-        <Ionicons name="alert-circle" size={64} color="#EF4444" />
+        <Ionicons name="alert-circle" size={64} color="#ba1a1a" />
         <Text className="text-xl font-psemibold text-center mt-4 mb-2">Access Denied</Text>
-        <Text className="text-gray-600 text-center">You don't have permission to access this page.</Text>
+        <Text className="text-gg-muted text-center">You don't have permission to access this page.</Text>
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView className="flex-1 p-4">
-        {/* Groups Section */}
-        <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
+    <SafeAreaView className="flex-1 bg-gg-bg">
+      <ScreenHeader
+        title="Groups"
+        subtitle={`${groups.length} groups • ${getUnassignedUsers().length} unassigned`}
+        right={(
+          <TouchableOpacity
+            onPress={() => setShowCreateModal(true)}
+            className="h-10 w-10 rounded-full bg-gg-surfaceLow items-center justify-center"
+          >
+            <Ionicons name="add" size={22} color="#006b2c" />
+          </TouchableOpacity>
+        )}
+      />
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+        <Card className="mb-4">
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-xl font-psemibold">Groups</Text>
+            <Text className="text-lg font-psemibold text-gg-text">Groups</Text>
             <TouchableOpacity 
               onPress={() => setShowCreateModal(true)}
-              className="bg-green-600 px-4 py-2 rounded-lg flex-row items-center"
+              className="bg-gg-primary px-4 py-2 rounded-lg flex-row items-center"
             >
               <Ionicons name="add" size={20} color="white" />
               <Text className="text-white font-psemibold ml-2">New Group</Text>
@@ -340,32 +368,32 @@ const GroupsManagement = () => {
           </View>
 
           {loading ? (
-            <Text className="text-gray-500 text-center py-4">Loading...</Text>
+            <Text className="text-gg-muted text-center py-4 font-pregular">Loading...</Text>
           ) : groups.length === 0 ? (
-            <Text className="text-gray-500 italic text-center py-4">No groups created yet</Text>
+            <EmptyState icon="people-outline" title="No groups yet" message="Create groups to segment leaderboard and reporting." />
           ) : (
             groups.map(group => (
               <View 
                 key={group.id}
-                className="p-4 bg-gray-50 rounded-lg mb-3"
+                className="p-4 bg-gg-bg border border-gg-outlineVariant rounded-lg mb-3"
               >
                 <View className="flex-row justify-between items-center mb-2">
                   <View>
-                    <Text className="font-psemibold text-lg">{group.name}</Text>
-                    <Text className="text-gray-600 text-sm">{group.users.length} members</Text>
+                    <Text className="font-psemibold text-gg-text">{group.name}</Text>
+                    <Text className="text-gg-muted text-sm font-pregular">{group.users.length} members</Text>
                   </View>
                   <View className="flex-row">
                     <TouchableOpacity 
                       onPress={() => openEditModal(group)}
-                      className="bg-blue-100 p-2 rounded-full mr-2"
+                      className="bg-[#dbe1ff] h-9 w-9 items-center justify-center rounded-full mr-2"
                     >
-                      <Ionicons name="pencil" size={16} color="#3B82F6" />
+                      <Ionicons name="pencil" size={16} color="#0051d5" />
                     </TouchableOpacity>
                     <TouchableOpacity 
                       onPress={() => handleDeleteGroup(group)}
-                      className="bg-red-100 p-2 rounded-full"
+                      className="bg-[#ffdad6] h-9 w-9 items-center justify-center rounded-full"
                     >
-                      <Ionicons name="trash" size={16} color="#EF4444" />
+                      <Ionicons name="trash" size={16} color="#ba1a1a" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -375,8 +403,8 @@ const GroupsManagement = () => {
                   <View className="mt-2">
                     {group.users.map(user => (
                       <View key={user.id} className="flex-row items-center py-1">
-                        <Ionicons name="person" size={14} color="#6B7280" />
-                        <Text className="text-gray-700 text-sm ml-2">
+                        <Ionicons name="person" size={14} color="#3e4a3d" />
+                        <Text className="text-gg-muted text-sm ml-2">
                           {user.first_name} {user.last_name}
                         </Text>
                       </View>
@@ -386,29 +414,28 @@ const GroupsManagement = () => {
               </View>
             ))
           )}
-        </View>
+        </Card>
 
-        {/* Unassigned Users Section */}
-        <View className="bg-white rounded-lg shadow-sm p-4">
-          <Text className="text-xl font-psemibold mb-4">Unassigned Users</Text>
+        <Card>
+          <Text className="text-lg font-psemibold mb-4 text-gg-text">Unassigned Users</Text>
           
           {getUnassignedUsers().length === 0 ? (
-            <Text className="text-gray-500 italic text-center py-4">All users are assigned to groups</Text>
+            <EmptyState icon="checkmark-circle-outline" title="All assigned" message="Every member currently belongs to a group." />
           ) : (
             getUnassignedUsers().map(user => (
               <View 
                 key={user.id}
-                className="p-3 bg-gray-50 rounded-lg flex-row justify-between items-center mb-2"
+                className="p-3 bg-gg-bg border border-gg-outlineVariant rounded-lg flex-row justify-between items-center mb-2"
               >
                 <View>
-                  <Text className="font-psemibold">{user.first_name} {user.last_name}</Text>
-                  <Text className="text-gray-600 text-sm">{user.email}</Text>
+                  <Text className="font-psemibold text-gg-text">{user.first_name} {user.last_name}</Text>
+                  <Text className="text-gg-muted text-sm font-pregular">{user.email}</Text>
                 </View>
-                <Ionicons name="person-outline" size={20} color="#6B7280" />
+                <Ionicons name="person-outline" size={20} color="#3e4a3d" />
               </View>
             ))
           )}
-        </View>
+        </Card>
       </ScrollView>
 
       {/* Create Group Modal */}
@@ -417,12 +444,12 @@ const GroupsManagement = () => {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView className="flex-1 bg-white">
-          <View className="p-4 border-b border-gray-200">
+        <SafeAreaView className="flex-1 bg-gg-surface">
+          <View className="p-4 border-b border-gg-outlineVariant">
             <View className="flex-row justify-between items-center">
               <Text className="text-xl font-psemibold">Create New Group</Text>
               <TouchableOpacity onPress={resetCreateModal}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color="#3e4a3d" />
               </TouchableOpacity>
             </View>
           </View>
@@ -433,7 +460,7 @@ const GroupsManagement = () => {
               <TextInput
                 value={newGroupName}
                 onChangeText={setNewGroupName}
-                className="border border-gray-300 rounded-lg p-3"
+                className="border border-gg-outline rounded-lg p-3"
                 placeholder="Enter group name"
               />
             </View>
@@ -444,29 +471,29 @@ const GroupsManagement = () => {
                 key={user.id}
                 onPress={() => toggleUserSelection(user.id)}
                 className={`p-3 rounded-lg mb-2 flex-row justify-between items-center ${
-                  selectedUserIds.includes(user.id) ? 'bg-green-100' : 'bg-gray-50'
+                  selectedUserIds.includes(user.id) ? 'bg-gg-surfaceLow' : 'bg-gg-bg'
                 }`}
               >
                 <View>
                   <Text className="font-psemibold">{user.first_name} {user.last_name}</Text>
-                  <Text className="text-gray-600 text-sm">{user.email}</Text>
-                  {user.group && (
-                    <Text className="text-blue-600 text-xs">Currently in: {user.group.name}</Text>
+                  <Text className="text-gg-muted text-sm">{user.email}</Text>
+                  {getUserAssignedGroup(user) && (
+                    <Text className="text-gg-secondary text-xs">Currently in: {getUserAssignedGroup(user)?.name}</Text>
                   )}
                 </View>
                 <Ionicons 
                   name={selectedUserIds.includes(user.id) ? "checkmark-circle" : "radio-button-off"} 
                   size={24} 
-                  color={selectedUserIds.includes(user.id) ? "#16A34A" : "#6B7280"} 
+                  color={selectedUserIds.includes(user.id) ? "#006b2c" : "#3e4a3d"} 
                 />
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <View className="p-4 border-t border-gray-200">
+          <View className="p-4 border-t border-gg-outlineVariant">
             <TouchableOpacity 
               onPress={handleCreateGroup}
-              className="bg-green-600 p-3 rounded-lg"
+              className="bg-gg-primary p-3 rounded-lg"
               disabled={loading}
             >
               <Text className="text-white font-psemibold text-center">
@@ -483,12 +510,12 @@ const GroupsManagement = () => {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView className="flex-1 bg-white">
-          <View className="p-4 border-b border-gray-200">
+        <SafeAreaView className="flex-1 bg-gg-surface">
+          <View className="p-4 border-b border-gg-outlineVariant">
             <View className="flex-row justify-between items-center">
               <Text className="text-xl font-psemibold">Edit {selectedGroupForEdit?.name}</Text>
               <TouchableOpacity onPress={resetEditModal}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color="#3e4a3d" />
               </TouchableOpacity>
             </View>
           </View>
@@ -499,7 +526,7 @@ const GroupsManagement = () => {
               <TextInput
                 value={editGroupName}
                 onChangeText={setEditGroupName}
-                className="border border-gray-300 rounded-lg p-3"
+                className="border border-gg-outline rounded-lg p-3"
                 placeholder="Enter group name"
               />
             </View>
@@ -510,29 +537,29 @@ const GroupsManagement = () => {
                 key={user.id}
                 onPress={() => toggleUserSelection(user.id)}
                 className={`p-3 rounded-lg mb-2 flex-row justify-between items-center ${
-                  selectedUserIds.includes(user.id) ? 'bg-green-100' : 'bg-gray-50'
+                  selectedUserIds.includes(user.id) ? 'bg-gg-surfaceLow' : 'bg-gg-bg'
                 }`}
               >
                 <View>
                   <Text className="font-psemibold">{user.first_name} {user.last_name}</Text>
-                  <Text className="text-gray-600 text-sm">{user.email}</Text>
-                  {user.group && user.group.id !== selectedGroupForEdit?.id && (
-                    <Text className="text-blue-600 text-xs">Currently in: {user.group.name}</Text>
+                  <Text className="text-gg-muted text-sm">{user.email}</Text>
+                  {getUserAssignedGroup(user) && getUserAssignedGroup(user)?.id !== selectedGroupForEdit?.id && (
+                    <Text className="text-gg-secondary text-xs">Currently in: {getUserAssignedGroup(user)?.name}</Text>
                   )}
                 </View>
                 <Ionicons 
                   name={selectedUserIds.includes(user.id) ? "checkmark-circle" : "radio-button-off"} 
                   size={24} 
-                  color={selectedUserIds.includes(user.id) ? "#16A34A" : "#6B7280"} 
+                  color={selectedUserIds.includes(user.id) ? "#006b2c" : "#3e4a3d"} 
                 />
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <View className="p-4 border-t border-gray-200">
+          <View className="p-4 border-t border-gg-outlineVariant">
             <TouchableOpacity 
               onPress={handleUpdateGroup}
-              className="bg-blue-600 p-3 rounded-lg"
+              className="bg-gg-secondary p-3 rounded-lg"
               disabled={loading}
             >
               <Text className="text-white font-psemibold text-center">

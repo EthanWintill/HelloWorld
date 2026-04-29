@@ -102,6 +102,9 @@ DATABASES = {
         'PASSWORD': DB_USER_PW,
         'HOST':DB_HOST,
         'PORT':DB_PORT,
+        'TEST': {
+            'NAME': os.getenv('TEST_DB_NAME', f'test_{DB_NAME}'),
+        },
     }
 }
 

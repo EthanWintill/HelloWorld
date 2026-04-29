@@ -34,7 +34,7 @@ const ClockButton: React.FC<ClockButtonProps> = ({ title, secondaryTitle, handle
         onPress={handlePress}
         activeOpacity={0.7}
         disabled={isLoading}
-        className={`border-5 rounded-full justify-center items-center ${isStarted ? 'border-red-500' : 'border-green-500'} ${containerStyles}`}>
+        className={`border-5 rounded-full justify-center items-center ${isStarted ? 'border-gg-error' : 'border-gg-primary'} ${containerStyles}`}>
           
         {isLoading ? (
           <ActivityIndicator size="large" color="#FFA001" />
@@ -45,7 +45,7 @@ const ClockButton: React.FC<ClockButtonProps> = ({ title, secondaryTitle, handle
                 <Text 
                   key={index}
                   style={styles.title} 
-                  className={`text-black text-4xl font-plight ${textStyles}`}
+                  className={`text-gg-text text-4xl font-plight ${textStyles}`}
                 >
                   {word}
                 </Text>

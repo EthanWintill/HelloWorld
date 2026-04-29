@@ -2,6 +2,7 @@ import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native'
 import React from 'react'
 import { useState } from 'react'
 import { icons } from '../constants'
+import { GG } from './Design'
 
 interface FormFieldProps {
   title: string;
@@ -17,20 +18,27 @@ interface FormFieldProps {
 const FormField: React.FC<FormFieldProps> = ({ title, value, placeholder, handleChangeText, otherStyles, error, required, ...props }) => {
   const [showPassword, setShowPassword] = useState(false)
   return (
-    <View className={`space-y-2 ${otherStyles}`}>
-      <Text className="text-base text-gray-600 font-pmedium">{title + (required ? " *" : "")}</Text>
-      {error && <Text className="text-sm text-red-500 font-pregular">{error}</Text>}
-      <View className={`w-full h-16 px-4 border-2 ${error ? "border-red-500 bg-red-50" : "border-slate-200 bg-slate-50"} rounded-2xl focus:border-secondary items-center flex-row`}>
+    <View className={`${otherStyles}`}>
+      <Text className="text-xs text-gg-muted font-psemibold mb-2">{title + (required ? " *" : "")}</Text>
+      {error && <Text className="text-sm text-gg-error font-pregular mb-1">{error}</Text>}
+      <View
+        className="w-full h-14 px-4 border rounded-lg items-center flex-row"
+        style={{
+          backgroundColor: error ? GG.errorContainer : GG.surface,
+          borderColor: error ? GG.error : GG.outline,
+        }}
+      >
         <TextInput
-          className="flex-1 text-gray-600 font-psemibold text-base"
+          className="flex-1 text-gg-text font-pregular text-base"
           value={value}
           placeholder={placeholder}
-          placeholderTextColor="#d1d5db"
+          placeholderTextColor={GG.muted}
           onChangeText={handleChangeText}
           secureTextEntry={(title === 'Password' || title === 'Confirm Password') && !showPassword}
-          keyboardType={title === 'Email' ? 'email-address' : 'default'}
+          keyboardType={props.keyboardType || (title === 'Email' ? 'email-address' : 'default')}
           autoCapitalize="none"
           autoCorrect={false}
+          {...props}
         />
 
         {(title === 'Password' || title === 'Confirm Password') && (
@@ -47,4 +55,3 @@ const FormField: React.FC<FormFieldProps> = ({ title, value, placeholder, handle
 }
 
 export default FormField
-

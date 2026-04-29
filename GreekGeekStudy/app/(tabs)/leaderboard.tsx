@@ -1,9 +1,10 @@
-import { View, Text, ScrollView, SafeAreaView, Image } from 'react-native'
-import React, { useCallback } from 'react'
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native'
+import React, { useCallback, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
-import { images } from "@/constants"
 import { useFocusEffect } from '@react-navigation/native'
+import { Ionicons } from '@expo/vector-icons'
+import { Card, EmptyState, GG, ProgressBar } from '../../components/Design'
 
 interface User {
   id: number;
@@ -23,9 +24,19 @@ interface User {
   };
 }
 
+interface GroupRank {
+  id: number;
+  name: string;
+  total_hours: number;
+  member_count: number;
+  live_count: number;
+  average_hours: number;
+}
+
 const Leaderboard = () => {
   const { dashboardState, refreshDashboard } = useDashboard()
   const { isLoading, error, data } = dashboardState
+  const [activeTab, setActiveTab] = useState<'individual' | 'groups'>('individual')
   
   // Add useFocusEffect to refresh dashboard when screen comes into focus
   useFocusEffect(
@@ -42,7 +53,7 @@ const Leaderboard = () => {
   const getGroupColor = (groupId: number): string => {
     const colors = [
       'text-purple-600',
-      'text-red-600', 
+      'text-gg-error', 
       'text-orange-600',
       'text-indigo-600',
       'text-pink-600',
@@ -54,7 +65,7 @@ const Leaderboard = () => {
       'text-fuchsia-600',
       'text-cyan-600',
       'text-purple-700',
-      'text-red-700',
+      'text-gg-error',
       'text-orange-700'
     ];
     
@@ -103,8 +114,8 @@ const Leaderboard = () => {
     return (
       <SafeAreaView className="flex-1">
         <ScrollView className="p-4">
-          <Text className="text-red-500 text-lg font-bold">Error:</Text>
-          <Text className="text-red-500">{JSON.stringify(error, null, 2)}</Text>
+          <Text className="text-gg-error text-lg font-bold">Error:</Text>
+          <Text className="text-gg-error">{JSON.stringify(error, null, 2)}</Text>
         </ScrollView>
       </SafeAreaView>
     )
@@ -116,15 +127,9 @@ const Leaderboard = () => {
   // Create a sorted ranking of all users for trophy assignment
   const rankedUsers = [...allUsers].sort((a: User, b: User) => (b.total_hours || 0) - (a.total_hours || 0));
   
-  // Function to get ranking emoji for top 3 users
-  const getRankingEmoji = (userId: number): string => {
+  const getRank = (userId: number): number => {
     const userRank = rankedUsers.findIndex(user => user.id === userId);
-    switch (userRank) {
-      case 0: return "🥇 ";
-      case 1: return "🥈 ";
-      case 2: return "🥉 ";
-      default: return "";
-    }
+    return userRank + 1;
   };
   
   // Separate live and non-live users and sort by total_hours (highest first)
@@ -135,138 +140,227 @@ const Leaderboard = () => {
   const nonLiveUsers = allUsers
     .filter((user: User) => !user.live)
     .sort((a: User, b: User) => (b.total_hours || 0) - (a.total_hours || 0));
+  const topUsers = rankedUsers.slice(0, 3);
+  const listUsers = rankedUsers.slice(3);
+  const initials = (user: User) => `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase();
+
+  const groupRankMap = allUsers.reduce((acc: Record<number, GroupRank>, user: User) => {
+    if (!user.group) return acc;
+
+    if (!acc[user.group.id]) {
+      acc[user.group.id] = {
+        id: user.group.id,
+        name: user.group.name,
+        total_hours: 0,
+        member_count: 0,
+        live_count: 0,
+        average_hours: 0,
+      };
+    }
+
+    acc[user.group.id].total_hours += user.total_hours || 0;
+    acc[user.group.id].member_count += 1;
+    acc[user.group.id].live_count += user.live ? 1 : 0;
+    acc[user.group.id].average_hours = acc[user.group.id].total_hours / acc[user.group.id].member_count;
+
+    return acc;
+  }, {} as Record<number, GroupRank>);
+
+  const rankedGroups: GroupRank[] = (Object.values(groupRankMap) as GroupRank[]).sort((a, b) => b.total_hours - a.total_hours);
+
+  const topGroups = rankedGroups.slice(0, 3);
+  const orderedGroupPodium = topGroups.length >= 3
+    ? [topGroups[1], topGroups[0], topGroups[2]]
+    : topGroups.length === 2
+      ? [topGroups[1], topGroups[0]]
+      : topGroups;
+  const groupInitials = (group: GroupRank) => group.name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase() || 'G';
+  const groupGoal = (group: GroupRank) => (data?.active_period_setting?.required_hours || 0) * group.member_count;
+  const groupPercent = (group: GroupRank) => {
+    const goal = groupGoal(group);
+    if (!goal) return 0;
+    return Math.min(Math.round((group.total_hours / goal) * 100), 100);
+  };
 
   return (
-    <SafeAreaView className="bg-white flex-1">
-      {/* Header Bar */}
-      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
-        <View className="flex-row items-center">
-          <Image
-            source={images.logoSmall}
-            className="w-10 h-10"
-            resizeMode="contain"
-          />
-          <Text className="font-psemibold text-lg ml-1">
-            {data?.org?.name || 'Organization'}
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <View className="items-end">
-            <Text className="font-psemibold text-gray-600 text-lg">
-              {data?.first_name} {data?.last_name?.[0]}.
-            </Text>
-            {data?.group && (
-              <Text className="font-pregular text-gray-500 text-sm">
-                {data.group.name}
-              </Text>
-            )}
+    <SafeAreaView className="bg-gg-bg flex-1">
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+        <View className="px-4 py-6">
+          <View className="bg-gg-surfaceLow p-1 rounded-lg flex-row items-center border border-gg-outlineVariant">
+            <TouchableOpacity
+              onPress={() => setActiveTab('individual')}
+              className={`flex-1 py-2 rounded-md items-center ${activeTab === 'individual' ? 'bg-gg-surface' : ''}`}
+            >
+              <Text className={`font-psemibold ${activeTab === 'individual' ? 'text-gg-primary' : 'text-gg-muted'}`}>Individual</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setActiveTab('groups')}
+              className={`flex-1 py-2 rounded-md items-center ${activeTab === 'groups' ? 'bg-gg-surface' : ''}`}
+            >
+              <Text className={`font-psemibold ${activeTab === 'groups' ? 'text-gg-primary' : 'text-gg-muted'}`}>Groups</Text>
+            </TouchableOpacity>
           </View>
-          <Text className="font-psemibold text-green-600 text-2xl">
-            {hoursStudied().toFixed(0)}h
-          </Text>
         </View>
-      </View>
 
-      {/* Main content */}
-      <ScrollView className="p-4">
-        {/* Optional loading indicator when refreshing with existing data */}
-        
-        
-        <Text className="text-xl font-bold mb-6 text-center">
-          {data?.org ? data.org.name : "Organization"} Leaderboard
-        </Text>
-        
-        {/* Live users section */}
-        {liveUsers.length > 0 && (
+        {activeTab === 'individual' ? (
           <>
-            <View className="flex-row items-center my-4">
-              <View className="flex-1 h-px bg-gray-200" />
-              <Text className="mx-4 text-gray-500 font-medium">Currently Studying</Text>
-              <View className="flex-1 h-px bg-gray-200" />
-            </View>
-            
-            {liveUsers.map((user: User, index: number) => (
-              <View 
-                key={user.id} 
-                className={`${user.id === data.id ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'} p-4 mb-3 rounded-lg shadow-sm border`}
-              >
-                <View className="flex-row justify-between items-center">
-                  <View className="flex-1">
-                    <View className="flex-row items-center">
-                      <Text className="font-bold text-lg text-gray-800">
-                        {getRankingEmoji(user.id)}{user.first_name} {user.last_name}
-                      </Text>
-                      {user.id === data.id && (
-                        <Text className="text-gray-500 ml-1">(You)</Text>
-                      )}
-                      <Text className="text-green-600 font-bold text-lg ml-2">
-                        {(user.total_hours || 0).toFixed(1)}h
-                      </Text>
-                    </View>
-                    <Text className="text-gray-600">{user.email}</Text>
-                    {user.group && (
-                      <Text className={getGroupColor(user.group.id)} font-medium mt-1>{user.group.name}</Text>
-                    )}
-                  </View>
-                  <View className="items-end">
-                    <View className="flex-row items-center bg-red-100 px-3 py-1 rounded-full">
-                      <Text className="text-red-600 font-bold text-base mr-1">●</Text>
-                      <Text className="text-red-600 font-bold text-base">LIVE</Text>
-                    </View>
-                    <Text className="text-gray-600 text-sm mt-1 text-right">
-                      {user.last_location?.name}
+        <View className="px-4 mb-8 flex-row items-end h-40">
+          {[topUsers[1], topUsers[0], topUsers[2]].map((user, visualIndex) => {
+            const rank = visualIndex === 0 ? 2 : visualIndex === 1 ? 1 : 3;
+            const isFirst = rank === 1;
+            const heightClass = isFirst ? 'h-24 pt-6' : rank === 2 ? 'h-20 pt-4' : 'h-16 pt-3';
+            return (
+              <View key={user?.id || rank} className="flex-1 items-center justify-end px-1">
+                <View className="relative mb-2">
+                  <View className={`${isFirst ? 'w-16 h-16 border-gg-primary' : 'w-14 h-14 border-gg-outlineVariant'} rounded-full border-2 bg-gg-surface items-center justify-center`}>
+                    <Text className={`${isFirst ? 'text-lg' : 'text-base'} font-psemibold text-gg-primary`}>
+                      {user ? initials(user) : '--'}
                     </Text>
                   </View>
+                  <View className={`absolute -bottom-1 -right-1 rounded-full px-1.5 py-0.5 border ${isFirst ? 'bg-gg-primary border-gg-primary' : 'bg-gg-surface border-gg-outlineVariant'}`}>
+                    <Text className={`text-[10px] font-pbold ${isFirst ? 'text-white' : 'text-gg-text'}`}>{rank}</Text>
+                  </View>
+                </View>
+                <View className={`${heightClass} w-full rounded-t-xl border-x border-t items-center ${isFirst ? 'bg-gg-surface border-gg-primary' : rank === 2 ? 'bg-gg-surfaceContainer border-gg-outlineVariant' : 'bg-gg-surfaceHigh border-gg-outlineVariant'}`}>
+                  <Text className="font-psemibold text-gg-text text-xs text-center px-1" numberOfLines={1}>
+                    {user ? `${user.first_name} ${user.last_name?.[0] || ''}.` : 'Open'}
+                  </Text>
+                  <Text className="font-pbold text-gg-primary text-xs mt-1">{(user?.total_hours || 0).toFixed(1)}h</Text>
+                  {user?.live && (
+                    <View className="flex-row items-center mt-1">
+                      <View className="h-1.5 w-1.5 rounded-full bg-gg-primary mr-1" />
+                      <Text className="font-pbold text-gg-primary text-[8px] uppercase">Live</Text>
+                    </View>
+                  )}
                 </View>
               </View>
-            ))}
+            )
+          })}
+        </View>
           </>
-        )}
-        
-        {/* Separator between live and non-live users */}
-        {liveUsers.length > 0 && nonLiveUsers.length > 0 && (
-          <View className="flex-row items-center my-4">
-            <View className="flex-1 h-px bg-gray-200" />
-            <Text className="mx-4 text-gray-500 font-medium">Not Currently Studying</Text>
-            <View className="flex-1 h-px bg-gray-200" />
+        ) : (
+          <View className="px-4 mb-8 flex-row items-end h-40">
+            {orderedGroupPodium.map((group) => {
+              const rank = rankedGroups.findIndex((rankedGroup) => rankedGroup.id === group.id) + 1;
+              const isFirst = rank === 1;
+              const heightClass = isFirst ? 'h-24 pt-6' : rank === 2 ? 'h-20 pt-4' : 'h-16 pt-3';
+              return (
+                <View key={group.id} className="flex-1 items-center justify-end px-1">
+                  <View className="relative mb-2">
+                    <View className={`${isFirst ? 'w-16 h-16 border-gg-primary' : 'w-14 h-14 border-gg-outlineVariant'} rounded-full border-2 bg-gg-surface items-center justify-center`}>
+                      <Text className={`${isFirst ? 'text-lg' : 'text-base'} font-psemibold text-gg-primary`}>
+                        {groupInitials(group)}
+                      </Text>
+                    </View>
+                    <View className={`absolute -bottom-1 -right-1 rounded-full px-1.5 py-0.5 border ${isFirst ? 'bg-gg-primary border-gg-primary' : 'bg-gg-surface border-gg-outlineVariant'}`}>
+                      <Text className={`text-[10px] font-pbold ${isFirst ? 'text-white' : 'text-gg-text'}`}>{rank}</Text>
+                    </View>
+                  </View>
+                  <View className={`${heightClass} w-full rounded-t-xl border-x border-t items-center ${isFirst ? 'bg-gg-surface border-gg-primary' : rank === 2 ? 'bg-gg-surfaceContainer border-gg-outlineVariant' : 'bg-gg-surfaceHigh border-gg-outlineVariant'}`}>
+                    <Text className="font-psemibold text-gg-text text-xs text-center px-1" numberOfLines={1}>
+                      {group.name}
+                    </Text>
+                    <Text className="font-pbold text-gg-primary text-xs mt-1">{group.total_hours.toFixed(1)}h</Text>
+                    {!!group.live_count && (
+                      <View className="flex-row items-center mt-1">
+                        <View className="h-1.5 w-1.5 rounded-full bg-gg-primary mr-1" />
+                        <Text className="font-pbold text-gg-primary text-[8px] uppercase">{group.live_count} live</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )
+            })}
           </View>
         )}
+
+        <View className="bg-gg-surface rounded-t-3xl border-t border-gg-outlineVariant px-4 pt-6 min-h-[420px]">
+          <Text className="font-psemibold text-gg-text text-[17px] mb-4">
+            {activeTab === 'individual' ? 'Full Rankings' : 'Group Rankings'}
+          </Text>
         
-        {/* Non-live users section */}
-        {nonLiveUsers.map((user: User) => (
-          <View 
-            key={user.id} 
-            className={`${user.id === data.id ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100'} p-4 mb-3 rounded-lg shadow-sm border`}
-          >
-            <View className="flex-row justify-between items-center">
+          {activeTab === 'individual' && rankedUsers.map((user: User) => (
+            <View
+              key={user.id} 
+              className={`min-h-[56px] rounded-xl px-3 py-2 mb-2 flex-row items-center ${user.id === data.id ? 'border border-gg-primary bg-gg-surfaceLow' : ''}`}
+            >
+              <Text className={`w-7 font-pbold text-sm ${user.id === data.id ? 'text-gg-text' : 'text-gg-outline'}`}>{getRank(user.id)}</Text>
+              <View className="h-10 w-10 rounded-full bg-gg-surfaceHighest border border-gg-outlineVariant items-center justify-center mr-3">
+                <Text className="font-pbold text-gg-primary text-xs">{initials(user)}</Text>
+              </View>
               <View className="flex-1">
                 <View className="flex-row items-center">
-                  <Text className="font-bold text-lg text-gray-800">
-                    {getRankingEmoji(user.id)}{user.first_name} {user.last_name}
+                  <Text className="font-psemibold text-gg-text text-sm">
+                    {user.first_name} {user.last_name}
                   </Text>
                   {user.id === data.id && (
-                    <Text className="text-gray-500 ml-1">(You)</Text>
+                    <View className="bg-gg-primary rounded-full px-1.5 ml-2">
+                      <Text className="font-pbold text-white text-[10px]">YOU</Text>
+                    </View>
                   )}
-                  <Text className="text-green-600 font-bold text-lg ml-2">
-                    {(user.total_hours || 0).toFixed(1)}h
-                  </Text>
                 </View>
-                <Text className="text-gray-600">{user.email}</Text>
-                {user.group && (
-                  <Text className={getGroupColor(user.group.id)} font-medium mt-1>{user.group.name}</Text>
+                <Text className="text-gg-muted font-pregular text-xs">{user.group?.name || 'No group'}</Text>
+              </View>
+              <View className="items-end">
+                <Text className="text-gg-primary font-pbold text-sm">{(user.total_hours || 0).toFixed(1)}h</Text>
+                {user.live && (
+                  <View className="flex-row items-center">
+                    <View className="h-1.5 w-1.5 rounded-full bg-gg-primary mr-1" />
+                    <Text className="font-pbold text-gg-primary text-[8px] uppercase">Live</Text>
+                  </View>
                 )}
               </View>
             </View>
-          </View>
-        ))}
+          ))}
+
+          {activeTab === 'groups' && rankedGroups.map((group: GroupRank, index: number) => (
+            <View
+              key={group.id}
+              className="min-h-[72px] rounded-xl px-3 py-3 mb-2 border border-gg-outlineVariant bg-gg-bg"
+            >
+              <View className="flex-row items-center">
+                <Text className="w-7 font-pbold text-sm text-gg-outline">{index + 1}</Text>
+                <View className="h-10 w-10 rounded-full bg-gg-surfaceHighest border border-gg-outlineVariant items-center justify-center mr-3">
+                  <Text className="font-pbold text-gg-primary text-xs">{groupInitials(group)}</Text>
+                </View>
+                <View className="flex-1">
+                  <View className="flex-row items-center">
+                    <Text className="font-psemibold text-gg-text text-sm">{group.name}</Text>
+                    {!!group.live_count && (
+                      <View className="bg-gg-primary rounded-full px-1.5 ml-2">
+                        <Text className="font-pbold text-white text-[10px]">{group.live_count} LIVE</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text className="text-gg-muted font-pregular text-xs">
+                    {group.member_count} member{group.member_count === 1 ? '' : 's'} • {group.average_hours.toFixed(1)}h avg
+                  </Text>
+                </View>
+                <View className="items-end">
+                  <Text className="text-gg-primary font-pbold text-sm">{group.total_hours.toFixed(1)}h</Text>
+                  <Text className="text-gg-muted font-pregular text-xs">{groupPercent(group)}%</Text>
+                </View>
+              </View>
+              {groupGoal(group) > 0 && (
+                <View className="mt-3">
+                  <ProgressBar value={groupPercent(group)} />
+                </View>
+              )}
+            </View>
+          ))}
         
-        {allUsers.length === 0 && (
-          <View className="items-center justify-center py-10">
-            <Text className="text-gray-500 text-center italic">
-              No users in your organization
-            </Text>
-          </View>
-        )}
+          {activeTab === 'individual' && allUsers.length === 0 && (
+            <Card>
+              <EmptyState icon="people-outline" title="No users yet" message="Members will appear here after they join the organization." />
+            </Card>
+          )}
+
+          {activeTab === 'groups' && rankedGroups.length === 0 && (
+            <Card>
+              <EmptyState icon="albums-outline" title="No groups yet" message="Create groups and assign members to compare group rankings." />
+            </Card>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   )

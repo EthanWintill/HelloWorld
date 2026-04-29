@@ -21,7 +21,7 @@ interface LocationType {
   gps_address?: string;
 }
 
-const OrganizationManagement = () => {
+const StudyLocationsManagement = () => {
   const { dashboardState, refreshDashboard, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
 
@@ -572,112 +572,61 @@ const OrganizationManagement = () => {
   return (
     <SafeAreaView className="flex-1 bg-gg-bg">
       <ScreenHeader
-        title="Organization"
-        subtitle={data?.org?.name || 'Manage details and registration'}
+        title="Study Locations"
+        subtitle={`${data?.org_locations?.length || 0} approved study area${data?.org_locations?.length === 1 ? '' : 's'}`}
       />
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
         <Card className="mb-4">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-lg font-psemibold text-gg-text">Organization Details</Text>
-            {!isEditingDetails ? (
-              <TouchableOpacity
-                onPress={() => setIsEditingDetails(true)}
-                className="bg-gg-surfaceLow h-10 w-10 items-center justify-center rounded-full"
-              >
-                <Ionicons name="pencil" size={20} color="#006b2c" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={handleSaveDetails}
-                disabled={isSavingDetails}
-                className={`${isSavingDetails ? 'bg-gray-400' : 'bg-gg-primary'} px-4 py-2 rounded-lg`}
-              >
-                <Text className="text-white font-psemibold">
-                  {isSavingDetails ? 'Saving...' : 'Save'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <Text className="text-lg font-psemibold mb-4 text-gg-text">Study Locations</Text>
 
-          <View className="mb-4">
-            <Text className="text-gg-muted mb-1 font-pmedium text-xs">Organization Name</Text>
-            {isEditingDetails ? (
-              <TextInput
-                value={orgName}
-                onChangeText={setOrgName}
-                className="border border-gg-outline rounded-lg px-4 h-14 bg-gg-surface font-pregular"
-                placeholder="Enter organization name"
-              />
-            ) : (
-              <Text className="text-gg-text font-psemibold">{orgName || 'Not set'}</Text>
-            )}
-          </View>
+          {data.org_locations && data.org_locations.length > 0 ? (
+            data.org_locations.map((location: LocationType) => (
+              <View key={location.id} className="bg-gg-bg border border-gg-outlineVariant p-4 rounded-lg mb-3">
+                <View className="flex-row items-center justify-between">
+                  <TouchableOpacity
+                    className="flex-1"
+                    onPress={() => viewLocationPopup(location)}
+                  >
+                    <View>
+                      <Text className="font-psemibold text-gg-text">{location.name}</Text>
+                      {location.gps_address && (
+                        <Text className="text-gg-muted text-sm font-pregular">
+                          {location.gps_address.split(',')[0].trim()}
+                        </Text>
+                      )}
+                      <Text className="text-gg-muted text-xs font-pregular">
+                        Radius: {location.gps_radius}m
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <View className="flex-row">
+                    <TouchableOpacity
+                      onPress={() => viewLocationPopup(location)}
+                      className="h-9 w-9 items-center justify-center bg-gg-surfaceLow rounded-full"
+                    >
+                      <Ionicons name="pencil" size={20} color="#006b2c" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteLocation(location.id)}
+                      className="h-9 w-9 items-center justify-center ml-2 bg-[#ffdad6] rounded-full"
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#ba1a1a" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ))
+          ) : (
+            <EmptyState icon="location-outline" title="No locations yet" message="Add approved study areas for GPS verification." />
+          )}
 
-          <View className="mb-4">
-            <Text className="text-gg-muted mb-1 font-pmedium text-xs">School</Text>
-            {isEditingDetails ? (
-              <TextInput
-                value={school}
-                onChangeText={setSchool}
-                className="border border-gg-outline rounded-lg px-4 h-14 bg-gg-surface font-pregular"
-                placeholder="Enter school name"
-              />
-            ) : (
-              <Text className="text-gg-text font-psemibold">{school || 'Not set'}</Text>
-            )}
-          </View>
-        </Card>
-
-        <Card className="mb-4">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-lg font-psemibold text-gg-text">Registration</Text>
-            {!isEditingRegCode ? (
-              <TouchableOpacity
-                onPress={() => setIsEditingRegCode(true)}
-                className="bg-gg-surfaceLow h-10 w-10 items-center justify-center rounded-full"
-              >
-                <Ionicons name="pencil" size={20} color="#006b2c" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={handleSaveRegCode}
-                disabled={isSavingRegCode}
-                className={`${isSavingRegCode ? 'bg-gray-400' : 'bg-gg-primary'} px-4 py-2 rounded-lg`}
-              >
-                <Text className="text-white font-psemibold">
-                  {isSavingRegCode ? 'Saving...' : 'Save'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View className="mb-4">
-            <Text className="text-gg-muted mb-1 font-pmedium text-xs">Registration Code</Text>
-            <View className="flex-row items-center">
-              {isEditingRegCode ? (
-                <TextInput
-                  value={regCode}
-                  onChangeText={setRegCode}
-                  className="border border-gg-outline rounded-lg px-4 h-14 flex-1 bg-gg-surface font-psemibold"
-                  placeholder="Enter or generate registration code"
-                />
-              ) : (
-                <Text className="text-lg font-psemibold bg-gg-bg border border-gg-outlineVariant px-4 py-3 rounded-lg flex-1 text-gg-text">
-                  {regCode || 'No code generated'}
-                </Text>
-              )}
-              <TouchableOpacity
-                onPress={handleGenerateCode}
-                disabled={!isEditingRegCode}
-                className={`${!isEditingRegCode ? 'bg-gg-surfaceHighest' : 'bg-gg-secondary'} ml-2 h-14 w-14 items-center justify-center rounded-lg`}
-              >
-                <Ionicons name="refresh" size={24} color="white" />
-              </TouchableOpacity>
-            </View>
-            <Text className="text-gg-muted text-sm mt-2 font-pregular">
-              Share this code with users to join your organization
-            </Text>
-          </View>
+          <TouchableOpacity
+            onPress={newLocationPopup}
+            className="bg-gg-primary min-h-[56px] rounded-lg flex-row items-center justify-center mt-2"
+          >
+            <Ionicons name="add" size={20} color="#FFFFFF" />
+            <Text className="text-white font-psemibold ml-1">Add Location</Text>
+          </TouchableOpacity>
         </Card>
       </ScrollView>
 
@@ -887,4 +836,4 @@ const OrganizationManagement = () => {
   )
 }
 
-export default OrganizationManagement
+export default StudyLocationsManagement

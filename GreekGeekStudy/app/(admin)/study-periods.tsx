@@ -7,6 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker'
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_URL } from '@/constants'
+import { Card, EmptyState, ProgressBar, ScreenHeader } from '../../components/Design'
 
 // Define types for period settings and instances
 interface PeriodSetting {
@@ -226,8 +227,8 @@ const StudyPeriodsManagement = () => {
   if (error) {
     return (
       <View className="flex-1 p-4">
-        <Text className="text-red-500 text-lg font-bold">Error:</Text>
-        <Text className="text-red-500">{JSON.stringify(error, null, 2)}</Text>
+        <Text className="text-gg-error text-lg font-bold">Error:</Text>
+        <Text className="text-gg-error">{JSON.stringify(error, null, 2)}</Text>
       </View>
     )
   }
@@ -236,9 +237,9 @@ const StudyPeriodsManagement = () => {
   if (!data?.is_staff) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center p-4">
-        <Ionicons name="alert-circle" size={64} color="#EF4444" />
+        <Ionicons name="alert-circle" size={64} color="#ba1a1a" />
         <Text className="text-xl font-psemibold text-center mt-4 mb-2">Access Denied</Text>
-        <Text className="text-gray-600 text-center">You don't have permission to access this page.</Text>
+        <Text className="text-gg-muted text-center">You don't have permission to access this page.</Text>
       </SafeAreaView>
     )
   }
@@ -247,64 +248,72 @@ const StudyPeriodsManagement = () => {
   const periodInstances = data?.org_period_instances as PeriodInstance[] | undefined
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="flex-1 p-4">
-        {/* Period Settings Section */}
-        <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <Text className="text-xl font-psemibold mb-4">Study Period Settings</Text>
+    <SafeAreaView className="flex-1 bg-gg-bg">
+      <ScreenHeader
+        title="Study Periods"
+        subtitle={activePeriodSetting ? `${activePeriodSetting.required_hours} required hours` : 'No active rules configured'}
+        right={(
+          <View className="h-10 w-10 rounded-full bg-gg-surfaceLow items-center justify-center">
+            <Ionicons name="calendar-outline" size={22} color="#006b2c" />
+          </View>
+        )}
+      />
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+        <Card className="mb-4">
+          <Text className="text-lg font-psemibold mb-4 text-gg-text">Study Period Settings</Text>
           
           {activePeriodSetting ? (
             <View>
-              <View className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <View className="bg-gg-surfaceLow border border-gg-outlineVariant rounded-lg p-4 mb-4">
                 <View className="flex-row justify-between items-start">
                   <View>
-                    <Text className="font-psemibold text-lg mb-2">Active Settings</Text>
+                    <Text className="font-psemibold text-gg-text text-lg mb-2">Active Settings</Text>
                     
                     <View className="mb-2">
-                      <Text className="text-gray-600">Period Type:</Text>
-                      <Text className="font-psemibold capitalize">{activePeriodSetting.period_type}</Text>
+                      <Text className="text-gg-muted font-pregular">Period Type</Text>
+                      <Text className="font-psemibold text-gg-text capitalize">{activePeriodSetting.period_type}</Text>
                     </View>
                     
                     <View className="mb-2">
-                      <Text className="text-gray-600">Required Hours:</Text>
-                      <Text className="font-psemibold">{activePeriodSetting.required_hours} hours</Text>
+                      <Text className="text-gg-muted font-pregular">Required Hours</Text>
+                      <Text className="font-psemibold text-gg-text">{activePeriodSetting.required_hours} hours</Text>
                     </View>
                     
                     <View className="mb-2">
-                      <Text className="text-gray-600">Start Date:</Text>
-                      <Text className="font-psemibold">{formatDate(activePeriodSetting.start_date)}</Text>
+                      <Text className="text-gg-muted font-pregular">Start Date</Text>
+                      <Text className="font-psemibold text-gg-text">{formatDate(activePeriodSetting.start_date)}</Text>
                     </View>
                     
                     {activePeriodSetting.period_type === 'weekly' && (
                       <View className="mb-2">
-                        <Text className="text-gray-600">Due Day:</Text>
-                        <Text className="font-psemibold">{getDayOfWeekName(activePeriodSetting.due_day_of_week)}</Text>
+                        <Text className="text-gg-muted font-pregular">Due Day</Text>
+                        <Text className="font-psemibold text-gg-text">{getDayOfWeekName(activePeriodSetting.due_day_of_week)}</Text>
                       </View>
                     )}
                     
                     {activePeriodSetting.period_type === 'custom' && (
                       <View className="mb-2">
-                        <Text className="text-gray-600">Custom Days:</Text>
-                        <Text className="font-psemibold">{activePeriodSetting.custom_days} days</Text>
+                        <Text className="text-gg-muted font-pregular">Custom Days</Text>
+                        <Text className="font-psemibold text-gg-text">{activePeriodSetting.custom_days} days</Text>
                       </View>
                     )}
                   </View>
                   
                   <TouchableOpacity 
                     onPress={handleDeletePeriodSetting}
-                    className="bg-red-100 p-2 rounded-full"
+                    className="bg-[#ffdad6] p-2 rounded-full"
                   >
-                    <Ionicons name="trash" size={20} color="#EF4444" />
+                    <Ionicons name="trash" size={20} color="#ba1a1a" />
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
           ) : (
             <View className="items-center py-6">
-              <Text className="text-gray-500 mb-4">No study period settings configured</Text>
+              <EmptyState icon="calendar-outline" title="No period rules" message="Create a rule to start tracking required study hours." />
               <TouchableOpacity 
                 onPress={() => setShowAddPeriodSetting(true)}
-                className="bg-green-600 px-4 py-2 rounded-lg"
+                className="bg-gg-primary px-4 py-3 rounded-lg"
               >
                 <Text className="text-white font-psemibold">Add Study Periods</Text>
               </TouchableOpacity>
@@ -312,15 +321,15 @@ const StudyPeriodsManagement = () => {
           )}
           
           {showAddPeriodSetting && (
-            <View className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <Text className="text-lg font-psemibold mb-3">Create Period Settings</Text>
+            <View className="mt-4 p-4 bg-gg-bg border border-gg-outlineVariant rounded-lg">
+              <Text className="text-lg font-psemibold mb-3 text-gg-text">Create Period Settings</Text>
               
               {/* Show validation errors if any */}
               {Object.keys(validationErrors).length > 0 && (
-                <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                  <Text className="text-red-600 font-psemibold mb-1">Please fix the following errors:</Text>
+                <View className="bg-[#ffdad6] border border-[#ffb4ab] rounded-lg p-3 mb-4">
+                  <Text className="text-gg-error font-psemibold mb-1">Please fix the following errors:</Text>
                   {Object.entries(validationErrors).map(([field, message]) => (
-                    <Text key={field} className="text-red-600">
+                    <Text key={field} className="text-gg-error">
                       • {field.replace('_', ' ')}: {message}
                     </Text>
                   ))}
@@ -328,65 +337,65 @@ const StudyPeriodsManagement = () => {
               )}
               
               <View className="mb-3">
-                <Text className="text-gray-600 mb-1">Period Type</Text>
+                <Text className="text-gg-muted mb-1">Period Type</Text>
                 <View className="flex-row mt-1">
                   <TouchableOpacity 
                     onPress={() => {
                       setNewPeriodSetting({...newPeriodSetting, period_type: 'weekly'})
                       setShowStartDatePicker(false)
                     }}
-                    className={`px-4 py-2 rounded-lg mr-2 ${newPeriodSetting.period_type === 'weekly' ? 'bg-green-600' : 'bg-gray-200'}`}
+                  className={`px-4 py-2 rounded-full mr-2 ${newPeriodSetting.period_type === 'weekly' ? 'bg-gg-primary' : 'bg-gg-surface border border-gg-outlineVariant'}`}
                   >
-                    <Text className={newPeriodSetting.period_type === 'weekly' ? 'text-white' : 'text-gray-700'}>Weekly</Text>
+                    <Text className={newPeriodSetting.period_type === 'weekly' ? 'text-white' : 'text-gg-muted'}>Weekly</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     onPress={() => {
                       setNewPeriodSetting({...newPeriodSetting, period_type: 'monthly'})
                       setShowStartDatePicker(false)
                     }}
-                    className={`px-4 py-2 rounded-lg mr-2 ${newPeriodSetting.period_type === 'monthly' ? 'bg-green-600' : 'bg-gray-200'}`}
+                  className={`px-4 py-2 rounded-full mr-2 ${newPeriodSetting.period_type === 'monthly' ? 'bg-gg-primary' : 'bg-gg-surface border border-gg-outlineVariant'}`}
                   >
-                    <Text className={newPeriodSetting.period_type === 'monthly' ? 'text-white' : 'text-gray-700'}>Monthly</Text>
+                    <Text className={newPeriodSetting.period_type === 'monthly' ? 'text-white' : 'text-gg-muted'}>Monthly</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     onPress={() => {
                       setNewPeriodSetting({...newPeriodSetting, period_type: 'custom'})
                       setShowStartDatePicker(false)
                     }}
-                    className={`px-4 py-2 rounded-lg ${newPeriodSetting.period_type === 'custom' ? 'bg-green-600' : 'bg-gray-200'}`}
+                  className={`px-4 py-2 rounded-full ${newPeriodSetting.period_type === 'custom' ? 'bg-gg-primary' : 'bg-gg-surface border border-gg-outlineVariant'}`}
                   >
-                    <Text className={newPeriodSetting.period_type === 'custom' ? 'text-white' : 'text-gray-700'}>Custom</Text>
+                    <Text className={newPeriodSetting.period_type === 'custom' ? 'text-white' : 'text-gg-muted'}>Custom</Text>
                   </TouchableOpacity>
                 </View>
               </View>
               
               <View className="mb-3">
-                <Text className="text-gray-600 mb-1">Required Hours</Text>
+                <Text className="text-gg-muted mb-1">Required Hours</Text>
                 <TextInput
                   value={newPeriodSetting.required_hours.toString()}
                   onChangeText={(text) => {
                     const hours = parseFloat(text) || 0
                     setNewPeriodSetting({...newPeriodSetting, required_hours: hours})
                   }}
-                  className={`border rounded-lg p-2 bg-white ${validationErrors.required_hours ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`border rounded-lg p-2 bg-gg-surface ${validationErrors.required_hours ? 'border-gg-error' : 'border-gg-outline'}`}
                   placeholder="Enter required hours"
                   keyboardType="numeric"
                 />
                 {validationErrors.required_hours && (
-                  <Text className="text-red-500 text-sm mt-1">{validationErrors.required_hours}</Text>
+                  <Text className="text-gg-error text-sm mt-1">{validationErrors.required_hours}</Text>
                 )}
               </View>
               
               <View className="mb-3">
-                <Text className="text-gray-600 mb-1">Start Date</Text>
+                <Text className="text-gg-muted mb-1">Start Date</Text>
                 <TouchableOpacity 
                   onPress={() => setShowStartDatePicker(true)}
-                  className={`border rounded-lg p-2 bg-white ${validationErrors.start_date ? 'border-red-500' : 'border-gray-300'}`}
+                  className={`border rounded-lg p-2 bg-gg-surface ${validationErrors.start_date ? 'border-gg-error' : 'border-gg-outline'}`}
                 >
                   <Text>{newPeriodSetting.start_date.toLocaleDateString()}</Text>
                 </TouchableOpacity>
                 {validationErrors.start_date && (
-                  <Text className="text-red-500 text-sm mt-1">{validationErrors.start_date}</Text>
+                  <Text className="text-gg-error text-sm mt-1">{validationErrors.start_date}</Text>
                 )}
                 {showStartDatePicker && (
                   <DateTimePicker
@@ -405,7 +414,7 @@ const StudyPeriodsManagement = () => {
               
               {newPeriodSetting.period_type === 'weekly' && (
                 <View className="mb-3">
-                  <Text className="text-gray-600 mb-1">Due Day of Week</Text>
+                  <Text className="text-gg-muted mb-1">Due Day of Week</Text>
                   <View className="flex-row flex-wrap">
                     {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
                       <TouchableOpacity 
@@ -413,35 +422,35 @@ const StudyPeriodsManagement = () => {
                         onPress={() => setNewPeriodSetting({...newPeriodSetting, due_day_of_week: index})}
                         className={`px-3 py-2 rounded-lg m-1 ${
                           newPeriodSetting.due_day_of_week === index 
-                            ? 'bg-green-600' 
-                            : validationErrors.due_day_of_week ? 'bg-red-100' : 'bg-gray-200'
+                            ? 'bg-gg-primary' 
+                            : validationErrors.due_day_of_week ? 'bg-[#ffdad6]' : 'bg-gg-surfaceHighest'
                         }`}
                       >
-                        <Text className={newPeriodSetting.due_day_of_week === index ? 'text-white' : 'text-gray-700'}>{day}</Text>
+                        <Text className={newPeriodSetting.due_day_of_week === index ? 'text-white' : 'text-gg-muted'}>{day}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                   {validationErrors.due_day_of_week && (
-                    <Text className="text-red-500 text-sm mt-1">{validationErrors.due_day_of_week}</Text>
+                    <Text className="text-gg-error text-sm mt-1">{validationErrors.due_day_of_week}</Text>
                   )}
                 </View>
               )}
               
               {newPeriodSetting.period_type === 'custom' && (
                 <View className="mb-3">
-                  <Text className="text-gray-600 mb-1">Custom Days</Text>
+                  <Text className="text-gg-muted mb-1">Custom Days</Text>
                   <TextInput
                     value={newPeriodSetting.custom_days.toString()}
                     onChangeText={(text) => {
                       const days = parseInt(text) || 7
                       setNewPeriodSetting({...newPeriodSetting, custom_days: days})
                     }}
-                    className={`border rounded-lg p-2 bg-white ${validationErrors.custom_days ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`border rounded-lg p-2 bg-gg-surface ${validationErrors.custom_days ? 'border-gg-error' : 'border-gg-outline'}`}
                     placeholder="Enter number of days"
                     keyboardType="numeric"
                   />
                   {validationErrors.custom_days && (
-                    <Text className="text-red-500 text-sm mt-1">{validationErrors.custom_days}</Text>
+                    <Text className="text-gg-error text-sm mt-1">{validationErrors.custom_days}</Text>
                   )}
                 </View>
               )}
@@ -459,7 +468,7 @@ const StudyPeriodsManagement = () => {
                 <TouchableOpacity 
                   onPress={handleCreatePeriodSetting}
                   disabled={isCreatingPeriodSetting}
-                  className={`${isCreatingPeriodSetting ? 'bg-gray-400' : 'bg-green-600'} px-4 py-2 rounded-lg flex-1`}
+                  className={`${isCreatingPeriodSetting ? 'bg-gray-400' : 'bg-gg-primary'} px-4 py-2 rounded-lg flex-1`}
                 >
                   <Text className="text-white font-psemibold text-center">
                     {isCreatingPeriodSetting ? 'Creating...' : 'Create Settings'}
@@ -468,12 +477,11 @@ const StudyPeriodsManagement = () => {
               </View>
             </View>
           )}
-        </View>
+        </Card>
         
-        {/* Period Instances Section */}
         {activePeriodSetting && (
-          <View className="bg-white rounded-lg shadow-sm p-4 mb-4 flex-1">
-            <Text className="text-xl font-psemibold mb-4">Study Period Instances</Text>
+          <Card className="mb-4">
+            <Text className="text-lg font-psemibold mb-4 text-gg-text">Study Period Instances</Text>
             
             {periodInstances && periodInstances.length > 0 ? (
               <ScrollView 
@@ -486,38 +494,41 @@ const StudyPeriodsManagement = () => {
                   .map(period => (
                     <View 
                       key={period.id}
-                      className={`p-4 rounded-lg mb-3 ${period.is_active ? 'bg-green-50 border border-green-200' : 'bg-gray-100'}`}
+                      className={`p-4 rounded-lg mb-3 border ${period.is_active ? 'bg-gg-surfaceLow border-gg-outlineVariant' : 'bg-gg-bg border-gg-outlineVariant'}`}
                     >
                       <View className="flex-row justify-between items-start">
                         <View>
                           <View className="flex-row items-center">
-                            <Text className="font-psemibold text-lg">
+                            <Text className="font-psemibold text-gg-text">
                               {formatDate(period.start_date)} - {formatDate(period.end_date)}
                             </Text>
                             {period.is_active && (
-                              <View className="bg-green-100 px-2 py-1 rounded-full ml-2">
-                                <Text className="text-green-600 text-xs font-psemibold">Active</Text>
+                              <View className="bg-gg-surfaceLow px-2 py-1 rounded-full ml-2">
+                                <Text className="text-gg-primary text-xs font-psemibold">Active</Text>
                               </View>
                             )}
                           </View>
-                          <Text className="text-gray-600 mt-1">
+                          <Text className="text-gg-muted font-pregular mt-1">
                             {activePeriodSetting.required_hours} hours required
                           </Text>
+                          <View className="mt-3">
+                            <ProgressBar value={period.is_active ? 100 : 0} />
+                          </View>
                         </View>
                       </View>
                     </View>
                   ))}
               </ScrollView>
             ) : (
-              <Text className="text-gray-500 italic text-center py-4">No period instances created yet</Text>
+              <EmptyState icon="calendar-clear-outline" title="No instances yet" message="Instances are generated from the active rule." />
             )}
             
-            <Text className="text-gray-500 text-sm mt-2 italic">
+            <Text className="text-gg-muted text-sm mt-2 italic">
               Period instances are automatically generated based on your settings
             </Text>
-          </View>
+          </Card>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }

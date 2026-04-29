@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, Alert, Linking } from 'react-native'
+import { View, Text, ScrollView, Image, Alert, Linking, TouchableOpacity } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { images } from "@/constants";
@@ -8,6 +8,7 @@ import { Link, router } from 'expo-router';
 import { API_URL } from '@/constants'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
 
 
 const SignIn = () => {
@@ -45,72 +46,82 @@ const SignIn = () => {
     };
 
     return (
-        <SafeAreaView className="bg-white h-full">
-            <ScrollView contentContainerStyle={{ height: '100%' }}>
+        <SafeAreaView className="bg-gg-bg h-full">
+            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+                <View className="flex-1 px-5 pt-8 pb-6">
+                    <View className="items-center mb-8">
+                        <Image
+                            source={images.logoSmall}
+                            className="w-16 h-16"
+                            resizeMode="contain"
+                        />
+                        <Text className="font-psemibold text-gg-text text-3xl mt-5 text-center">
+                            Sign in
+                        </Text>
+                        <Text className="font-pregular text-gg-muted text-center mt-2">
+                            Track verified study hours and chapter progress.
+                        </Text>
+                    </View>
 
-                <View className="w-full justify-center items-center px-4">
-
-
-
-                    <Image
-                        source={images.logo}
-                        className="w-[250px] h-[160px]" // Increased the size of the logo
-                        resizeMode="contain"
-                    />
-                </View>
-                <View>
-                    <View className="w-full items-center min-h-[85vh] px-4 my-6">
-
-                        <View className="w-full">
-                            <Text className="text-2xl text-black text-semibold font-psemibold">Sign in to GreekGeek</Text>
+                    <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl p-4 shadow-sm">
                             <FormField
                                 title="Email"
                                 value={form.email}
-                                placeholder="Enter your email"
+                                placeholder="you@example.com"
                                 handleChangeText={(e: any) => setform({
                                     ...form,
                                     email: e
                                 })}
-                                otherStyles="mt-7"
+                                otherStyles=""
                                 keyboardType="email-address"
+                                autoComplete="email"
+                                textContentType="emailAddress"
                                 required={false}
                             />
                             <FormField
                                 title="Password"
                                 value={form.password}
-                                placeholder="Enter your password"
+                                placeholder="Your password"
                                 handleChangeText={(e: any) => setform({
                                     ...form,
                                     password: e
                                 })}
-                                otherStyles="mt-7"
+                                otherStyles="mt-5"
+                                autoComplete="password"
+                                textContentType="password"
                                 required={false}
                             />
                             {formError && (
-                                <Text className="text-m text-red-500 mt-4 font-pregular text-center">No account found with those credentials, please try again.</Text>
+                                <View className="bg-[#ffdad6] border border-[#ffb4ab] rounded-lg p-3 mt-4 flex-row">
+                                    <Ionicons name="alert-circle" size={18} color="#ba1a1a" />
+                                    <Text className="text-gg-error ml-2 flex-1 font-pregular text-sm">
+                                        No account found with those credentials. Try again or reset your password.
+                                    </Text>
+                                </View>
                             )}
-                            <View className="items-end mt-4">
-                                <Text
+                            <View className="items-end mt-4 mb-1">
+                                <TouchableOpacity
                                     onPress={() => Linking.openURL(`${API_URL}forgot-password/`)}
-                                    className="text-base font-psemibold text-green-500"
                                 >
+                                  <Text className="text-sm font-psemibold text-gg-primary">
                                     Forgot password?
-                                </Text>
+                                  </Text>
+                                </TouchableOpacity>
                             </View>
 
                             <CustomButton
-                                title="Sign In"
+                                title="Sign in"
                                 handlePress={submit}
-                                containerStyles='mt-7'
+                                containerStyles='mt-4'
                                 isLoading={isSubmitting}
                             />
-                            <View className="justify-center pt-5 flex-row gap-2">
-                                <Text className="text-lg text-gray-600 font-pregular">
-                                    Don't have an account?
-                                </Text>
-                                <Link href="/sign-up" className="text-lg font-psemibold text-green-500">Sign Up</Link>
-                            </View>
-                        </View>
+                    </View>
+
+                    <View className="justify-center pt-6 flex-row">
+                        <Text className="text-base text-gg-muted font-pregular">
+                            Need an account?
+                        </Text>
+                        <Link href="/sign-up" className="text-base font-psemibold text-gg-primary ml-2">Register with code</Link>
                     </View>
                 </View>
             </ScrollView>

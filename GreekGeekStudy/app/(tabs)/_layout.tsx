@@ -1,12 +1,12 @@
-import { View, Text, Image } from 'react-native'
+import { View, Text } from 'react-native'
 import React from 'react'
-import { Tabs, Redirect } from 'expo-router'
+import { Tabs } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 
-import { icons } from '../../constants'
 import { DashboardProvider } from '../../context/DashboardContext'
 
 interface TabIconProps {
-    icon: any;
+    icon: keyof typeof Ionicons.glyphMap;
     color?: string;
     name?: string;
     focused?: boolean;
@@ -14,16 +14,11 @@ interface TabIconProps {
 
 const TabIcon: React.FC<TabIconProps> = ({icon, color, name, focused}) => {
     return (
-        <View className="items-center justify-center gap-2">
-            <Image 
-            source={icon}
-            resizeMode='contain'
-            tintColor={color}
-            className="w-7 h-7"
-            />
-            {/* <Text className={`${focused ? 'font-psemibold' : 'font-pregular'} text-xs`} style={{color:color}}>
+        <View className={`items-center justify-center min-w-[72px] h-[48px] rounded-full ${focused ? 'bg-gg-surfaceLow border border-gg-outlineVariant' : ''}`}>
+            <Ionicons name={icon} size={focused ? 22 : 21} color={color} />
+            <Text className={`${focused ? 'font-psemibold' : 'font-pregular'} text-[11px] mt-0.5`} style={{color:color}}>
                 {name}
-            </Text> */}
+            </Text>
         </View>
     )
 }
@@ -35,14 +30,19 @@ const TabsLayout = () => {
             screenOptions={
                 {
                     tabBarShowLabel: false,
-                    tabBarActiveTintColor: '#16A34A',
-                    tabBarInactiveTintColor: '#000000',
+                    tabBarActiveTintColor: '#006b2c',
+                    tabBarInactiveTintColor: '#3e4a3d',
                     tabBarStyle: {
                         backgroundColor: '#FFFFFF',
                         borderTopWidth: 1,
-                        borderTopColor: '#E5E5E5',
-                        height: 60,
-                    }
+                        borderTopColor: '#bdcaba',
+                        height: 76,
+                        paddingTop: 9,
+                        paddingBottom: 11,
+                    },
+                    tabBarItemStyle: {
+                        height: 56,
+                    },
                 }
             }
         >
@@ -53,7 +53,7 @@ const TabsLayout = () => {
                     headerShown: false,
                     tabBarIcon: ({color, focused}) => (
                         <TabIcon 
-                            icon={icons.home}
+                            icon={focused ? "timer" : "timer-outline"}
                             color={color}
                             name={"Study"}
                             focused={focused}
@@ -68,7 +68,7 @@ const TabsLayout = () => {
                     headerShown: false,
                     tabBarIcon: ({color, focused}) => (
                         <TabIcon 
-                            icon={icons.history}
+                            icon={focused ? "time" : "time-outline"}
                             color={color}
                             name={"History"}
                             focused={focused}
@@ -83,9 +83,9 @@ const TabsLayout = () => {
                     headerShown: false,
                     tabBarIcon: ({color, focused}) => (
                         <TabIcon 
-                            icon={icons.list}
+                            icon={focused ? "podium" : "podium-outline"}
                             color={color}
-                            name={"Leaderboard"}
+                            name={"Ranks"}
                             focused={focused}
                         />
                     )
@@ -98,7 +98,7 @@ const TabsLayout = () => {
                     headerShown: false,
                     tabBarIcon: ({color, focused}) => (
                         <TabIcon 
-                            icon={icons.profile}
+                            icon={focused ? "person-circle" : "person-circle-outline"}
                             color={color}
                             name={"Profile"}
                             focused={focused}

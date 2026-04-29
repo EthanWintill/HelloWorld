@@ -1,8 +1,9 @@
-import { View, Text, ScrollView, SafeAreaView, Image } from 'react-native'
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native'
 import React from 'react'
+import { Ionicons } from '@expo/vector-icons'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
-import { images } from "@/constants"
+import { EmptyState } from '../../components/Design'
 
 interface Location {
   id: number;
@@ -28,28 +29,9 @@ interface PeriodInstance {
   is_active: boolean;
 }
 
-interface SessionGroup {
-  period: PeriodInstance | null;
-  sessions: Session[];
-}
-
 const History = () => {
   const { dashboardState } = useDashboard()
   const { isLoading, error, data } = dashboardState
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const formatPeriodDates = (start: string, end: string) => {
-    return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`
-  }
 
   const getLocationName = (locationValue: number | Location | null) => {
     if (!locationValue) return 'Manual Entry'
@@ -59,68 +41,51 @@ const History = () => {
     return location ? location.name : 'N/A'
   }
 
-  const groupSessionsByPeriod = () => {
+  const getSortedSessions = () => {
     if (!data?.user_sessions) return []
-
-    // Sort all sessions by start_time in descending order
-    const sortedSessions = [...data.user_sessions].sort((a: Session, b: Session) =>
+    return [...data.user_sessions].sort((a: Session, b: Session) =>
       new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
     )
+  }
 
-    // Initialize groups array
-    const grouped: SessionGroup[] = []
-    
-    // Helper function to check if a date falls within a period
-    const isDateInPeriod = (date: Date, period: PeriodInstance) => {
-      const sessionDate = date.getTime()
-      const periodStart = new Date(period.start_date).getTime()
-      const periodEnd = new Date(period.end_date).getTime()
-      return sessionDate >= periodStart && sessionDate <= periodEnd
-    }
-
-    // Get all unique periods
-    const allPeriods = data.user_sessions
-      .filter((s: Session) => s.period_instance)
-      .map((s: Session) => s.period_instance as PeriodInstance)
-      .filter((p: PeriodInstance, i: number, arr: PeriodInstance[]) => arr.findIndex((x: PeriodInstance) => x.id === p.id) === i)
-      .sort((a: PeriodInstance, b: PeriodInstance) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
-
-    // Process each session
-    sortedSessions.forEach((session: Session) => {
-      const sessionDate = new Date(session.start_time)
-      
-      // Find the period this session belongs to based on its date
-      const matchingPeriod = allPeriods.find((period: PeriodInstance) =>
-        isDateInPeriod(sessionDate, period)
-      )
-
-      if (matchingPeriod) {
-        // Find or create group for this period
-        let periodGroup = grouped.find(g => g.period?.id === matchingPeriod.id)
-        if (!periodGroup) {
-          periodGroup = { period: matchingPeriod, sessions: [] }
-          grouped.push(periodGroup)
-        }
-        periodGroup.sessions.push(session)
-      } else {
-        // Handle sessions without a matching period
-        let otherGroup = grouped.find(g => g.period === null)
-        if (!otherGroup) {
-          otherGroup = { period: null, sessions: [] }
-          grouped.push(otherGroup)
-        }
-        otherGroup.sessions.push(session)
-      }
+  const formatSessionDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
     })
+  }
 
-    // Sort sessions within each group by date
-    grouped.forEach(group => {
-      group.sessions.sort((a: Session, b: Session) => 
-        new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
-      )
+  const formatSessionTime = (dateString: string, hours: number | null) => {
+    const startDate = new Date(dateString)
+    const start = startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+
+    if (hours === null) return `${start} - In progress`
+
+    const endDate = new Date(startDate.getTime() + Number(hours) * 60 * 60 * 1000)
+    const end = endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    return `${start} - ${end}`
+  }
+
+  const formatDuration = (hours: number | null) => {
+    if (hours === null) return 'Live'
+
+    const totalMinutes = Math.round(Number(hours) * 60)
+    const wholeHours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+
+    if (wholeHours === 0) return `${minutes}m`
+    if (minutes === 0) return `${wholeHours}h`
+    return `${wholeHours}h ${minutes}m`
+  }
+
+  const formatDeadline = (date?: Date) => {
+    if (!date) return 'Not set'
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
     })
-
-    return grouped
   }
 
   const getActivePeriodInstance = () => {
@@ -158,27 +123,10 @@ const History = () => {
     return data.active_period_setting.required_hours;
   }
 
-  const getHoursColor = (hours: number) => {
-    const requiredHours = getRequiredHours();
-    
-    // If no required hours or we've met the requirement, use green
-    if (requiredHours === 0 || hours >= requiredHours) {
-      return "text-green-600";
-    }
-    
-    // If within 1 hour of the requirement, use orange
-    if (hours >= requiredHours - 1) {
-      return "text-orange-500";
-    }
-    
-    // Otherwise use red
-    return "text-red-500";
-  }
-
   // Add study progress functions
   const requiredHours = () => {
     if (!data?.active_period_setting) return 0;
-    return Math.round(data.active_period_setting.required_hours);
+    return Number(data.active_period_setting.required_hours);
   }
 
   const studyHoursLeft = () => {
@@ -193,6 +141,17 @@ const History = () => {
 
     const studied = hoursStudied();
     return Math.min(Math.round((studied / required) * 100), 100);
+  }
+
+  const getPeriodLabel = () => {
+    const activePeriod = getActivePeriodInstance()
+    if (activePeriod?.start_date && activePeriod?.end_date) {
+      const start = new Date(activePeriod.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      const end = new Date(activePeriod.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      return `${start} - ${end}`
+    }
+
+    return getActivePeriodInfo()?.description || 'Current Period'
   }
 
   const getActivePeriodInfo = () => {
@@ -259,207 +218,115 @@ const History = () => {
     return (
       <SafeAreaView className="flex-1">
         <ScrollView className="p-4">
-          <Text className="text-red-500 text-lg font-bold">Error:</Text>
-          <Text className="text-red-500">{JSON.stringify(error, null, 2)}</Text>
+          <Text className="text-gg-error text-lg font-bold">Error:</Text>
+          <Text className="text-gg-error">{JSON.stringify(error, null, 2)}</Text>
         </ScrollView>
       </SafeAreaView>
     )
   }
 
-  // Calculate total hours studied
-  
+  const sessions = getSortedSessions()
+  const periodInfo = getActivePeriodInfo()
 
   return (
-    <SafeAreaView className="bg-white flex-1">
-      {/* Header Bar */}
-      <View className="flex-row justify-between items-center px-4 py-3 border-b border-gray-200">
-        <View className="flex-row items-center">
-          <Image
-            source={images.logoSmall}
-            className="w-10 h-10"
-            resizeMode="contain"
-          />
-          <Text className="font-psemibold text-lg ml-1">
-            {data?.org?.name || 'Organization'}
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <View className="items-end">
-            <Text className="font-psemibold text-gray-600 text-lg">
-              {data?.first_name} {data?.last_name?.[0]}.
-            </Text>
-            {data?.group && (
-              <Text className="font-pregular text-gray-500 text-sm">
-                {data.group.name}
+    <SafeAreaView className="bg-gg-bg flex-1">
+      <ScrollView
+        className="flex-1 px-4 pt-6"
+        contentContainerStyle={{ paddingBottom: 128 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl overflow-hidden relative mb-6">
+          <View className="absolute left-0 top-0 bottom-0 w-1 bg-gg-primary" />
+          <View className="p-6">
+            <View className="flex-row justify-between items-start mb-2">
+              <Text className="font-psemibold text-xs uppercase tracking-wider text-gg-muted flex-1 pr-4">
+                {getPeriodLabel()}
               </Text>
-            )}
-          </View>
-          <Text className="font-psemibold text-green-600 text-2xl">
-            {hoursStudied().toFixed(0)}h
-          </Text>
-        </View>
-      </View>
-
-      {/* Main content */}
-      <ScrollView className="p-4">
-        {/* Study Progress Card */}
-        <View className="mb-6">
-          <View className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            {!data ? (
-              <Text className="font-pregular text-center text-gray-500">Loading...</Text>
-            ) : (
-              <>
-                {/* Header */}
-                <Text className="font-psemibold text-center text-gray-800 text-lg mb-4">
-                  Study Progress
-                </Text>
-                
-                {/* Progress Bar */}
-                <View className="mb-4">
-                  <View className="bg-gray-200 rounded-full h-3 mb-2">
-                    <View 
-                      className="bg-blue-500 h-3 rounded-full"
-                      style={{ width: `${Math.min(calculatePercentComplete(), 100)}%` }}
-                    />
-                  </View>
-                  <Text className="font-pregular text-center text-gray-600 text-sm">
-                    {calculatePercentComplete()}% Complete
-                  </Text>
-                </View>
-                
-                {/* Study Stats */}
-                <View className="flex-row justify-between items-center">
-                  <View className="items-center flex-1">
-                    <Text className="font-pbold text-2xl text-green-600">
-                      {Math.round(hoursStudied() * 10) / 10}
-                    </Text>
-                    <Text className="font-pregular text-gray-500 text-sm">
-                      Hours Studied
-                    </Text>
-                  </View>
-                  
-                  <View className="w-px h-12 bg-gray-300 mx-4" />
-                  
-                  <View className="items-center flex-1">
-                    <Text className="font-pbold text-2xl text-gray-800">
-                      {requiredHours()}
-                    </Text>
-                    <Text className="font-pregular text-gray-500 text-sm">
-                      Hours Required
-                    </Text>
-                  </View>
-                  
-                  <View className="w-px h-12 bg-gray-300 mx-4" />
-                  
-                  <View className="items-center flex-1">
-                    <Text className="font-pbold text-2xl text-orange-600">
-                      {Math.round(studyHoursLeft() * 10) / 10}
-                    </Text>
-                    <Text className="font-pregular text-gray-500 text-sm">
-                      Hours Left
-                    </Text>
-                  </View>
-                </View>
-                
-                {/* Period Information */}
-                {data?.active_period_setting && (
-                  <View className="mt-4 pt-4 border-t border-gray-200">
-                    {(() => {
-                      const periodInfo = getActivePeriodInfo();
-                      if (!periodInfo) return null;
-                      
-                      return (
-                        <>
-                          <Text className="font-psemibold text-center text-gray-800 mb-2">
-                            {periodInfo.description}
-                          </Text>
-                          <Text className="font-pregular text-center text-gray-600 mb-1">
-                            {periodInfo.shouldShowDays ? (
-                              <>
-                                <Text className="font-bold text-green-600">
-                                  {periodInfo.daysRemaining} day{periodInfo.daysRemaining !== 1 ? 's' : ''}
-                                </Text>
-                                {' remaining'}
-                              </>
-                            ) : periodInfo.hoursRemaining > 0 ? (
-                              <>
-                                <Text className="font-bold text-red-600">
-                                  {periodInfo.hoursRemaining} hour{periodInfo.hoursRemaining !== 1 ? 's' : ''}
-                                </Text>
-                                {' remaining'}
-                              </>
-                            ) : (
-                              'Due now'
-                            )}
-                          </Text>
-                          <Text className="font-pregular text-center text-gray-500 text-sm">
-                            Due {periodInfo.endDate.toLocaleDateString()} at{' '}
-                            {periodInfo.endDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                          </Text>
-                        </>
-                      );
-                    })()}
-                  </View>
-                )}
-              </>
-            )}
-          </View>
-        </View>
-
-        <Text className="text-xl font-bold mb-6 text-center">Study History</Text>
-        
-        {groupSessionsByPeriod().map((group, index, array) => {
-          // Calculate total hours for this group
-          const groupHours = group.sessions
-            .filter((s: Session) => s.hours !== null)
-            .reduce((total: number, s: Session) => total + Number(s.hours), 0);
-            
-          // Determine color based on hours compared to requirement
-          const hoursColor = getHoursColor(groupHours);
-          
-          return (
-            <View key={group.period?.id || `no-period-${index}`} className="mb-6">
-              {(group.period || (index > 0 && !group.period)) && (
-                <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-gray-200">
-                  <Text className="text-lg font-semibold text-gray-700">
-                    {group.period 
-                      ? formatPeriodDates(group.period.start_date, group.period.end_date)
-                      : "Other Sessions"
-                    }
-                  </Text>
-                  <Text className={`text-lg font-semibold ${hoursColor}`}>
-                    {groupHours.toFixed(2)} hrs
-                  </Text>
-                </View>
-              )}
-              {group.sessions.map((session: Session) => (
-                <View key={session.id} className="bg-gray-50 p-4 mb-3 rounded-lg shadow-sm border border-gray-100">
-                  <Text className="font-bold mb-1 text-gray-800">
-                    {formatDate(session.start_time)}
-                  </Text>
-                  <View className="flex-row justify-between items-center">
-                    <Text className="text-gray-600">
-                      Location: {getLocationName(session.location)}
-                    </Text>
-                    {session.hours === null ? (
-                      <Text className="text-green-600 font-semibold">IN PROGRESS</Text>
-                    ) : (
-                      <Text className="text-gray-800 font-semibold">
-                        {Number(session.hours).toFixed(2)} hrs
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              ))}
+              <View className="bg-gg-surfaceLow px-2 py-1 rounded-full">
+                <Text className="font-pregular text-xs text-gg-primary">Active</Text>
+              </View>
             </View>
-          );
+
+            <View className="flex-row items-baseline mb-2">
+              <Text className="text-[32px] font-pbold text-gg-text tracking-tight">
+                {hoursStudied().toFixed(1)}
+              </Text>
+              <Text className="text-gg-muted font-pmedium ml-1">
+                / {requiredHours().toFixed(1)} hrs
+              </Text>
+            </View>
+
+            <View className="w-full h-1 bg-gg-surfaceHigh rounded-full overflow-hidden mb-4">
+              <View
+                className="h-full bg-gg-primary rounded-full"
+                style={{ width: `${calculatePercentComplete()}%` }}
+              />
+            </View>
+
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1 pr-3">
+                <Ionicons name="calendar-outline" size={16} color="#3e4a3d" />
+                <Text className="font-pregular text-xs text-gg-muted ml-1">
+                  Deadline: {formatDeadline(periodInfo?.endDate)}
+                </Text>
+              </View>
+              <Text className="font-pmedium text-xs text-gg-muted">
+                {calculatePercentComplete()}% Complete
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View className="flex-row items-center justify-between mb-2">
+          <Text className="font-psemibold text-[17px] leading-6 text-gg-text">Study Sessions</Text>
+          <TouchableOpacity className="flex-row items-center px-3 py-2 rounded-lg bg-gg-surface border border-gg-outlineVariant">
+            <Text className="font-pmedium text-sm text-gg-muted mr-1">Filter</Text>
+            <Ionicons name="filter-outline" size={16} color="#3e4a3d" />
+          </TouchableOpacity>
+        </View>
+
+        {sessions.map((session: Session, index: number) => {
+          const iconNames = ['book-outline', 'school-outline', 'desktop-outline', 'library-outline'] as const
+          const iconName = iconNames[index % iconNames.length]
+
+          return (
+            <View
+              key={session.id}
+              className="bg-gg-surface border border-gg-outlineVariant rounded-lg p-4 mb-2 flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center flex-1 pr-3">
+                <View className="w-10 h-10 rounded-full bg-gg-surfaceContainer items-center justify-center mr-3">
+                  <Ionicons name={iconName} size={20} color="#006b2c" />
+                </View>
+
+                <View className="flex-1">
+                  <Text className="font-psemibold text-[15px] leading-5 text-gg-text" numberOfLines={1}>
+                    {formatSessionDate(session.start_time)}
+                  </Text>
+                  <View className="flex-row items-center mt-1">
+                    <Ionicons name="location-outline" size={14} color="#3e4a3d" />
+                    <Text className="font-pregular text-xs leading-4 text-gg-muted ml-1 flex-1" numberOfLines={1}>
+                      {getLocationName(session.location)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View className="items-end">
+                <Text className="font-psemibold text-base leading-5 text-gg-primary">
+                  {formatDuration(session.hours)}
+                </Text>
+                <Text className="font-pregular text-xs leading-4 text-gg-muted mt-1">
+                  {formatSessionTime(session.start_time, session.hours)}
+                </Text>
+              </View>
+            </View>
+          )
         })}
-        
-        {(!data?.user_sessions || data.user_sessions.length === 0) && (
-          <View className="items-center justify-center py-10">
-            <Text className="text-gray-500 text-center italic">
-              No study sessions recorded yet
-            </Text>
+
+        {sessions.length === 0 && (
+          <View className="bg-gg-surface border border-gg-outlineVariant rounded-lg p-6 mt-2">
+            <EmptyState icon="time-outline" title="No sessions yet" message="Completed study sessions will appear here." />
           </View>
         )}
       </ScrollView>

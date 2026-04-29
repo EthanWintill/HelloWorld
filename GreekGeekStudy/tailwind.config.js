@@ -6,6 +6,25 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        gg: {
+          bg: "#f4fcf0",
+          surface: "#ffffff",
+          surfaceLow: "#eff6ea",
+          surfaceContainer: "#e9f0e5",
+          surfaceHigh: "#e3eadf",
+          surfaceHighest: "#dde5d9",
+          text: "#171d16",
+          muted: "#3e4a3d",
+          outline: "#6e7b6c",
+          outlineVariant: "#bdcaba",
+          primary: "#006b2c",
+          primaryContainer: "#00873a",
+          primaryFixed: "#7ffc97",
+          secondary: "#0051d5",
+          error: "#ba1a1a",
+          errorContainer: "#ffdad6",
+          tertiary: "#a72d51",
+        },
         primary: "#161622",
         secondary: {
           DEFAULT: "#FF9C01",

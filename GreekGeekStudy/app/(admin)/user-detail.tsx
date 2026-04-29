@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { API_URL } from '@/constants'
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Card, EmptyState, ScreenHeader } from '../../components/Design'
 
 // Mock data for user sessions
 const MOCK_SESSIONS = [
@@ -96,6 +97,8 @@ const UserDetail = () => {
   const [selectedSession, setSelectedSession] = useState<any>(null)
   const [editedHours, setEditedHours] = useState('')
   const [isSessionUpdateLoading, setIsSessionUpdateLoading] = useState(false)
+
+  const isViewingSelf = user?.id === data?.id
 
   // Find user by ID from actual data
   useEffect(() => {
@@ -187,6 +190,38 @@ const UserDetail = () => {
     return `${h}h ${m}m`
   }
 
+  const getInitials = (targetUser: any) => {
+    const first = targetUser?.first_name?.[0] || ''
+    const last = targetUser?.last_name?.[0] || ''
+    return `${first}${last}`.toUpperCase() || targetUser?.email?.[0]?.toUpperCase() || '?'
+  }
+
+  const getGroupName = (targetUser: any) => {
+    if (!targetUser?.group) return 'Not assigned'
+    return typeof targetUser.group === 'object' ? targetUser.group.name : targetUser.group
+  }
+
+  const getCurrentPeriodHours = () => {
+    return filteredSessions.reduce((total, session) => total + (session.hours || 0), 0)
+  }
+
+  const updateStaffStatus = async (nextIsStaff: boolean) => {
+    if (!userId) return
+
+    const token = await AsyncStorage.getItem('accessToken')
+    if (!token) throw new Error('No access token found')
+
+    await axios.patch(
+      `${API_URL}api/users/${userId}/staff-status/`,
+      { is_staff: nextIsStaff },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+  }
+
   // Get location name from location ID
   const getLocationName = useCallback((locationId: number | null) => {
     if (!locationId || !data || !data.org_locations) return 'No location'
@@ -203,18 +238,32 @@ const UserDetail = () => {
       const token = await AsyncStorage.getItem('accessToken')
       if (!token) throw new Error('No access token found')
 
+      const userPayload = {
+        first_name: editedUser.first_name || '',
+        last_name: editedUser.last_name || '',
+        email: editedUser.email || '',
+        phone_number: editedUser.phone_number || '',
+        notify_org_starts_studying: editedUser.notify_org_starts_studying,
+        notify_user_leaves_zone: editedUser.notify_user_leaves_zone,
+        notify_study_deadline_approaching: editedUser.notify_study_deadline_approaching,
+      }
+
       const response = await axios.put(
         `${API_URL}api/user/${userId}/`, 
-        editedUser,
+        userPayload,
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
       )
+
+      if (editedUser.is_staff !== user.is_staff) {
+        await updateStaffStatus(Boolean(editedUser.is_staff))
+      }
       
       await refreshDashboard()
-      setUser(response.data)
+      setUser({ ...response.data, is_staff: editedUser.is_staff, group: user.group })
       setIsEditing(false)
       
       Alert.alert(
@@ -471,8 +520,8 @@ const UserDetail = () => {
   if (error) {
     return (
       <ScrollView className="flex-1 p-4">
-        <Text className="text-red-500 text-lg font-bold">Error:</Text>
-        <Text className="text-red-500">{JSON.stringify(error, null, 2)}</Text>
+        <Text className="text-gg-error text-lg font-bold">Error:</Text>
+        <Text className="text-gg-error">{JSON.stringify(error, null, 2)}</Text>
       </ScrollView>
     )
   }
@@ -481,9 +530,9 @@ const UserDetail = () => {
   if (!data.is_staff) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center p-4">
-        <Ionicons name="alert-circle" size={64} color="#EF4444" />
+        <Ionicons name="alert-circle" size={64} color="#ba1a1a" />
         <Text className="text-xl font-psemibold text-center mt-4 mb-2">Access Denied</Text>
-        <Text className="text-gray-600 text-center">You don't have permission to access this page.</Text>
+        <Text className="text-gg-muted text-center">You don't have permission to access this page.</Text>
       </SafeAreaView>
     )
   }
@@ -491,31 +540,79 @@ const UserDetail = () => {
   if (!user) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center p-4">
-        <Ionicons name="alert-circle" size={64} color="#EF4444" />
+        <Ionicons name="alert-circle" size={64} color="#ba1a1a" />
         <Text className="text-xl font-psemibold text-center mt-4 mb-2">User Not Found</Text>
-        <Text className="text-gray-600 text-center">The requested user could not be found.</Text>
+        <Text className="text-gg-muted text-center">The requested user could not be found.</Text>
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="flex-1 p-4">
-        <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
+    <SafeAreaView className="flex-1 bg-gg-bg">
+      <ScreenHeader
+        title="User Details"
+        subtitle={user.email}
+        right={(
+          !isEditing ? (
+            <TouchableOpacity
+              onPress={() => setIsEditing(true)}
+              className="h-10 w-10 rounded-full bg-gg-surfaceLow items-center justify-center"
+            >
+              <Ionicons name="pencil" size={20} color="#006b2c" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={updateLoading}
+              className={`h-10 px-4 rounded-full bg-gg-primary items-center justify-center ${updateLoading ? 'opacity-70' : ''}`}
+            >
+              <Text className="text-white font-psemibold text-sm">
+                {updateLoading ? 'Saving...' : 'Save'}
+              </Text>
+            </TouchableOpacity>
+          )
+        )}
+      />
+
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+        <Card className="mb-4">
+          <View className="flex-row items-center">
+            <View className="h-16 w-16 rounded-full bg-gg-surfaceLow items-center justify-center mr-4">
+              <Text className="font-pbold text-gg-primary text-xl">{getInitials(user)}</Text>
+            </View>
+            <View className="flex-1">
+              <Text className="font-psemibold text-gg-text text-[22px] leading-7">
+                {user.first_name} {user.last_name}
+              </Text>
+              <View className="flex-row items-center mt-2 flex-wrap">
+                <View className={`${user.is_staff ? 'bg-[#dbe1ff]' : 'bg-gg-surfaceContainer'} rounded-full px-2 py-1 mr-2 mb-1`}>
+                  <Text className={`${user.is_staff ? 'text-gg-secondary' : 'text-gg-muted'} font-psemibold text-xs`}>
+                    {user.is_staff ? 'Admin' : 'Member'}
+                  </Text>
+                </View>
+                <View className="bg-gg-surfaceContainer rounded-full px-2 py-1 mb-1">
+                  <Text className="text-gg-muted font-pmedium text-xs">{getGroupName(user)}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </Card>
+
+        <Card className="mb-4">
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-xl font-psemibold">User Information</Text>
+            <Text className="text-lg font-psemibold text-gg-text">Account</Text>
             {!isEditing ? (
               <TouchableOpacity 
                 onPress={() => setIsEditing(true)}
-                className="bg-green-100 p-2 rounded-full"
+                className="bg-gg-surfaceLow h-10 w-10 items-center justify-center rounded-full"
               >
-                <Ionicons name="pencil" size={20} color="#16A34A" />
+                <Ionicons name="pencil" size={20} color="#006b2c" />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity 
                 onPress={handleSave}
                 disabled={updateLoading}
-                className={`bg-green-600 px-4 py-2 rounded-lg ${updateLoading ? 'opacity-70' : ''}`}
+                className={`bg-gg-primary px-4 py-2 rounded-lg ${updateLoading ? 'opacity-70' : ''}`}
               >
                 <Text className="text-white font-psemibold">
                   {updateLoading ? 'Saving...' : 'Save'}
@@ -525,164 +622,179 @@ const UserDetail = () => {
           </View>
 
           <View className="mb-4">
-            <Text className="text-gray-600 mb-1">First Name</Text>
+            <Text className="text-gg-muted mb-1 font-pmedium text-xs">First Name</Text>
             {isEditing ? (
               <TextInput
                 value={editedUser.first_name}
                 onChangeText={(text) => setEditedUser({...editedUser, first_name: text})}
-                className="border border-gray-300 rounded-lg p-2"
+                className="border border-gg-outline rounded-lg px-4 h-14 bg-gg-surface font-pregular text-gg-text"
                 placeholder="Enter first name"
               />
             ) : (
-              <Text className="text-lg">{user.first_name}</Text>
+              <Text className="text-gg-text font-psemibold">{user.first_name || 'Not set'}</Text>
             )}
           </View>
 
           <View className="mb-4">
-            <Text className="text-gray-600 mb-1">Last Name</Text>
+            <Text className="text-gg-muted mb-1 font-pmedium text-xs">Last Name</Text>
             {isEditing ? (
               <TextInput
                 value={editedUser.last_name}
                 onChangeText={(text) => setEditedUser({...editedUser, last_name: text})}
-                className="border border-gray-300 rounded-lg p-2"
+                className="border border-gg-outline rounded-lg px-4 h-14 bg-gg-surface font-pregular text-gg-text"
                 placeholder="Enter last name"
               />
             ) : (
-              <Text className="text-lg">{user.last_name}</Text>
+              <Text className="text-gg-text font-psemibold">{user.last_name || 'Not set'}</Text>
             )}
           </View>
 
           <View className="mb-4">
-            <Text className="text-gray-600 mb-1">Email</Text>
+            <Text className="text-gg-muted mb-1 font-pmedium text-xs">Email</Text>
             {isEditing ? (
               <TextInput
                 value={editedUser.email}
                 onChangeText={(text) => setEditedUser({...editedUser, email: text})}
-                className="border border-gray-300 rounded-lg p-2"
+                className="border border-gg-outline rounded-lg px-4 h-14 bg-gg-surface font-pregular text-gg-text"
                 placeholder="Enter email"
                 keyboardType="email-address"
+                autoCapitalize="none"
               />
             ) : (
-              <Text className="text-lg">{user.email}</Text>
+              <Text className="text-gg-text font-psemibold">{user.email}</Text>
             )}
           </View>
 
           <View className="mb-4">
-            <Text className="text-gray-600 mb-1">Phone Number</Text>
+            <Text className="text-gg-muted mb-1 font-pmedium text-xs">Phone Number</Text>
             {isEditing ? (
               <TextInput
                 value={editedUser.phone_number}
                 onChangeText={(text) => setEditedUser({...editedUser, phone_number: text})}
-                className="border border-gray-300 rounded-lg p-2"
+                className="border border-gg-outline rounded-lg px-4 h-14 bg-gg-surface font-pregular text-gg-text"
                 placeholder="Enter phone number"
                 keyboardType="phone-pad"
               />
             ) : (
-              <Text className="text-lg">{user.phone_number}</Text>
+              <Text className="text-gg-text font-psemibold">{user.phone_number || 'Not set'}</Text>
             )}
           </View>
 
-          <View className="mb-4">
-            <Text className="text-gray-600 mb-1">Group</Text>
-            {isEditing ? (
-              <TextInput
-                value={typeof editedUser.group === 'object' ? editedUser.group?.name || '' : editedUser.group || ''}
-                onChangeText={(text) => setEditedUser({...editedUser, group: text || null})}
-                className="border border-gray-300 rounded-lg p-2"
-                placeholder="Enter group"
-              />
-            ) : (
-              <Text className="text-lg">
-                {typeof user.group === 'object' ? user.group?.name || 'Not assigned' : user.group || 'Not assigned'}
-              </Text>
-            )}
-          </View>
-
-          
-        </View>
-
-        {/* Sessions section */}
-        <View className="bg-white rounded-lg shadow-sm p-4 mb-4 flex-1">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-xl font-psemibold">Study Sessions</Text>
-            <View className="bg-green-100 px-3 py-1 rounded-lg">
-              <Text className="text-green-600 font-psemibold">
-                {sessionsLoading ? '...' : filteredSessions.reduce((total, session) => total + (session.hours || 0), 0).toFixed(1)}h
-              </Text>
-            </View>
-          </View>
-          
-          {currentPeriod && (
-            <Text className="text-gray-600 mb-2">
-              Current Period: {new Date(currentPeriod.start_date).toLocaleDateString()} - {new Date(currentPeriod.end_date).toLocaleDateString()}
-            </Text>
-          )}
-          
-          {sessionsLoading ? (
-            <View className="py-4 items-center">
-              <Text className="text-gray-500">Loading sessions...</Text>
-            </View>
-          ) : filteredSessions.length === 0 ? (
-            <Text className="text-gray-500 italic text-center py-4">No study sessions recorded for this period</Text>
-          ) : (
-            <FlatList
-              data={filteredSessions}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item: session }) => (
-                <View 
-                  className="p-3 bg-gray-100 rounded-lg mb-2"
-                >
-                  <View className="flex-row justify-between items-center">
-                    <Text className="font-psemibold">{formatDate(session.start_time)}</Text>
-                    <Text className={`font-psemibold ${session.hours === null ? 'text-orange-600' : 'text-green-600'}`}>
-                      {formatDuration(session.hours)}
-                    </Text>
-                  </View>
-                  <Text className="text-gray-600 text-sm mb-2">
-                    {getLocationName(session.location)}
+          <View className="border-t border-gg-outlineVariant pt-4">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1 pr-4">
+                <Text className="text-gg-text font-psemibold">Administrator access</Text>
+                <Text className="text-gg-muted font-pregular text-sm mt-1">
+                  {isViewingSelf ? 'You cannot change your own admin status.' : 'Allow this member to manage users, groups, study areas, and reports.'}
+                </Text>
+              </View>
+              {isEditing ? (
+                <Switch
+                  value={Boolean(editedUser.is_staff)}
+                  onValueChange={(value) => setEditedUser({...editedUser, is_staff: value})}
+                  disabled={isViewingSelf}
+                  trackColor={{ false: '#bdcaba', true: '#00873a' }}
+                  thumbColor="#FFFFFF"
+                />
+              ) : (
+                <View className={`${user.is_staff ? 'bg-[#dbe1ff]' : 'bg-gg-surfaceContainer'} rounded-full px-3 py-2`}>
+                  <Text className={`${user.is_staff ? 'text-gg-secondary' : 'text-gg-muted'} font-psemibold text-xs`}>
+                    {user.is_staff ? 'Admin' : 'Member'}
                   </Text>
-                  <View className="flex-row justify-end mt-1">
-                    <TouchableOpacity 
-                      onPress={() => {
-                        setSelectedSession(session)
-                        setEditedHours(session.hours !== null ? session.hours.toString() : '')
-                        setIsHoursModalVisible(true)
-                      }}
-                      className="bg-blue-100 p-2 rounded-full mr-2"
-                    >
-                      <Ionicons name="pencil" size={16} color="#3B82F6" />
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      onPress={() => handleDeleteSession(session)}
-                      className="bg-red-100 p-2 rounded-full"
-                    >
-                      <Ionicons name="trash" size={16} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
                 </View>
               )}
-              style={{ flexGrow: 0 }}
-              contentContainerStyle={{ flexGrow: 1 }}
-            />
-          )}
-        </View>
+            </View>
+          </View>
+        </Card>
 
-        <View className="flex-row justify-between mb-4">
-          <TouchableOpacity 
-            onPress={handleDeleteUser}
-            className="bg-red-500 p-3 rounded-lg flex-1 mr-2 items-center"
-          >
-            <Text className="text-white font-psemibold">Delete User</Text>
-          </TouchableOpacity>
-          
+        <Card className="mb-4">
+          <View className="flex-row justify-between items-center mb-4">
+            <View>
+              <Text className="text-lg font-psemibold text-gg-text">Study Sessions</Text>
+              {currentPeriod && (
+                <Text className="text-gg-muted text-xs font-pregular mt-1">
+                  {new Date(currentPeriod.start_date).toLocaleDateString()} - {new Date(currentPeriod.end_date).toLocaleDateString()}
+                </Text>
+              )}
+            </View>
+            <View className="bg-gg-surfaceLow px-3 py-1 rounded-lg">
+              <Text className="text-gg-primary font-psemibold">
+                {sessionsLoading ? '...' : getCurrentPeriodHours().toFixed(1)}h
+              </Text>
+            </View>
+          </View>
+
+          {sessionsLoading ? (
+            <View className="py-4 items-center">
+              <Text className="text-gg-muted">Loading sessions...</Text>
+            </View>
+          ) : filteredSessions.length === 0 ? (
+            <EmptyState icon="time-outline" title="No sessions" message="No study sessions are recorded for this period." />
+          ) : (
+            filteredSessions.map((session) => (
+                <View 
+                  key={session.id}
+                  className="p-4 bg-gg-bg border border-gg-outlineVariant rounded-lg mb-2"
+                >
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1 pr-3">
+                      <Text className="font-psemibold text-gg-text">{formatDate(session.start_time)}</Text>
+                      <View className="flex-row items-center mt-1">
+                        <Ionicons name="location-outline" size={14} color="#3e4a3d" />
+                        <Text className="text-gg-muted text-sm ml-1">{getLocationName(session.location)}</Text>
+                      </View>
+                    </View>
+                    <View className="items-end">
+                      <Text className={`font-psemibold ${session.hours === null ? 'text-amber-600' : 'text-gg-primary'}`}>
+                        {formatDuration(session.hours)}
+                      </Text>
+                      <View className="flex-row mt-2">
+                        <TouchableOpacity 
+                          onPress={() => {
+                            setSelectedSession(session)
+                            setEditedHours(session.hours !== null ? session.hours.toString() : '')
+                            setIsHoursModalVisible(true)
+                          }}
+                          className="bg-[#dbe1ff] h-9 w-9 rounded-full mr-2 items-center justify-center"
+                        >
+                          <Ionicons name="pencil" size={16} color="#0051d5" />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          onPress={() => handleDeleteSession(session)}
+                          className="bg-[#ffdad6] h-9 w-9 rounded-full items-center justify-center"
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#ba1a1a" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+            ))
+          )}
+        </Card>
+
+        <View className="mb-4">
           <TouchableOpacity 
             onPress={handleResetPassword}
-            className="bg-blue-500 p-3 rounded-lg flex-1 ml-2 items-center"
+            className="bg-gg-secondary min-h-[56px] rounded-lg items-center justify-center mb-3 flex-row"
           >
-            <Text className="text-white font-psemibold">Reset Password</Text>
+            <Ionicons name="key-outline" size={19} color="#FFFFFF" />
+            <Text className="text-white font-psemibold ml-2">Reset Password</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            onPress={handleDeleteUser}
+            disabled={isViewingSelf}
+            className={`${isViewingSelf ? 'bg-gg-surfaceHighest' : 'bg-gg-error'} min-h-[56px] rounded-lg items-center justify-center flex-row`}
+          >
+            <Ionicons name="trash-outline" size={19} color="#FFFFFF" />
+            <Text className="text-white font-psemibold ml-2">Delete User</Text>
+          </TouchableOpacity>
+          {isViewingSelf && (
+            <Text className="text-gg-muted text-xs font-pregular text-center mt-2">You cannot delete your own admin account here.</Text>
+          )}
         </View>
-      </View>
+      </ScrollView>
 
       {/* Hours Edit Modal */}
       <Modal
@@ -696,24 +808,24 @@ const UserDetail = () => {
         }}
       >
         <View className="flex-1 justify-center items-center bg-transparent">
-          <View className="bg-white rounded-lg p-6 w-4/5 shadow-lg">
+          <View className="bg-gg-surface rounded-lg p-6 w-4/5 shadow-lg">
             <Text className="text-xl font-psemibold mb-4 text-center">Edit Session Hours</Text>
             
             {selectedSession && (
               <View className="mb-4">
-                <Text className="text-gray-600 mb-2">Date: {formatDate(selectedSession.start_time)}</Text>
-                <Text className="text-gray-600 mb-4">Location: {getLocationName(selectedSession.location)}</Text>
+                <Text className="text-gg-muted mb-2">Date: {formatDate(selectedSession.start_time)}</Text>
+                <Text className="text-gg-muted mb-4">Location: {getLocationName(selectedSession.location)}</Text>
                 
                 <Text className="font-psemibold mb-1">Hours:</Text>
                 <TextInput
                   value={editedHours}
                   onChangeText={setEditedHours}
-                  className="border border-gray-300 rounded-lg p-3 text-lg"
+                  className="border border-gg-outline rounded-lg p-3 text-lg"
                   keyboardType="numeric"
                   placeholder="Leave empty to mark as in-progress"
                   autoFocus
                 />
-                <Text className="text-gray-500 text-sm mt-1">
+                <Text className="text-gg-muted text-sm mt-1">
                   {selectedSession.hours === null 
                     ? "This session is currently in progress." 
                     : "Enter hours or leave empty to mark as in-progress."}
@@ -728,7 +840,7 @@ const UserDetail = () => {
                   setSelectedSession(null)
                   setEditedHours('')
                 }}
-                className="bg-gray-200 py-3 px-5 rounded-lg flex-1 mr-2 items-center"
+                className="bg-gg-surfaceHighest py-3 px-5 rounded-lg flex-1 mr-2 items-center"
               >
                 <Text className="font-psemibold">Cancel</Text>
               </TouchableOpacity>
@@ -736,7 +848,7 @@ const UserDetail = () => {
               <TouchableOpacity 
                 onPress={handleUpdateSessionHours}
                 disabled={isSessionUpdateLoading}
-                className={`bg-blue-500 py-3 px-5 rounded-lg flex-1 ml-2 items-center ${isSessionUpdateLoading ? 'opacity-70' : ''}`}
+                className={`bg-gg-secondary py-3 px-5 rounded-lg flex-1 ml-2 items-center ${isSessionUpdateLoading ? 'opacity-70' : ''}`}
               >
                 <Text className="text-white font-psemibold">
                   {isSessionUpdateLoading ? 'Saving...' : 'Save'}

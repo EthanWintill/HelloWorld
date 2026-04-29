@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import axios from 'axios'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import API_URL from '../../constants/api'
+import { Card, EmptyState, ProgressBar, ScreenHeader } from '../../components/Design'
 
 // Define types for API response
 interface PeriodSetting {
@@ -456,8 +457,8 @@ const Reports = () => {
   if (dashboardError || error) {
     return (
       <ScrollView className="flex-1 p-4">
-        <Text className="text-red-500 text-lg font-bold">Error:</Text>
-        <Text className="text-red-500">{JSON.stringify(dashboardError || error, null, 2)}</Text>
+        <Text className="text-gg-error text-lg font-bold">Error:</Text>
+        <Text className="text-gg-error">{JSON.stringify(dashboardError || error, null, 2)}</Text>
       </ScrollView>
     )
   }
@@ -466,9 +467,9 @@ const Reports = () => {
   if (!data.is_staff) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center p-4">
-        <Ionicons name="alert-circle" size={64} color="#EF4444" />
+        <Ionicons name="alert-circle" size={64} color="#ba1a1a" />
         <Text className="text-xl font-psemibold text-center mt-4 mb-2">Access Denied</Text>
-        <Text className="text-gray-600 text-center">You don't have permission to access this page.</Text>
+        <Text className="text-gg-muted text-center">You don't have permission to access this page.</Text>
       </SafeAreaView>
     )
   }
@@ -486,25 +487,37 @@ const Reports = () => {
   const hasPeriodsData = periods.length > 0
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView className="flex-1 p-4">
-        <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-          <Text className="text-xl font-psemibold mb-4">
+    <SafeAreaView className="flex-1 bg-gg-bg">
+      <ScreenHeader
+        title="Reports"
+        subtitle={hasPeriodsData ? 'Period performance by users, groups, and locations' : 'Lifetime study data'}
+        right={(
+          <TouchableOpacity
+            onPress={handleExportData}
+            className="h-10 w-10 rounded-full bg-[#dbe1ff] items-center justify-center"
+          >
+            <Ionicons name="download-outline" size={21} color="#0051d5" />
+          </TouchableOpacity>
+        )}
+      />
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+        <Card className="mb-4">
+          <Text className="text-lg font-psemibold mb-4 text-gg-text">
             {hasPeriodsData ? 'Study Period Reports' : 'Lifetime Study Reports'}
           </Text>
           
           {/* Only show period selection if periods exist */}
           {hasPeriodsData && (
             <View className="mb-4">
-              <Text className="text-gray-600 mb-2">Select Period</Text>
+              <Text className="text-gg-muted mb-2 font-pmedium text-xs">Select Period</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
                 {periods.map(period => (
                   <TouchableOpacity 
                     key={period.id}
-                    className={`px-4 py-2 rounded-lg mr-2 ${selectedPeriodId === period.id ? 'bg-green-600' : 'bg-gray-200'}`}
+                    className={`px-4 py-2 rounded-full mr-2 border ${selectedPeriodId === period.id ? 'bg-gg-primary border-gg-primary' : 'bg-gg-bg border-gg-outlineVariant'}`}
                     onPress={() => setSelectedPeriodId(period.id)}
                   >
-                    <Text className={selectedPeriodId === period.id ? 'text-white' : 'text-gray-700'}>
+                    <Text className={selectedPeriodId === period.id ? 'text-white' : 'text-gg-muted'}>
                       {`${formatDate(period.start_date)} - ${formatDate(period.end_date)}`}
                     </Text>
                   </TouchableOpacity>
@@ -512,16 +525,16 @@ const Reports = () => {
               </ScrollView>
               
               {selectedPeriod && (
-                <View className="bg-gray-100 p-3 rounded-lg">
-                  <Text className="text-gray-600">
+                <View className="bg-gg-bg border border-gg-outlineVariant p-3 rounded-lg">
+                  <Text className="text-gg-muted font-pregular">
                     {formatDate(selectedPeriod.start_date)} - {formatDate(selectedPeriod.end_date)}
                   </Text>
-                  <Text className="text-gray-600">
+                  <Text className="text-gg-muted font-pregular">
                     {selectedPeriod.period_setting?.required_hours || orgReport.active_period_setting?.required_hours} hours required
                   </Text>
                   {selectedPeriod.is_active && (
-                    <View className="bg-green-100 px-2 py-1 rounded-full self-start mt-1">
-                      <Text className="text-green-600 text-xs">Active Period</Text>
+                    <View className="bg-gg-surfaceLow px-2 py-1 rounded-full self-start mt-1">
+                      <Text className="text-gg-primary text-xs">Active Period</Text>
                     </View>
                   )}
                 </View>
@@ -531,35 +544,35 @@ const Reports = () => {
           
           {/* Show lifetime data info when no periods */}
           {!hasPeriodsData && (
-            <View className="mb-4 bg-blue-100 p-3 rounded-lg">
-              <Text className="text-blue-600 text-center">
+            <View className="mb-4 bg-[#dbe1ff] border border-[#b4c5ff] p-3 rounded-lg">
+              <Text className="text-gg-secondary text-center font-pregular">
                 Showing lifetime study data across all sessions
               </Text>
             </View>
           )}
           
-          <View className="flex-row mb-4">
+          <View className="flex-row mb-4 bg-gg-bg rounded-lg p-1 border border-gg-outlineVariant">
             <TouchableOpacity 
               onPress={() => setActiveTab('users')}
-              className={`flex-1 py-2 ${activeTab === 'users' ? 'border-b-2 border-green-600' : 'border-b border-gray-200'}`}
+              className={`flex-1 py-2 rounded-md ${activeTab === 'users' ? 'bg-gg-surface' : ''}`}
             >
-              <Text className={`text-center ${activeTab === 'users' ? 'text-green-600 font-psemibold' : 'text-gray-600'}`}>
+              <Text className={`text-center font-psemibold ${activeTab === 'users' ? 'text-gg-primary' : 'text-gg-muted'}`}>
                 Users
               </Text>
             </TouchableOpacity>
             <TouchableOpacity 
               onPress={() => setActiveTab('groups')}
-              className={`flex-1 py-2 ${activeTab === 'groups' ? 'border-b-2 border-green-600' : 'border-b border-gray-200'}`}
+              className={`flex-1 py-2 rounded-md ${activeTab === 'groups' ? 'bg-gg-surface' : ''}`}
             >
-              <Text className={`text-center ${activeTab === 'groups' ? 'text-green-600 font-psemibold' : 'text-gray-600'}`}>
+              <Text className={`text-center font-psemibold ${activeTab === 'groups' ? 'text-gg-primary' : 'text-gg-muted'}`}>
                 Groups
               </Text>
             </TouchableOpacity>
             <TouchableOpacity 
               onPress={() => setActiveTab('locations')}
-              className={`flex-1 py-2 ${activeTab === 'locations' ? 'border-b-2 border-green-600' : 'border-b border-gray-200'}`}
+              className={`flex-1 py-2 rounded-md ${activeTab === 'locations' ? 'bg-gg-surface' : ''}`}
             >
-              <Text className={`text-center ${activeTab === 'locations' ? 'text-green-600 font-psemibold' : 'text-gray-600'}`}>
+              <Text className={`text-center font-psemibold ${activeTab === 'locations' ? 'text-gg-primary' : 'text-gg-muted'}`}>
                 Locations
               </Text>
             </TouchableOpacity>
@@ -569,36 +582,30 @@ const Reports = () => {
           {activeTab === 'users' && (
             <View>
               <View className="flex-row justify-between items-center mb-2">
-                <Text className="font-psemibold">User</Text>
-                <Text className="font-psemibold">Hours</Text>
-                {hasPeriodsData && <Text className="font-psemibold">Goal %</Text>}
+                <Text className="font-psemibold text-gg-muted text-xs">User</Text>
+                <Text className="font-psemibold text-gg-muted text-xs">Hours</Text>
+                {hasPeriodsData && <Text className="font-psemibold text-gg-muted text-xs">Goal %</Text>}
               </View>
               
               {userStats.map(user => (
                 <View 
                   key={user.id}
-                  className="flex-row justify-between items-center py-3 border-b border-gray-100"
+                  className="flex-row justify-between items-center py-3 border-b border-gg-outlineVariant"
                 >
                   <View className="flex-1">
-                    <Text>{user.name}</Text>
-                    <Text className="text-gray-500 text-xs">{user.group ? user.group.name : 'No Group'}</Text>
+                      <Text className="font-psemibold text-gg-text">{user.name}</Text>
+                    <Text className="text-gg-muted text-xs">{user.group ? user.group.name : 'No Group'}</Text>
                   </View>
-                  <Text className="w-16 text-right">{user.hours.toFixed(1)}h</Text>
+                  <Text className="w-16 text-right font-psemibold text-gg-text">{user.hours.toFixed(1)}h</Text>
                   {hasPeriodsData && (
                     <View className="w-16 flex-row items-center justify-end">
-                      <View 
-                        className={`w-2 h-2 rounded-full mr-1 ${
-                          user.goal_percentage >= 100 ? 'bg-green-500' : 
-                          user.goal_percentage >= 75 ? 'bg-yellow-500' : 'bg-red-500'
-                        }`} 
-                      />
                       <Text>{user.goal_percentage}%</Text>
                     </View>
                   )}
                 </View>
               ))}
               
-              <View className="mt-4 p-3 bg-gray-100 rounded-lg">
+              <View className="mt-4 p-3 bg-gg-bg border border-gg-outlineVariant rounded-lg">
                 <View className="flex-row justify-between">
                   <Text className="font-psemibold">Total Users:</Text>
                   <Text>{userStats.length}</Text>
@@ -625,25 +632,25 @@ const Reports = () => {
           {activeTab === 'groups' && (
             <View>
               <View className="flex-row justify-between items-center mb-2">
-                <Text className="font-psemibold flex-1">Group</Text>
-                <Text className="font-psemibold w-14 text-center">Members</Text>
-                <Text className="font-psemibold w-14 text-center">Active</Text>
-                <Text className="font-psemibold w-16 text-center">Total Hours</Text>
-                <Text className="font-psemibold w-16 text-center">Avg Hours</Text>
-                {hasPeriodsData && <Text className="font-psemibold w-16 text-center">Goal %</Text>}
+                <Text className="font-psemibold text-gg-muted text-xs flex-1">Group</Text>
+                <Text className="font-psemibold text-gg-muted text-xs w-14 text-center">Members</Text>
+                <Text className="font-psemibold text-gg-muted text-xs w-14 text-center">Active</Text>
+                <Text className="font-psemibold text-gg-muted text-xs w-16 text-center">Total</Text>
+                <Text className="font-psemibold text-gg-muted text-xs w-16 text-center">Avg</Text>
+                {hasPeriodsData && <Text className="font-psemibold text-gg-muted text-xs w-16 text-center">Goal</Text>}
               </View>
               
               {groupStats.length === 0 ? (
-                <Text className="text-gray-500 italic py-4 text-center">No groups available</Text>
+                <EmptyState icon="people-outline" title="No groups available" message="Create groups to unlock group reporting." />
               ) : (
                 groupStats.map(group => (
                   <View 
                     key={group.id}
-                    className="flex-row justify-between items-center py-3 border-b border-gray-100"
+                    className="flex-row justify-between items-center py-3 border-b border-gg-outlineVariant"
                   >
                     <View className="flex-1">
-                      <Text>{group.name}</Text>
-                      <Text className="text-gray-500 text-xs">{group.active_members} of {group.member_count} active</Text>
+                      <Text className="font-psemibold text-gg-text">{group.name}</Text>
+                      <Text className="text-gg-muted text-xs">{group.active_members} of {group.member_count} active</Text>
                     </View>
                     <Text className="w-14 text-center">{group.member_count}</Text>
                     <Text className="w-14 text-center">{group.active_members}</Text>
@@ -653,8 +660,8 @@ const Reports = () => {
                       <View className="w-16 flex-row items-center justify-end">
                         <View 
                           className={`w-2 h-2 rounded-full mr-1 ${
-                            group.goal_percentage >= 100 ? 'bg-green-500' : 
-                            group.goal_percentage >= 75 ? 'bg-yellow-500' : 'bg-red-500'
+                            group.goal_percentage >= 100 ? 'bg-gg-surfaceLow0' : 
+                            group.goal_percentage >= 75 ? 'bg-yellow-500' : 'bg-gg-error'
                           }`} 
                         />
                         <Text className="text-xs">{group.goal_percentage}%</Text>
@@ -664,7 +671,7 @@ const Reports = () => {
                 ))
               )}
               
-              <View className="mt-4 p-3 bg-gray-100 rounded-lg">
+              <View className="mt-4 p-3 bg-gg-bg border border-gg-outlineVariant rounded-lg">
                 <View className="flex-row justify-between">
                   <Text className="font-psemibold">Total Groups:</Text>
                   <Text>{groupStats.length}</Text>
@@ -697,35 +704,29 @@ const Reports = () => {
           {activeTab === 'locations' && (
             <View>
               <View className="flex-row justify-between items-center mb-2">
-                <Text className="font-psemibold flex-1">Location</Text>
-                <Text className="font-psemibold w-14 text-center">Sess.</Text>
-                <Text className="font-psemibold w-14 text-center">Hours</Text>
-                <Text className="font-psemibold w-16 text-center">Usage</Text>
+                <Text className="font-psemibold text-gg-muted text-xs flex-1">Location</Text>
+                <Text className="font-psemibold text-gg-muted text-xs w-14 text-center">Sess.</Text>
+                <Text className="font-psemibold text-gg-muted text-xs w-14 text-center">Hours</Text>
+                <Text className="font-psemibold text-gg-muted text-xs w-16 text-center">Usage</Text>
               </View>
               
               {locationStats.length === 0 ? (
-                <Text className="text-gray-500 italic py-4 text-center">No location data available for this period</Text>
+                <EmptyState icon="location-outline" title="No location data" message="Verified sessions will populate this report." />
               ) : (
                 locationStats.map(location => (
                   <View 
                     key={location.id}
-                    className="flex-row justify-between items-center py-3 border-b border-gray-100"
+                    className="flex-row justify-between items-center py-3 border-b border-gg-outlineVariant"
                   >
                     <View className="flex-1">
-                      <Text>{location.name}</Text>
-                      <Text className="text-gray-500 text-xs">{location.gps_radius}m radius</Text>
+                      <Text className="font-psemibold text-gg-text">{location.name}</Text>
+                      <Text className="text-gg-muted text-xs">{location.gps_radius}m radius</Text>
                     </View>
                     <Text className="w-14 text-center">{location.sessions}</Text>
                     <Text className="w-14 text-center">{location.hours.toFixed(1)}h</Text>
                     <View className="w-16 items-center">
-                      <View className="w-full bg-gray-200 rounded-full h-2 mb-1">
-                        <View 
-                          className={`h-2 rounded-full ${
-                            location.utilization_rate >= 70 ? 'bg-green-500' : 
-                            location.utilization_rate >= 30 ? 'bg-yellow-500' : 'bg-red-500'
-                          }`} 
-                          style={{ width: `${location.utilization_rate}%` }} 
-                        />
+                      <View className="w-full mb-1">
+                        <ProgressBar value={location.utilization_rate} tone={location.utilization_rate >= 70 ? 'green' : location.utilization_rate >= 30 ? 'amber' : 'red'} />
                       </View>
                       <Text className="text-xs">{location.utilization_rate}%</Text>
                     </View>
@@ -733,7 +734,7 @@ const Reports = () => {
                 ))
               )}
               
-              <View className="mt-4 p-3 bg-gray-100 rounded-lg">
+              <View className="mt-4 p-3 bg-gg-bg border border-gg-outlineVariant rounded-lg">
                 <View className="flex-row justify-between">
                   <Text className="font-psemibold">Total Locations:</Text>
                   <Text>{locationStats.length}</Text>
@@ -756,12 +757,12 @@ const Reports = () => {
           
           <TouchableOpacity 
             onPress={handleExportData}
-            className="bg-blue-500 p-3 rounded-lg flex-row items-center justify-center mt-4"
+            className="bg-gg-secondary min-h-[56px] rounded-lg flex-row items-center justify-center mt-4"
           >
             <Ionicons name="download" size={20} color="white" />
             <Text className="text-white font-psemibold ml-2">Export Report</Text>
           </TouchableOpacity>
-        </View>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   )

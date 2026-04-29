@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, Alert } from 'react-native'
+import { View, Text, ScrollView, Image, Alert, TouchableOpacity } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { images } from "@/constants";
@@ -8,6 +8,7 @@ import { Link, router } from 'expo-router';
 import axios from 'axios';
 import { API_URL } from '@/constants'
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 
 type FormFields = {
   email: string;
@@ -149,144 +150,170 @@ const SignUp = () => {
     }
   }
   return (
-    <SafeAreaView className="bg-white h-full">
-      <ScrollView contentContainerStyle={showForm ? { flexGrow: 1 } : { height: '100%' }}>
-        <View className="w-full justify-center items-center px-4">
-          <Image
-            source={images.logo}
-            className="w-[250px] h-[160px]" // Increased the size of the logo
-            resizeMode="contain"
-          />
-        </View>
-        <View>
-          <View className="w-full items-center min-h-[85vh] px-4 my-6">
-            <View className="w-full">
-              <Text className="text-2xl text-black text-semibold font-psemibold">
-                {showForm ? (
-                  <>
-                    {organizationName}{" "}
-                    <Text className="text-lg text-gray-600">({form.orgCode})</Text>
-                  </>
-                ) : (
-                  "Find your Organization"
-                )}
-              </Text>
-              {(!showForm &&
-                <>
-                  <FormField
-                    title="Organization Code"
-                    value={form.orgCode}
-                    placeholder="Enter your organization code"
-                    handleChangeText={(e: any) => {
-                      setform({
-                        ...form,
-                        orgCode: e
-                      });
+    <SafeAreaView className="bg-gg-bg h-full">
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <View className="flex-1 px-5 pt-8 pb-6">
+          <View className="items-center mb-8">
+            <Image
+              source={images.logoSmall}
+              className="w-16 h-16"
+              resizeMode="contain"
+            />
+            <Text className="font-psemibold text-gg-text text-3xl mt-5 text-center">
+              {showForm ? 'Create account' : 'Register with code'}
+            </Text>
+            <Text className="font-pregular text-gg-muted text-center mt-2">
+              {showForm
+                ? `Join ${organizationName} and start tracking study hours.`
+                : 'Enter the code from your chapter or organization admin.'}
+            </Text>
+          </View>
 
-                    }}
-                    otherStyles="mt-7"
-                    keyboardType="default"
-                    required={true}
-
-                  />
-                  {formErrors.orgCode && (
-                    <Text className="text-sm text-red-500 mt-2 font-pregular text-center">{formErrors.orgCode}</Text>
-                  )}
-                </>
-              )}
-              {(showForm &&
-                <>
-                  <View className="flex-row justify-between">
-                    <FormField
-                      title="First Name"
-                      value={form.firstName}
-                      placeholder="Enter your first name"
-                      handleChangeText={(e: any) => setform({
-                        ...form,
-                        firstName: e
-                      })}
-                      otherStyles="mt-7 flex-1 mr-2"
-                      error={formErrors.firstName}
-                      required={true}
-                    />
-                    <FormField
-                      title="Last Name"
-                      value={form.lastName}
-                      placeholder="Enter your last name"
-                      handleChangeText={(e: any) => setform({
-                        ...form,
-                        lastName: e
-                      })}
-                      otherStyles="mt-7 flex-1 ml-2"
-                      error={formErrors.lastName}
-                      required={true}
-                    />
+          <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl p-4 shadow-sm">
+            {!showForm && (
+              <>
+                <View className="bg-gg-surfaceLow border border-gg-outlineVariant rounded-lg p-3 mb-5 flex-row">
+                  <Ionicons name="key-outline" size={20} color="#006b2c" />
+                  <Text className="text-gg-primary font-pregular text-sm ml-2 flex-1">
+                    Your code connects your account to the right roster and study rules.
+                  </Text>
+                </View>
+                <FormField
+                  title="Organization Code"
+                  value={form.orgCode}
+                  placeholder="ABC123"
+                  handleChangeText={(e: any) => {
+                    setform({
+                      ...form,
+                      orgCode: e
+                    });
+                  }}
+                  otherStyles=""
+                  keyboardType="default"
+                  autoCapitalize="characters"
+                  required={true}
+                />
+                {formErrors.orgCode && (
+                  <View className="bg-[#ffdad6] border border-[#ffb4ab] rounded-lg p-3 mt-4 flex-row">
+                    <Ionicons name="alert-circle" size={18} color="#ba1a1a" />
+                    <Text className="text-sm text-gg-error ml-2 flex-1 font-pregular">{formErrors.orgCode}</Text>
                   </View>
+                )}
+              </>
+            )}
+
+            {showForm && (
+              <>
+                <View className="bg-gg-bg border border-gg-outlineVariant rounded-lg p-3 mb-5 flex-row items-center justify-between">
+                  <View className="flex-1 pr-3">
+                    <Text className="font-psemibold text-gg-text">{organizationName}</Text>
+                    <Text className="font-pregular text-gg-muted text-sm">Code {form.orgCode}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setShowForm(false)}
+                    className="px-3 py-2 rounded-lg bg-gg-surface border border-gg-outlineVariant"
+                  >
+                    <Text className="font-psemibold text-gg-muted text-sm">Change</Text>
+                  </TouchableOpacity>
+                </View>
+                <View className="flex-row justify-between">
                   <FormField
-                    title="Phone Number"
-                    value={form.phoneNumber}
-                    placeholder="Enter your phone number"
+                    title="First Name"
+                    value={form.firstName}
+                    placeholder="First"
                     handleChangeText={(e: any) => setform({
                       ...form,
-                      phoneNumber: e
+                      firstName: e
                     })}
-                    otherStyles="mt-7"
-                    keyboardType="phone-pad"
-                    error={formErrors.phoneNumber}
-                    required={false}
-                  />
-                  <FormField
-                    title="Email"
-                    value={form.email}
-                    placeholder="Enter your email"
-                    handleChangeText={(e: any) => setform({
-                      ...form,
-                      email: e
-                    })}
-                    otherStyles="mt-7"
-                    keyboardType="email-address"
-                    error={formErrors.email}
+                    otherStyles="flex-1 mr-2"
+                    error={formErrors.firstName}
                     required={true}
                   />
                   <FormField
-                    title="Password"
-                    value={form.password}
-                    placeholder="Enter your password"
+                    title="Last Name"
+                    value={form.lastName}
+                    placeholder="Last"
                     handleChangeText={(e: any) => setform({
                       ...form,
-                      password: e
+                      lastName: e
                     })}
-                    otherStyles="mt-7"
-                    error={formErrors.password}
+                    otherStyles="flex-1 ml-2"
+                    error={formErrors.lastName}
                     required={true}
                   />
-                  <FormField
-                    title="Confirm Password"
-                    value={form.confirmPassword}
-                    placeholder="Confirm your password"
-                    handleChangeText={(e: any) => setform({
-                      ...form,
-                      confirmPassword: e
-                    })}
-                    otherStyles="mt-7"
-                    error={formErrors.confirmPassword}
-                    required={true}
-                  />
-                </>
-              )}
-              <CustomButton
-                title={showForm ? "Sign Up" : "Search"}
-                handlePress={showForm ? submit : search}
-                containerStyles='mt-7'
-                isLoading={isSubmitting}
-              />
-              <View className="justify-center pt-5 flex-row gap-2">
-                <Text className="text-lg text-gray-600 font-pregular">
-                  Already have an account?
-                </Text>
-                <Link href="/sign-in" className="text-lg font-psemibold text-green-500">Sign In</Link>
-              </View>
-            </View>
+                </View>
+                <FormField
+                  title="Phone Number"
+                  value={form.phoneNumber}
+                  placeholder="Optional"
+                  handleChangeText={(e: any) => setform({
+                    ...form,
+                    phoneNumber: e
+                  })}
+                  otherStyles="mt-5"
+                  keyboardType="phone-pad"
+                  error={formErrors.phoneNumber}
+                  required={false}
+                />
+                <FormField
+                  title="Email"
+                  value={form.email}
+                  placeholder="you@example.com"
+                  handleChangeText={(e: any) => setform({
+                    ...form,
+                    email: e
+                  })}
+                  otherStyles="mt-5"
+                  keyboardType="email-address"
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                  error={formErrors.email}
+                  required={true}
+                />
+                <FormField
+                  title="Password"
+                  value={form.password}
+                  placeholder="At least 8 characters"
+                  handleChangeText={(e: any) => setform({
+                    ...form,
+                    password: e
+                  })}
+                  otherStyles="mt-5"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  error={formErrors.password}
+                  required={true}
+                />
+                <FormField
+                  title="Confirm Password"
+                  value={form.confirmPassword}
+                  placeholder="Repeat password"
+                  handleChangeText={(e: any) => setform({
+                    ...form,
+                    confirmPassword: e
+                  })}
+                  otherStyles="mt-5"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  error={formErrors.confirmPassword}
+                  required={true}
+                />
+              </>
+            )}
+
+            <CustomButton
+              title={showForm ? "Create account" : "Find organization"}
+              handlePress={showForm ? submit : search}
+              containerStyles='mt-6'
+              isLoading={isSubmitting}
+            />
+          </View>
+
+          <View className="justify-center pt-6 flex-row">
+            <Text className="text-base text-gg-muted font-pregular">
+              Already have an account?
+            </Text>
+            <Link href="/sign-in" className="text-base font-psemibold text-gg-primary ml-2">Sign in</Link>
           </View>
         </View>
       </ScrollView>

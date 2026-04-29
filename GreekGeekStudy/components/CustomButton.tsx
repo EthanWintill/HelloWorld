@@ -1,5 +1,6 @@
 import { Text, TouchableOpacity, ActivityIndicator } from 'react-native'
 import React from 'react'
+import { GG } from './Design'
 
 interface CustomButtonProps {
   title: string;
@@ -15,11 +16,12 @@ const CustomButton: React.FC<CustomButtonProps> = ({ title, handlePress, contain
       onPress={handlePress}
       activeOpacity={0.7}
       disabled={isLoading}
-      className={`bg-green-500 rounded-xl min-h-[62px] justify-center items-center ${containerStyles} ${isLoading ? 'opacity-50' : ''}`}>
+      className={`rounded-lg min-h-[56px] justify-center items-center ${containerStyles} ${isLoading ? 'opacity-50' : ''}`}
+      style={{ backgroundColor: GG.primary }}>
       {isLoading ? (
         <ActivityIndicator size="small" color="#ffffff" />
       ) : (
-        <Text className={`text-primary font-psemibold text-lg ${textStyles}`}>{title}</Text>
+        <Text className={`text-white font-psemibold text-base ${textStyles}`}>{title}</Text>
       )}
     </TouchableOpacity>
   )

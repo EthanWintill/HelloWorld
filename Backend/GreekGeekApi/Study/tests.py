@@ -529,7 +529,10 @@ class OrgCrudTestCase(TestCase):
         
     def test_create_org_as_superuser(self):
         self.client.force_authenticate(user=self.superuser)
-        response = self.client.post(self.orgs_url, self.org_data)
+        response = self.client.post(self.orgs_url, {
+            **self.org_data,
+            "reg_code": "67890",
+        })
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Org.objects.count(), 2)
         
@@ -899,6 +902,11 @@ class OrganizationTestCase(TestCase):
             study_goal=20.0
         )
         
+        # Create groups for the organization
+        self.group1 = Group.objects.create(org=self.org, name="Group 1")
+        self.group2 = Group.objects.create(org=self.org, name="Group 2")
+        self.group3 = Group.objects.create(org=self.org, name="Group 3")
+
         # Create 3 users for the organization
         self.user1 = User.objects.create(
             org=self.org,
@@ -907,7 +915,7 @@ class OrganizationTestCase(TestCase):
             is_staff=True,
             email="john.doe@example.com",
             password="hashedpassword123",  # This should be hashed password in a real use case
-            group_id=1,
+            group=self.group1,
             live=True,
             last_location=None  # Or create a location object to assign
         )
@@ -919,7 +927,7 @@ class OrganizationTestCase(TestCase):
             is_staff=False,
             email="jane.smith@example.com",
             password="hashedpassword456",
-            group_id=2,
+            group=self.group2,
             live=True,
             last_location=None
         )
@@ -931,13 +939,10 @@ class OrganizationTestCase(TestCase):
             is_staff=False,
             email="alice.johnson@example.com",
             password="hashedpassword789",
-            group_id=3,
+            group=self.group3,
             live=True,
             last_location=None
         )
-        
-        # Optionally create a group for the organization (if needed)
-        self.group = Group.objects.create(org=self.org)
 
     def test_organization_exists(self):
         """Test that the organization exists in the database"""
@@ -977,9 +982,9 @@ class OrganizationTestCase(TestCase):
 
     def test_user_group_assignment(self):
         """Test that users are assigned to the correct group_id"""
-        self.assertEqual(self.user1.group_id, 1)
-        self.assertEqual(self.user2.group_id, 2)
-        self.assertEqual(self.user3.group_id, 3)
+        self.assertEqual(self.user1.group, self.group1)
+        self.assertEqual(self.user2.group, self.group2)
+        self.assertEqual(self.user3.group, self.group3)
         
     
 

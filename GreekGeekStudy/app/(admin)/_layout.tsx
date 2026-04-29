@@ -13,19 +13,22 @@ const AdminLayout = () => {
       <Stack
         screenOptions={{
           headerStyle: {
-            backgroundColor: '#16A34A',
+            backgroundColor: '#FFFFFF',
           },
-          headerTintColor: '#fff',
+          headerTintColor: '#171d16',
           headerTitleStyle: {
-            fontWeight: 'bold',
+            fontFamily: 'Poppins-SemiBold',
+            fontWeight: '600',
+            fontSize: 17,
           },
+          headerShadowVisible: true,
           headerShown: true,
           headerLeft: () => (
             <TouchableOpacity 
               onPress={() => router.back()}
-              className="ml-2"
+              className="ml-1 h-10 w-10 rounded-full bg-gg-surfaceContainer items-center justify-center"
             >
-              <Ionicons name="arrow-back" size={24} color="white" />
+              <Ionicons name="arrow-back" size={22} color="#171d16" />
             </TouchableOpacity>
           ),
         }}
@@ -37,9 +40,21 @@ const AdminLayout = () => {
           }} 
         />
         <Stack.Screen 
+          name="setup-checklist" 
+          options={{ 
+            title: 'Setup Checklist',
+          }} 
+        />
+        <Stack.Screen 
           name="organization" 
           options={{ 
             title: 'Manage Organization',
+          }} 
+        />
+        <Stack.Screen 
+          name="study-locations" 
+          options={{ 
+            title: 'Study Locations',
           }} 
         />
         <Stack.Screen 

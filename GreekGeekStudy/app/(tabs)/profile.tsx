@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Alert, Linking, StyleSheet, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, Modal } from 'react-native'
+import { Alert, Linking, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, Modal } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URL } from '@/constants';
@@ -100,241 +100,212 @@ const Profile = () => {
   if (error) {
     return (
       <ScrollView className="flex-1 p-4">
-        <Text className="text-red-500 text-lg font-bold">Error:</Text>
-        <Text className="text-red-500">{JSON.stringify(error, null, 2)}</Text>
+        <Text className="text-gg-error text-lg font-bold">Error:</Text>
+        <Text className="text-gg-error">{JSON.stringify(error, null, 2)}</Text>
       </ScrollView>
     )
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header Section */}
-        <View className="bg-white mx-4 mt-4 p-8 rounded-2xl shadow-sm">
-          <View className="items-center mb-6">
-            <View className="bg-green-100 p-6 rounded-full mb-4 relative">
-              <Ionicons name="person" size={48} color="#16A34A" />
-              {/* Live indicator */}
-              {data.live && (
-                <View className="absolute -top-1 -right-1 bg-red-500/75 w-5 h-5 rounded-full border-2 border-white" />
+    <SafeAreaView className="flex-1 bg-gg-bg">
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
+        <View className="px-4 pt-4">
+          <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl p-4 shadow-sm">
+            <View className="flex-row items-center">
+              <View className="h-16 w-16 rounded-full bg-gg-surfaceLow items-center justify-center relative">
+                <Ionicons name="person" size={34} color="#006b2c" />
+                {data.live && (
+                  <View className="absolute right-0 top-0 bg-gg-error w-4 h-4 rounded-full border-2 border-white" />
+                )}
+              </View>
+              <View className="ml-4 flex-1">
+                <Text className="font-psemibold text-gg-text text-2xl">
+                  {data.first_name} {data.last_name}
+                </Text>
+                <Text className="font-pregular text-gg-muted mt-1">
+                  {data.email}
+                </Text>
+              </View>
+              {data.is_staff && (
+                <View className="bg-gg-surfaceLow border border-gg-outlineVariant rounded-full px-3 py-1">
+                  <Text className="font-psemibold text-gg-primary text-xs">Admin</Text>
+                </View>
               )}
             </View>
-            <Text className="text-3xl font-bold text-gray-900 text-center mb-2">
-              {data.first_name} {data.last_name}
-            </Text>
-            {data.is_staff && (
-              <View className="bg-green-600 px-4 py-2 rounded-full">
-                <Text className="text-white font-semibold">Staff Member</Text>
-              </View>
-            )}
-          </View>
-        </View>
 
-        <View className="px-4 mt-4">
-          {/* Admin Dashboard */}
-          {data.is_staff && (
-            <TouchableOpacity 
-              onPress={navigateToAdmin}
-              className="bg-green-600 p-6 rounded-2xl shadow-sm mb-8"
-            >
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center flex-1">
-                  <View className="bg-white/20 p-3 rounded-full mr-4">
-                    <Ionicons name="settings" size={28} color="white" />
-                  </View>
-                  <View>
-                    <Text className="text-white font-bold text-xl">Admin Dashboard</Text>
-                    <Text className="text-white/90 text-base">Manage your organization settings</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={28} color="white" />
+            <View className="h-px bg-gg-surfaceHighest my-4" />
+
+            <View className="flex-row">
+              <View className="flex-1">
+                <Text className="font-pregular text-gg-muted text-xs">Organization</Text>
+                <Text className="font-psemibold text-gg-text mt-1">{data.org?.name || 'None'}</Text>
               </View>
+              <View className="flex-1">
+                <Text className="font-pregular text-gg-muted text-xs">Group</Text>
+                <Text className="font-psemibold text-gg-text mt-1">{data.group?.name || 'No group'}</Text>
+              </View>
+              <View className="flex-1 items-end">
+                <Text className="font-pregular text-gg-muted text-xs">Status</Text>
+                <Text className={`font-psemibold mt-1 ${data.live ? 'text-gg-error' : 'text-gg-text'}`}>
+                  {data.live ? 'Studying' : 'Available'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {data.is_staff && (
+            <TouchableOpacity
+              onPress={navigateToAdmin}
+              className="bg-gg-primary rounded-xl p-4 mt-4 flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center flex-1">
+                <View className="h-10 w-10 rounded-full bg-gg-surface/10 items-center justify-center mr-3">
+                  <Ionicons name="settings-outline" size={20} color="white" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white font-psemibold text-base">Admin dashboard</Text>
+                  <Text className="text-white/70 font-pregular text-sm">Manage people, locations, and reports</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="white" />
             </TouchableOpacity>
           )}
 
-          {/* Contact Information */}
-          <View className="bg-white p-6 rounded-2xl shadow-sm mb-8">
-            <Text className="text-xl font-bold text-gray-900 mb-6">Contact Information</Text>
-            <View className="space-y-4">
-              <View className="flex-row items-center p-4 bg-gray-50 rounded-xl">
-                <View className="bg-green-100 p-3 rounded-full mr-4">
-                  <Ionicons name="mail" size={24} color="#16A34A" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sm text-gray-500 mb-1">Email Address</Text>
-                  <Text className="text-gray-900 font-medium text-lg">{data.email}</Text>
-                </View>
+          <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl mt-4 shadow-sm overflow-hidden">
+            <View className="px-4 py-3 border-b border-gg-outlineVariant">
+              <Text className="font-psemibold text-gg-text text-lg">Account</Text>
+            </View>
+
+            <View className="px-4 py-4 border-b border-gg-outlineVariant flex-row items-center">
+              <Ionicons name="mail-outline" size={21} color="#3e4a3d" />
+              <View className="ml-3 flex-1">
+                <Text className="font-pregular text-gg-muted text-xs">Email address</Text>
+                <Text className="font-pmedium text-gg-text mt-1">{data.email}</Text>
               </View>
-              <View className="flex-row items-center p-4 bg-gray-50 rounded-xl">
-                <View className="bg-green-100 p-3 rounded-full mr-4">
-                  <Ionicons name="call" size={24} color="#16A34A" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sm text-gray-500 mb-1">Phone Number</Text>
-                  <Text className="text-gray-900 font-medium text-lg">{data.phone_number}</Text>
-                </View>
+            </View>
+
+            <View className="px-4 py-4 border-b border-gg-outlineVariant flex-row items-center">
+              <Ionicons name="call-outline" size={21} color="#3e4a3d" />
+              <View className="ml-3 flex-1">
+                <Text className="font-pregular text-gg-muted text-xs">Phone number</Text>
+                <Text className="font-pmedium text-gg-text mt-1">{data.phone_number || 'Not added'}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity className="px-4 py-4 border-b border-gg-outlineVariant flex-row items-center"
+              onPress={() => setModalVisible(true)}
+            >
+              <Ionicons name="notifications-outline" size={21} color="#3e4a3d" />
+              <Text className="text-gg-text ml-3 font-pmedium flex-1">Notification settings</Text>
+              <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="px-4 py-4 border-b border-gg-outlineVariant flex-row items-center"
+              onPress={handleChangePassword}
+            >
+              <Ionicons name="lock-closed-outline" size={21} color="#3e4a3d" />
+              <Text className="text-gg-text ml-3 font-pmedium flex-1">Change password</Text>
+              <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="px-4 py-4 flex-row items-center"
+              onPress={() => Linking.openURL('mailto:support@greekgeek.app')}
+            >
+              <Ionicons name="help-circle-outline" size={21} color="#3e4a3d" />
+              <Text className="text-gg-text ml-3 font-pmedium flex-1">Help and support</Text>
+              <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
+            </TouchableOpacity>
+          </View>
+
+          <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl mt-4 shadow-sm overflow-hidden">
+            <View className="px-4 py-3 border-b border-gg-outlineVariant">
+              <Text className="font-psemibold text-gg-text text-lg">Legal and access</Text>
+            </View>
+            <TouchableOpacity
+              className="px-4 py-4 border-b border-gg-outlineVariant flex-row items-center"
+              onPress={() => openUrl('privacy/')}
+            >
+              <Ionicons name="shield-checkmark-outline" size={21} color="#3e4a3d" />
+              <Text className="text-gg-text ml-3 font-pmedium flex-1">Privacy policy</Text>
+              <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="px-4 py-4 border-b border-gg-outlineVariant flex-row items-center"
+              onPress={() => openUrl('terms/')}
+            >
+              <Ionicons name="document-text-outline" size={21} color="#3e4a3d" />
+              <Text className="text-gg-text ml-3 font-pmedium flex-1">Terms of service</Text>
+              <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={signout}
+              className="px-4 py-4 border-b border-gg-outlineVariant flex-row items-center"
+            >
+              <Ionicons name="log-out-outline" size={21} color="#3e4a3d" />
+              <Text className="text-gg-text ml-3 font-pmedium flex-1">Sign out</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="px-4 py-4 flex-row items-center"
+              onPress={handleDeleteAccount}
+            >
+              <Ionicons name="trash-outline" size={21} color="#ba1a1a" />
+              <Text className="text-gg-error ml-3 font-pmedium flex-1">Delete account</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <Modal
+          visible={modalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View className="flex-1 justify-end bg-black/40">
+            <View className="bg-gg-surface p-5 rounded-t-2xl">
+              <View className="flex-row items-center justify-between mb-5">
+                <Text className="text-xl font-psemibold text-gg-text">Notification settings</Text>
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  className="h-9 w-9 rounded-full bg-gg-surfaceContainer items-center justify-center"
+                >
+                  <Ionicons name="close" size={20} color="#3e4a3d" />
+                </TouchableOpacity>
+              </View>
+              <View className="flex-row justify-between items-center py-3 border-b border-gg-outlineVariant">
+                <Text className="text-gg-muted flex-1 font-pregular pr-4">Someone starts studying</Text>
+                <Switch value={notifyOrgStudying} onValueChange={setNotifyOrgStudying} />
+              </View>
+              <View className="flex-row justify-between items-center py-3 border-b border-gg-outlineVariant">
+                <Text className="text-gg-muted flex-1 font-pregular pr-4">A user leaves the study zone</Text>
+                <Switch value={notifyUserLeaves} onValueChange={setNotifyUserLeaves} />
+              </View>
+              <View className="flex-row justify-between items-center py-3">
+                <Text className="text-gg-muted flex-1 font-pregular pr-4">Study deadline is approaching</Text>
+                <Switch value={notifyDeadline} onValueChange={setNotifyDeadline} />
+              </View>
+              <View className="flex-row mt-6">
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  className="flex-1 py-4 rounded-lg bg-gg-surfaceContainer mr-2 items-center"
+                >
+                  <Text className="text-gg-muted font-psemibold">Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSaveNotifications}
+                  className={`flex-1 py-4 rounded-lg bg-gg-primary ml-2 items-center ${saving ? 'opacity-60' : ''}`}
+                  disabled={saving}
+                >
+                  <Text className="text-white font-psemibold">{saving ? 'Saving...' : 'Save'}</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
-
-          {/* Organization Information */}
-          <View className="bg-white p-6 rounded-2xl shadow-sm mb-8">
-            <Text className="text-xl font-bold text-gray-900 mb-6">Organization</Text>
-            <View className="flex-row items-center p-4 bg-gray-50 rounded-xl mb-4">
-              <View className="bg-green-100 p-3 rounded-full mr-4">
-                <Ionicons name="business" size={24} color="#16A34A" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm text-gray-500 mb-1">Organization Name</Text>
-                <Text className="text-gray-900 font-medium text-xl">{data.org?.name}</Text>
-              </View>
-            </View>
-            {/* Account Actions - now here, but styled as separate buttons */}
-            <View className="space-y-2">
-              <TouchableOpacity className="flex-row items-center p-4 bg-gray-50 rounded-xl"
-                onPress={() => setModalVisible(true)}
-              >
-                <Ionicons name="notifications-outline" size={20} color="#4B5563" className="mr-2" />
-                <Text className="text-gray-700 ml-2 font-semibold">Notification Settings</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-row items-center p-4 bg-gray-50 rounded-xl"
-                onPress={handleChangePassword}
-              >
-                <Ionicons name="lock-closed-outline" size={20} color="#4B5563" className="mr-2" />
-                <Text className="text-gray-700 ml-2 font-semibold">Change Password</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-row items-center p-4 bg-gray-50 rounded-xl"
-                onPress={() => Linking.openURL('mailto:support@greekgeek.app')}
-              >
-                <Ionicons name="help-circle-outline" size={20} color="#4B5563" className="mr-2" />
-                <Text className="text-gray-700 ml-2 font-semibold">Help & Support</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-row items-center p-4 bg-gray-50 rounded-xl"
-                onPress={() => openUrl('privacy/')}
-              >
-                <Ionicons name="shield-checkmark-outline" size={20} color="#4B5563" className="mr-2" />
-                <Text className="text-gray-700 ml-2 font-semibold">Privacy Policy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-row items-center p-4 bg-gray-50 rounded-xl"
-                onPress={() => openUrl('terms/')}
-              >
-                <Ionicons name="document-text-outline" size={20} color="#4B5563" className="mr-2" />
-                <Text className="text-gray-700 ml-2 font-semibold">Terms of Service</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className="flex-row items-center p-4 bg-red-50 rounded-xl"
-                onPress={handleDeleteAccount}
-              >
-                <Ionicons name="trash-outline" size={20} color="#EF4444" className="mr-2" />
-                <Text className="text-red-600 ml-2 font-semibold">Delete Account</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Notification Settings Modal */}
-          <Modal
-            visible={modalVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setModalVisible(false)}
-          >
-            <View className="flex-1 justify-center items-center bg-black/40">
-              <View className="bg-white p-6 rounded-lg w-11/12 max-w-xl">
-                <Text className="text-xl font-bold mb-4 text-center">Notification Settings</Text>
-                <View className="flex-row justify-between items-center mb-4">
-                  <Text className="text-gray-700 flex-1">Notify when someone in your org starts studying</Text>
-                  <Switch value={notifyOrgStudying} onValueChange={setNotifyOrgStudying} />
-                </View>
-                <View className="flex-row justify-between items-center mb-4">
-                  <Text className="text-gray-700 flex-1">Notify when a user leaves the study zone</Text>
-                  <Switch value={notifyUserLeaves} onValueChange={setNotifyUserLeaves} />
-                </View>
-                <View className="flex-row justify-between items-center mb-4">
-                  <Text className="text-gray-700 flex-1">Notify when a study period deadline is approaching</Text>
-                  <Switch value={notifyDeadline} onValueChange={setNotifyDeadline} />
-                </View>
-                <View className="flex-row justify-end mt-6">
-                  <TouchableOpacity
-                    onPress={() => setModalVisible(false)}
-                    className="px-4 py-2 rounded-lg bg-gray-200 mr-2"
-                  >
-                    <Text className="text-gray-700 font-bold">Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={async () => {
-                      setSaving(true)
-                      try {
-                        const token = await AsyncStorage.getItem('accessToken')
-                        if (!token) throw new Error('No access token found')
-                        await axios.put(
-                          `${API_URL}api/user/${data.id}/`,
-                          {
-                            notify_org_starts_studying: notifyOrgStudying,
-                            notify_user_leaves_zone: notifyUserLeaves,
-                            notify_study_deadline_approaching: notifyDeadline,
-                          },
-                          {
-                            headers: { Authorization: `Bearer ${token}` },
-                          }
-                        )
-                        if (refreshDashboard) await refreshDashboard()
-                        setModalVisible(false)
-                      } catch (error) {
-                        // Optionally show a toast or error UI
-                      } finally {
-                        setSaving(false)
-                      }
-                    }}
-                    className={`px-4 py-2 rounded-lg bg-green-600 ${saving ? 'opacity-60' : ''}`}
-                    disabled={saving}
-                  >
-                    <Text className="text-white font-bold">{saving ? 'Saving...' : 'Save'}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </Modal>
-
-          {/* Group Information */}
-          {data.group && (
-            <View className="bg-white p-6 rounded-2xl shadow-sm mb-8">
-              <Text className="text-xl font-bold text-gray-900 mb-6">Group</Text>
-              
-              <View className="flex-row items-center p-4 bg-gray-50 rounded-xl">
-                <View className="bg-green-100 p-3 rounded-full mr-4">
-                  <Ionicons name="people" size={24} color="#16A34A" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sm text-gray-500 mb-1">Group Name</Text>
-                  <Text className="text-gray-900 font-medium text-xl">{data.group.name}</Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-        </View>
-
-        {/* Sign Out Button */}
-        <View className="px-4 pt-8 pb-8">
-          <TouchableOpacity 
-            onPress={signout}
-            className="bg-white p-6 rounded-2xl shadow-sm border-2 border-red-200"
-          >
-            <View className="flex-row items-center justify-center">
-              <Ionicons name="log-out-outline" size={24} color="#EF4444" />
-              <Text className="text-red-500 font-bold text-xl ml-3">Sign Out</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   )
 }
 
 export default Profile
-
-const styles = StyleSheet.create({})

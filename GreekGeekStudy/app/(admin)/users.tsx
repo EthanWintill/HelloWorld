@@ -4,6 +4,7 @@ import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
+import { Card, EmptyState, ScreenHeader } from '../../components/Design'
 
 // Define user type
 interface User {
@@ -76,8 +77,8 @@ const UsersManagement = () => {
   if (error) {
     return (
       <ScrollView className="flex-1 p-4">
-        <Text className="text-red-500 text-lg font-bold">Error:</Text>
-        <Text className="text-red-500">{JSON.stringify(error, null, 2)}</Text>
+        <Text className="text-gg-error text-lg font-bold">Error:</Text>
+        <Text className="text-gg-error">{JSON.stringify(error, null, 2)}</Text>
       </ScrollView>
     )
   }
@@ -86,32 +87,43 @@ const UsersManagement = () => {
   if (!data.is_staff) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center p-4">
-        <Ionicons name="alert-circle" size={64} color="#EF4444" />
+        <Ionicons name="alert-circle" size={64} color="#ba1a1a" />
         <Text className="text-xl font-psemibold text-center mt-4 mb-2">Access Denied</Text>
-        <Text className="text-gray-600 text-center">You don't have permission to access this page.</Text>
+        <Text className="text-gg-muted text-center">You don't have permission to access this page.</Text>
       </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView className="flex-1">
-        <View className="p-4">
-          <View className="bg-white rounded-lg shadow-sm p-4 mb-4">
-            <Text className="text-xl font-psemibold mb-4">Users</Text>
+    <SafeAreaView className="flex-1 bg-gg-bg">
+      <ScreenHeader
+        title="Manage Users"
+        subtitle={`${filteredUsers.length} of ${users.length} members shown`}
+        right={(
+          <TouchableOpacity
+            className="h-10 w-10 rounded-full bg-gg-surfaceLow items-center justify-center"
+            onPress={() => router.push('/(admin)/add-user')}
+          >
+            <Ionicons name="add" size={22} color="#006b2c" />
+          </TouchableOpacity>
+        )}
+      />
+      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+          <Card className="mb-4">
             
             <View className="mb-4">
-              <View className="flex-row items-center border border-gray-300 rounded-lg px-3 py-2 mb-3">
-                <Ionicons name="search" size={20} color="#9CA3AF" />
+              <View className="flex-row items-center border border-gg-outline rounded-lg px-3 h-14 mb-3 bg-gg-surface">
+                <Ionicons name="search" size={20} color="#6e7b6c" />
                 <TextInput
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  className="flex-1 ml-2"
+                  className="flex-1 ml-2 font-pregular text-gg-text"
                   placeholder="Search users..."
+                  placeholderTextColor="#6e7b6c"
                 />
                 {searchQuery !== '' && (
                   <TouchableOpacity onPress={() => setSearchQuery('')}>
-                    <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+                    <Ionicons name="close-circle" size={20} color="#6e7b6c" />
                   </TouchableOpacity>
                 )}
               </View>
@@ -124,81 +136,77 @@ const UsersManagement = () => {
               >
                 <TouchableOpacity 
                   onPress={() => setFilterGroup(null)}
-                  className={`px-4 py-2 rounded-lg mr-2 ${filterGroup === null ? 'bg-green-600' : 'bg-gray-200'}`}
+                  className={`px-4 py-2 rounded-full mr-2 border ${filterGroup === null ? 'bg-gg-primary border-gg-primary' : 'bg-gg-bg border-gg-outlineVariant'}`}
                 >
-                  <Text className={filterGroup === null ? 'text-white' : 'text-gray-700'}>All</Text>
+                  <Text className={`font-psemibold text-sm ${filterGroup === null ? 'text-white' : 'text-gg-muted'}`}>All</Text>
                 </TouchableOpacity>
                 {uniqueGroups.map((groupName) => (
                   <TouchableOpacity 
                     key={groupName}
                     onPress={() => setFilterGroup(groupName)}
-                    className={`px-4 py-2 rounded-lg mr-2 ${filterGroup === groupName ? 'bg-green-600' : 'bg-gray-200'}`}
+                    className={`px-4 py-2 rounded-full mr-2 border ${filterGroup === groupName ? 'bg-gg-primary border-gg-primary' : 'bg-gg-bg border-gg-outlineVariant'}`}
                   >
-                    <Text className={filterGroup === groupName ? 'text-white' : 'text-gray-700'}>{groupName}</Text>
+                    <Text className={`font-psemibold text-sm ${filterGroup === groupName ? 'text-white' : 'text-gg-muted'}`}>{groupName}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
 
             {filteredUsers.length === 0 ? (
-              <Text className="text-gray-500 italic text-center py-4">No users found</Text>
+              <EmptyState icon="people-outline" title="No users found" message="Adjust the search or group filter." />
             ) : (
               <FlatList
                 data={filteredUsers}
                 keyExtractor={(item) => item.id.toString()}
                 scrollEnabled={false}
                 renderItem={({ item }) => (
-                  <View className="border-b border-gray-200 py-3">
+                  <TouchableOpacity className="border-b border-gg-outlineVariant py-3" onPress={() => handleViewUser(item.id)}>
                     <View className="flex-row justify-between items-center">
+                      <View className="h-10 w-10 rounded-full bg-gg-surfaceLow items-center justify-center mr-3">
+                        <Text className="font-psemibold text-gg-primary">
+                          {item.first_name?.[0]}{item.last_name?.[0]}
+                        </Text>
+                      </View>
                       <View className="flex-1">
-                        <Text className="font-psemibold text-lg">
+                        <Text className="font-psemibold text-gg-text">
                           {item.first_name} {item.last_name}
                         </Text>
-                        <Text className="text-gray-600">{item.email}</Text>
+                        <Text className="font-pregular text-gg-muted text-sm">{item.email}</Text>
                         <View className="flex-row items-center mt-1">
                           {item.is_staff ? (
-                            <Text className="text-blue-500 text-sm ml-2">
+                            <Text className="text-gg-secondary text-sm font-pmedium">
                             Admin
                             </Text>
                           ):(
-                            <Text className="text-gray-500 text-sm ml-2">
+                            <Text className="text-gg-muted text-sm font-pmedium">
                             User
                             </Text>
                           )}
                           {item.group && (
-                            <Text className="text-gray-500 text-sm ml-2">
+                            <Text className="text-gg-muted text-sm ml-2">
                              • {item.group.name}
                             </Text>
                           )}
-                          <Text className="text-gray-500 text-sm ml-2">
-                            • {item.total_hours.toFixed(2)}h studied
+                          <Text className="text-gg-muted text-sm ml-2">
+                            • {item.total_hours.toFixed(1)}h
                           </Text>
                         </View>
                       </View>
-                      <View className="flex-row">
-                        
-                        <TouchableOpacity 
-                          onPress={() => handleViewUser(item.id)}
-                          className="bg-blue-100 p-2 rounded-full"
-                        >
-                          <Ionicons name="eye" size={20} color="#3B82F6" />
-                        </TouchableOpacity>
-                      </View>
+                      <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 )}
               />
             )}
-          </View>
+          </Card>
 
           <TouchableOpacity 
-            className="bg-green-600 p-3 rounded-lg flex-row items-center justify-center"
+            className="bg-gg-primary min-h-[56px] rounded-lg flex-row items-center justify-center"
             onPress={() => router.push('/(admin)/add-user')}
           >
             <Ionicons name="add" size={20} color="white" />
             <Text className="text-white font-psemibold ml-2">Add New User</Text>
           </TouchableOpacity>
-        </View>
       </ScrollView>
     </SafeAreaView>
   )
