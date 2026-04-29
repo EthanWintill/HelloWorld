@@ -12,3 +12,6 @@ AppScreenshots/
 
 # Local Codex workspace/cache
 **/.codex-home/
+
+# Django generated static collection
+Backend/GreekGeekApi/staticfiles/
