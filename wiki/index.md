@@ -1,0 +1,20 @@
+# HelloWorld Wiki Index
+
+## Core
+
+- [Current State](current-state.md): migrated source status, current goal, known context, and open questions.
+- [Todo](todo.md): project-local backlog items and launch polish notes.
+- [Log](log.md): chronological project-local wiki log.
+
+## Product Docs
+
+- [Repo README](../README.md): original repo notes and useful links.
+- [Venture Brief](../venture.md): project goal and launch priorities.
+- [Landing Page PRD](../landing-page-prd-2026-04-28.md): landing page requirements.
+- [QA Full Test Run](../QA_FULL_TEST_RUN_2026-04-28.md): prior QA run notes.
+- [Design](../DESIGN.md): visual/design guidance.
+
+## Workstation Links
+
+- [Top-Level HelloWorld Page](../../../wiki/projects/helloworld.md)
+- [Top-Level Compass](../../../wiki/00-compass.md)
