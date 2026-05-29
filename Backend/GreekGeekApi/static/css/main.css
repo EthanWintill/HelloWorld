@@ -144,57 +144,19 @@ h6 {
     color: var(--color-green-dark);
 }
 
-.app-store-button {
-    align-items: center;
-    background: var(--color-text);
-    border: 1px solid var(--color-text);
-    border-radius: var(--radius);
-    color: #ffffff;
+.app-store-badge-link {
     display: inline-flex;
-    gap: 0.65rem;
-    line-height: 1;
-    min-height: 48px;
-    padding: 0.5rem 0.95rem;
-    text-decoration: none;
+    line-height: 0;
 }
 
-.app-store-button:hover,
-.app-store-button:focus {
-    background: #202725;
-    border-color: #202725;
-    color: #ffffff;
+.app-store-badge {
+    display: block;
+    height: auto;
+    width: 160px;
 }
 
-.app-store-button i {
-    font-size: 1.6rem;
-}
-
-.app-store-button > span {
-    display: grid;
-    gap: 0.12rem;
-}
-
-.app-store-kicker {
-    font-size: 0.62rem;
-    font-weight: 700;
-}
-
-.app-store-label {
-    font-size: 1.12rem;
-    font-weight: 800;
-}
-
-.app-store-button-sm {
-    min-height: 42px;
-    padding: 0.45rem 0.8rem;
-}
-
-.app-store-button-sm i {
-    font-size: 1.35rem;
-}
-
-.app-store-button-sm .app-store-label {
-    font-size: 0.98rem;
+.app-store-badge-sm {
+    width: 135px;
 }
 
 .form-control:focus {
@@ -695,9 +657,13 @@ details p {
     }
 
     .hero-actions .btn,
-    .hero-actions .app-store-button,
+    .hero-actions .app-store-badge-link,
     .action-row .btn {
         width: 100%;
+    }
+
+    .hero-actions .app-store-badge {
+        width: 160px;
     }
 
     .hero-media {
