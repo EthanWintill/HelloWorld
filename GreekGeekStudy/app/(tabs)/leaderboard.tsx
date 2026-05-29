@@ -16,6 +16,7 @@ interface User {
   total_hours?: number;
   last_location?: {
     name: string;
+    gps_address?: string;
   };
   group?: {
     id: number;
@@ -143,6 +144,7 @@ const Leaderboard = () => {
   const topUsers = rankedUsers.slice(0, 3);
   const listUsers = rankedUsers.slice(3);
   const initials = (user: User) => `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase();
+  const liveLocationName = (user?: User) => user?.live ? user.last_location?.name : undefined;
 
   const groupRankMap = allUsers.reduce((acc: Record<number, GroupRank>, user: User) => {
     if (!user.group) return acc;
@@ -226,10 +228,12 @@ const Leaderboard = () => {
                     {user ? `${user.first_name} ${user.last_name?.[0] || ''}.` : 'Open'}
                   </Text>
                   <Text className="font-pbold text-gg-primary text-xs mt-1">{(user?.total_hours || 0).toFixed(1)}h</Text>
-                  {user?.live && (
-                    <View className="flex-row items-center mt-1">
-                      <View className="h-1.5 w-1.5 rounded-full bg-gg-primary mr-1" />
-                      <Text className="font-pbold text-gg-primary text-[8px] uppercase">Live</Text>
+                  {liveLocationName(user) && (
+                    <View className="flex-row items-center justify-center mt-1 px-1 w-full">
+                      <Ionicons name="location" size={9} color="#ba1a1a" />
+                      <Text className="text-gg-muted font-pmedium text-[9px] ml-0.5 max-w-[72px]" numberOfLines={1}>
+                        {liveLocationName(user)}
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -261,12 +265,6 @@ const Leaderboard = () => {
                       {group.name}
                     </Text>
                     <Text className="font-pbold text-gg-primary text-xs mt-1">{group.total_hours.toFixed(1)}h</Text>
-                    {!!group.live_count && (
-                      <View className="flex-row items-center mt-1">
-                        <View className="h-1.5 w-1.5 rounded-full bg-gg-primary mr-1" />
-                        <Text className="font-pbold text-gg-primary text-[8px] uppercase">{group.live_count} live</Text>
-                      </View>
-                    )}
                   </View>
                 </View>
               )
@@ -300,15 +298,17 @@ const Leaderboard = () => {
                   )}
                 </View>
                 <Text className="text-gg-muted font-pregular text-xs">{user.group?.name || 'No group'}</Text>
+                {liveLocationName(user) && (
+                  <View className="flex-row items-center mt-0.5">
+                    <Ionicons name="location" size={12} color="#ba1a1a" />
+                    <Text className="text-gg-muted font-pmedium text-xs ml-1 flex-1" numberOfLines={1}>
+                      Studying at {liveLocationName(user)}
+                    </Text>
+                  </View>
+                )}
               </View>
               <View className="items-end">
                 <Text className="text-gg-primary font-pbold text-sm">{(user.total_hours || 0).toFixed(1)}h</Text>
-                {user.live && (
-                  <View className="flex-row items-center">
-                    <View className="h-1.5 w-1.5 rounded-full bg-gg-primary mr-1" />
-                    <Text className="font-pbold text-gg-primary text-[8px] uppercase">Live</Text>
-                  </View>
-                )}
               </View>
             </View>
           ))}
@@ -326,11 +326,6 @@ const Leaderboard = () => {
                 <View className="flex-1">
                   <View className="flex-row items-center">
                     <Text className="font-psemibold text-gg-text text-sm">{group.name}</Text>
-                    {!!group.live_count && (
-                      <View className="bg-gg-primary rounded-full px-1.5 ml-2">
-                        <Text className="font-pbold text-white text-[10px]">{group.live_count} LIVE</Text>
-                      </View>
-                    )}
                   </View>
                   <Text className="text-gg-muted font-pregular text-xs">
                     {group.member_count} member{group.member_count === 1 ? '' : 's'} • {group.average_hours.toFixed(1)}h avg
