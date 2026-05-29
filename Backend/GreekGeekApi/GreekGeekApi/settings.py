@@ -203,6 +203,17 @@ CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS')
 # Frontend URL for password reset emails
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8000')  # Default to Django dev server
 
+# Email (transactional) — sent via ZeptoMail's SMTP relay.
+# EMAIL_HOST_USER is ZeptoMail's fixed SMTP username ("emailapikey"); the password
+# is the ZeptoMail Send-Mail token (ZEPTOMAIL_TOKEN in .env).
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.zeptomail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'emailapikey')
+EMAIL_HOST_PASSWORD = os.getenv('ZEPTOMAIL_TOKEN', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@greekgeek.app')
+
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
