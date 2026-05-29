@@ -1,17 +1,25 @@
-import os
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
 from django.conf import settings
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
+from django.core.mail import EmailMultiAlternatives
 import logging
 
 logger = logging.getLogger(__name__)
 
 class EmailService:
     def __init__(self):
-        self.sg = SendGridAPIClient(os.getenv('SENDGRID_API_KEY'))
-        self.from_email = 'noreply@greekgeek.app'
+        # From-address is configured via DEFAULT_FROM_EMAIL (env: DEFAULT_FROM_EMAIL),
+        # delivered through the SMTP backend configured in settings (ZeptoMail).
+        self.from_email = settings.DEFAULT_FROM_EMAIL
+
+    def _send(self, to_email, subject, html_content, plain_text_content):
+        """Send a multipart (text + HTML) email via the configured SMTP backend."""
+        message = EmailMultiAlternatives(
+            subject=subject,
+            body=plain_text_content,
+            from_email=self.from_email,
+            to=[to_email],
+        )
+        message.attach_alternative(html_content, "text/html")
+        message.send()
     
     def send_password_reset_email(self, user_email, reset_token, user_name=None):
         """
@@ -143,20 +151,12 @@ class EmailService:
             © 2024 GreekGeek. All rights reserved.
             """
             
-            message = Mail(
-                from_email=self.from_email,
-                to_emails=user_email,
-                subject=subject,
-                html_content=html_content,
-                plain_text_content=plain_text_content
-            )
-            
-            response = self.sg.send(message)
-            logger.info(f"Password reset email sent to {user_email}. Status: {response.status_code}")
+            self._send(user_email, subject, html_content, plain_text_content)
+            logger.info(f"Password reset email sent to {user_email}.")
             return True
-            
-        except Exception as e:
-            logger.error(f"Failed to send password reset email to {user_email}: {str(e)}")
+
+        except Exception:
+            logger.exception(f"Failed to send password reset email to {user_email}")
             return False
     
     def send_password_reset_confirmation_email(self, user_email, user_name=None):
@@ -253,18 +253,10 @@ class EmailService:
             © 2024 GreekGeek. All rights reserved.
             """
             
-            message = Mail(
-                from_email=self.from_email,
-                to_emails=user_email,
-                subject=subject,
-                html_content=html_content,
-                plain_text_content=plain_text_content
-            )
-            
-            response = self.sg.send(message)
-            logger.info(f"Password reset confirmation email sent to {user_email}. Status: {response.status_code}")
+            self._send(user_email, subject, html_content, plain_text_content)
+            logger.info(f"Password reset confirmation email sent to {user_email}.")
             return True
-            
-        except Exception as e:
-            logger.error(f"Failed to send password reset confirmation email to {user_email}: {str(e)}")
-            return False 
+
+        except Exception:
+            logger.exception(f"Failed to send password reset confirmation email to {user_email}")
+            return False

@@ -209,3 +209,14 @@ AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-2')
 AWS_S3_SIGNATURE_VERSION = os.getenv('AWS_S3_SIGNATURE_VERSION', 's3v4')
 AWS_S3_ENDPOINT_URL = os.getenv('AWS_S3_ENDPOINT_URL', f'https://s3.{AWS_S3_REGION_NAME}.amazonaws.com')
+
+# Email (transactional) — sent via ZeptoMail's SMTP relay.
+# EMAIL_HOST_USER is ZeptoMail's fixed SMTP username ("emailapikey"); the password
+# is the ZeptoMail Send-Mail token (ZEPTOMAIL_TOKEN in .env).
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.zeptomail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+EMAIL_USE_TLS = env_bool('EMAIL_USE_TLS', True)
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'emailapikey')
+EMAIL_HOST_PASSWORD = os.getenv('ZEPTOMAIL_TOKEN', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@greekgeek.app')
