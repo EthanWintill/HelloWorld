@@ -19,3 +19,7 @@ Cloned `https://github.com/EthanWintill/HelloWorld` into `projects/helloworld`. 
 ## [2026-05-28] instruction | Project-local memory policy
 
 Updated `AGENTS.md` to state that project-local `AGENTS.md`, `wiki/`, and `skills/` are intended to be committed with the repo unless they contain secrets, private credentials, or context that should remain outside the repo.
+
+## [2026-05-29] fix | Study location map creation controls
+
+Fixed the admin Study Locations create/edit modal so users can close it from the header, search addresses with suggestions, move the map after searching without GPS snap-back, and adjust radius with a touch slider as well as map zoom.

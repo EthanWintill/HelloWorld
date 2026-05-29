@@ -1,5 +1,5 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Modal, ActivityIndicator, Keyboard } from 'react-native'
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { Ionicons } from '@expo/vector-icons'
@@ -19,6 +19,13 @@ interface LocationType {
   gps_long: number;
   gps_radius: number;
   gps_address?: string;
+}
+
+interface AddressSuggestion {
+  label: string;
+  subtitle: string;
+  latitude: number;
+  longitude: number;
 }
 
 const StudyLocationsManagement = () => {
@@ -52,9 +59,16 @@ const StudyLocationsManagement = () => {
   const VISUAL_CIRCLE_SIZE = 100; // diameter in pixels
 
   const [addressInput, setAddressInput] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [isGeocodingLoading, setIsGeocodingLoading] = useState(false);
+  const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
   const [geocodingError, setGeocodingError] = useState('');
+  const [sliderWidth, setSliderWidth] = useState(1);
   const mapRef = useRef<MapView>(null);
+  const MIN_RADIUS = 25;
+  const MAX_RADIUS = 500;
+
+  const clampRadius = (value: number) => Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, Math.round(value)));
 
   const calculateRadiusInMeters = (region: Region) => {
     const { longitudeDelta, latitude } = region;
@@ -66,9 +80,10 @@ const StudyLocationsManagement = () => {
     return Math.round((VISUAL_CIRCLE_SIZE / 2) * metersPerPixel);
   };
 
-  const onRegionChange = (region: Region) => {
+  const onRegionChangeComplete = (region: Region) => {
     if (editMode) {
-      setRadius(calculateRadiusInMeters(region));
+      setMapRegion(region);
+      setRadius(clampRadius(calculateRadiusInMeters(region)));
       setCurrentLocation({
         latitude: region.latitude,
         longitude: region.longitude,
@@ -106,6 +121,7 @@ const StudyLocationsManagement = () => {
   const resetModalState = () => {
     setLocationName('');
     setAddressInput('');
+    setAddressSuggestions([]);
     setGeocodingError('');
     setEditMode(false);
     setCreateMode(false);
@@ -129,6 +145,7 @@ const StudyLocationsManagement = () => {
       if (status == 'granted') {
         const location = await Location.getCurrentPositionAsync({});
         setCurrentLocation(location.coords);
+        setMapRegion(calculateMapRegion(location.coords.latitude, location.coords.longitude, 75));
         setLocationName(''); // Reset name for new location
         setEditMode(true);
         setCreateMode(true);
@@ -492,6 +509,139 @@ const StudyLocationsManagement = () => {
     }
   }
 
+  const formatAddressParts = (result: Location.LocationGeocodedAddress) => {
+    return [
+      result.name,
+      result.street,
+      result.city,
+      result.region,
+      result.postalCode,
+      result.country
+    ].filter(Boolean).join(', ');
+  };
+
+  useEffect(() => {
+    if (!createMode && !editMode) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    const query = addressInput.trim();
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      setIsSearchingSuggestions(false);
+      return;
+    }
+
+    let isCancelled = false;
+    const timeout = setTimeout(async () => {
+      try {
+        setIsSearchingSuggestions(true);
+        const results = await Location.geocodeAsync(query);
+        const suggestions = await Promise.all(
+          results.slice(0, 4).map(async (result, index) => {
+            let label = index === 0 ? query : `${query} result ${index + 1}`;
+            let subtitle = `${result.latitude.toFixed(5)}, ${result.longitude.toFixed(5)}`;
+
+            try {
+              const reverseResults = await Location.reverseGeocodeAsync({
+                latitude: result.latitude,
+                longitude: result.longitude,
+              });
+
+              if (reverseResults.length > 0) {
+                const address = formatAddressParts(reverseResults[0]);
+                if (address) {
+                  label = address.split(',')[0].trim();
+                  subtitle = address;
+                }
+              }
+            } catch (error) {
+              console.warn('Suggestion reverse geocoding failed:', error);
+            }
+
+            return {
+              label,
+              subtitle,
+              latitude: result.latitude,
+              longitude: result.longitude,
+            };
+          })
+        );
+
+        if (!isCancelled) {
+          setAddressSuggestions(suggestions);
+        }
+      } catch (error) {
+        console.warn('Address suggestions failed:', error);
+        if (!isCancelled) {
+          setAddressSuggestions([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsSearchingSuggestions(false);
+        }
+      }
+    }, 450);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [addressInput, createMode, editMode]);
+
+  const moveMapToLocation = (latitude: number, longitude: number, label?: string) => {
+    const newLocation: LocationObject['coords'] = {
+      latitude,
+      longitude,
+      altitude: null,
+      accuracy: null,
+      altitudeAccuracy: null,
+      heading: null,
+      speed: null
+    };
+    const nextRegion = calculateMapRegion(latitude, longitude, radius);
+
+    setCurrentLocation(newLocation);
+    setMapRegion(nextRegion);
+    setAddressSuggestions([]);
+    if (label) setAddressInput(label);
+    mapRef.current?.animateToRegion(nextRegion, 500);
+  };
+
+  const handleSuggestionPress = (suggestion: AddressSuggestion) => {
+    Keyboard.dismiss();
+    setGeocodingError('');
+    moveMapToLocation(suggestion.latitude, suggestion.longitude, suggestion.subtitle);
+  };
+
+  const updateRadius = (nextRadius: number) => {
+    const clampedRadius = clampRadius(nextRadius);
+    const center = currentLocation || (mapRegion ? {
+      latitude: mapRegion.latitude,
+      longitude: mapRegion.longitude,
+      altitude: null,
+      accuracy: null,
+      altitudeAccuracy: null,
+      heading: null,
+      speed: null
+    } : null);
+
+    setRadius(clampedRadius);
+
+    if (center) {
+      const nextRegion = calculateMapRegion(center.latitude, center.longitude, clampedRadius);
+      setMapRegion(nextRegion);
+      mapRef.current?.animateToRegion(nextRegion, 150);
+    }
+  };
+
+  const updateRadiusFromSlider = (locationX: number) => {
+    const position = Math.min(sliderWidth, Math.max(0, locationX));
+    const percentage = position / sliderWidth;
+    updateRadius(MIN_RADIUS + percentage * (MAX_RADIUS - MIN_RADIUS));
+  };
+
   // Function to handle geocoding of address
   const handleAddressSearch = async () => {
     if (!addressInput.trim()) {
@@ -508,31 +658,7 @@ const StudyLocationsManagement = () => {
       
       if (geocodedLocations && geocodedLocations.length > 0) {
         const { latitude, longitude } = geocodedLocations[0];
-        
-        // Update current location
-        const newLocation: LocationObject['coords'] = {
-          latitude,
-          longitude,
-          altitude: null,
-          accuracy: null,
-          altitudeAccuracy: null,
-          heading: null,
-          speed: null
-        };
-        
-        setCurrentLocation(newLocation);
-        
-        // Clear the search input
-        setAddressInput('');
-        
-        // Animate map to new location
-        mapRef.current?.animateToRegion({
-          latitude,
-          longitude,
-          latitudeDelta: radius / 25500,
-          longitudeDelta: radius / 25500
-        }, 1000);
-        
+        moveMapToLocation(latitude, longitude, addressInput.trim());
         setGeocodingError('');
       } else {
         setGeocodingError('No results found for this address');
@@ -639,10 +765,21 @@ const StudyLocationsManagement = () => {
         }}
       >
         <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View className="bg-gg-surface p-5 rounded-2xl shadow-lg w-5/6 m-4">
-            <Text className="text-xl font-psemibold mb-4">
-              {createMode ? "Create New Location" : editMode ? "Edit Location" : "View Location"}
-            </Text>
+          <View className="bg-gg-surface p-5 rounded-2xl shadow-lg w-5/6 m-4" style={{ maxHeight: '90%' }}>
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-xl font-psemibold flex-1 pr-3">
+                {createMode ? "Create New Location" : editMode ? "Edit Location" : "View Location"}
+              </Text>
+              <TouchableOpacity
+                onPress={closeModal}
+                disabled={isSubmitting}
+                className="h-10 w-10 rounded-full bg-gg-surfaceLow items-center justify-center"
+                accessibilityLabel="Close location modal"
+              >
+                <Ionicons name="close" size={22} color="#171d16" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             
             {/* Location name input */}
             <View className="mb-4">
@@ -687,6 +824,27 @@ const StudyLocationsManagement = () => {
                     )}
                   </TouchableOpacity>
                 </View>
+
+                {(isSearchingSuggestions || addressSuggestions.length > 0) && (
+                  <View className="border border-gg-outlineVariant rounded-lg mt-2 overflow-hidden bg-gg-surface">
+                    {isSearchingSuggestions && (
+                      <View className="px-3 py-2 flex-row items-center">
+                        <ActivityIndicator size="small" color="#006b2c" />
+                        <Text className="text-gg-muted text-sm ml-2">Searching addresses...</Text>
+                      </View>
+                    )}
+                    {addressSuggestions.map((suggestion) => (
+                      <TouchableOpacity
+                        key={`${suggestion.latitude}-${suggestion.longitude}-${suggestion.subtitle}`}
+                        onPress={() => handleSuggestionPress(suggestion)}
+                        className="px-3 py-2 border-t border-gg-outlineVariant"
+                      >
+                        <Text className="text-gg-text font-pmedium">{suggestion.label}</Text>
+                        <Text className="text-gg-muted text-xs" numberOfLines={1}>{suggestion.subtitle}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
                 
                 <Text className="text-gg-muted text-xs mt-1">
                   Search to navigate map to a general area, then position precisely
@@ -705,7 +863,6 @@ const StudyLocationsManagement = () => {
                 style={{ width: '100%', height: '100%', borderRadius: 8 }}
                 mapType="hybrid"
                 showsUserLocation={true}
-                followsUserLocation={createMode}
                 region={mapRegion || undefined}
                 initialRegion={{
                   latitude: currentLocation?.latitude || 36.130990,
@@ -713,7 +870,7 @@ const StudyLocationsManagement = () => {
                   latitudeDelta: radius / 25500,
                   longitudeDelta: radius / 25500
                 }}
-                onRegionChange={onRegionChange}
+                onRegionChangeComplete={onRegionChangeComplete}
               >
                 <Circle
                   center={{
@@ -737,6 +894,37 @@ const StudyLocationsManagement = () => {
             <Text className="text-gg-muted text-sm mb-4">
               Radius: {radius}m
             </Text>
+
+            {(createMode || editMode) && (
+              <View className="mb-4">
+                <View className="flex-row justify-between mb-2">
+                  <Text className="text-gg-muted text-xs">{MIN_RADIUS}m</Text>
+                  <Text className="text-gg-muted text-xs">{MAX_RADIUS}m</Text>
+                </View>
+                <View
+                  className="h-10 justify-center"
+                  onLayout={(event) => setSliderWidth(event.nativeEvent.layout.width || 1)}
+                  onStartShouldSetResponder={() => true}
+                  onMoveShouldSetResponder={() => true}
+                  onResponderGrant={(event) => updateRadiusFromSlider(event.nativeEvent.locationX)}
+                  onResponderMove={(event) => updateRadiusFromSlider(event.nativeEvent.locationX)}
+                >
+                  <View className="h-2 rounded-full bg-gg-outlineVariant overflow-hidden">
+                    <View
+                      className="h-2 rounded-full bg-gg-primary"
+                      style={{ width: `${((radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)) * 100}%` }}
+                    />
+                  </View>
+                  <View
+                    className="absolute h-6 w-6 rounded-full bg-gg-primary border-2 border-white"
+                    style={{
+                      left: `${((radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)) * 100}%`,
+                      marginLeft: -12,
+                    }}
+                  />
+                </View>
+              </View>
+            )}
             
             {/* Action buttons */}
             <View className="flex-row justify-end mt-2">
@@ -829,6 +1017,7 @@ const StudyLocationsManagement = () => {
                 </>
               )}
             </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
