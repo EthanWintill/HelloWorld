@@ -73,13 +73,13 @@ const AdminDashboard = () => {
           <View className="w-full px-1 mb-2">
             <Card className="flex-row items-center justify-between">
               <View>
-                <Text className="font-psemibold text-gg-text text-[17px]">Live users</Text>
+                <Text className="font-psemibold text-gg-text text-[17px]">Total users</Text>
                 <Text className="font-pbold text-gg-primary text-3xl mt-1">
-                  {(data?.org_users || []).filter((user: any) => user.live).length}
+                  {data?.org_users?.length || 0}
                 </Text>
               </View>
               <View className="w-12 h-12 bg-gg-surfaceLow rounded-full items-center justify-center">
-                <Ionicons name="radio-outline" size={24} color={GG.primary} />
+                <Ionicons name="people-outline" size={24} color={GG.primary} />
               </View>
             </Card>
           </View>
