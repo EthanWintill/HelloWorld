@@ -1,5 +1,13 @@
 # HelloWorld Log
 
+## [2026-05-29] polish | Pre-framed landing screenshots
+
+Replaced the landing page's CSS-built iPhone mock frame with the pre-framed screenshot assets from `screenshots/with_frame/WithFrame Screenshots(1)` and updated the static landing screenshots to use those generated frames directly.
+
+## [2026-05-29] polish | Landing page product screenshots
+
+Replaced landing page screenshot placeholders with high-resolution simulator screenshots, iPhone-framed hero/feature previews, a mobile-friendly workflow section that pairs each step with the relevant screenshot, and App Store-only CTAs in the hero and footer.
+
 ## [2026-05-28] todo | Web-to-app purchase funnel research
 
 Added a monetization todo to research combining in-app purchases with a web purchase path that can funnel users into the iOS app while preserving entitlement sync, onboarding handoff, analytics, and App Store compliance.

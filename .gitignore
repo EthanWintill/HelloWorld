@@ -15,3 +15,5 @@ AppScreenshots/
 
 # Django generated static collection
 Backend/GreekGeekApi/staticfiles/
+
+screenshots/
