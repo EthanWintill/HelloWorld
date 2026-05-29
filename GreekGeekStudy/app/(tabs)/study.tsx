@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Alert, Linking, TouchableOpacity, AppState, Modal, TextInput } from 'react-native'
+import { Image, View, Text, ScrollView, Alert, Linking, TouchableOpacity, AppState, Modal, TextInput } from 'react-native'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -959,10 +959,14 @@ const Study = () => {
             {data?.org?.name || 'Organization'}
           </Text>
         </View>
-        <View className="h-9 w-9 rounded-full bg-gg-surfaceLow border border-gg-outlineVariant items-center justify-center">
-          <Text className="font-pbold text-gg-primary text-sm">
-            {profileInitials()}
-          </Text>
+        <View className="h-9 w-9 rounded-full bg-gg-surfaceLow border border-gg-outlineVariant items-center justify-center overflow-hidden">
+          {data?.profile_picture_url ? (
+            <Image source={{ uri: data.profile_picture_url }} className="h-9 w-9 rounded-full" />
+          ) : (
+            <Text className="font-pbold text-gg-primary text-sm">
+              {profileInitials()}
+            </Text>
+          )}
         </View>
       </View>
 

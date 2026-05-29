@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Alert, Linking, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, Modal } from 'react-native'
+import { ActivityIndicator, Alert, Image, Linking, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, Modal } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URL } from '@/constants';
@@ -7,6 +7,9 @@ import { router } from 'expo-router';
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { Ionicons } from '@expo/vector-icons'
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 const Profile = () => {
   const { dashboardState, refreshDashboard } = useDashboard()
@@ -18,6 +21,20 @@ const Profile = () => {
   const [notifyDeadline, setNotifyDeadline] = useState(data?.notify_study_deadline_approaching ?? true)
   const [saving, setSaving] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
+  const [profilePictureUploading, setProfilePictureUploading] = useState(false)
+
+  const withTimeout = async <T,>(promise: Promise<T>, milliseconds: number, label: string): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout>
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(`${label} timed out after ${milliseconds}ms`)), milliseconds)
+    })
+
+    try {
+      return await Promise.race([promise, timeoutPromise])
+    } finally {
+      clearTimeout(timeoutId!)
+    }
+  }
 
   const signout = async () => {
     try {
@@ -67,6 +84,141 @@ const Profile = () => {
     )
   }
 
+  const handleProfilePicturePress = async () => {
+    try {
+      console.log('[ProfilePicture] Starting profile picture update')
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      console.log('[ProfilePicture] Photo library permission:', permission.status)
+      if (!permission.granted) {
+        Alert.alert("Permission Required", "Photo library access is needed to choose a profile picture.")
+        return
+      }
+
+      console.log('[ProfilePicture] Launching image library')
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      })
+
+      if (result.canceled || !result.assets?.length) {
+        console.log('[ProfilePicture] Image selection cancelled')
+        return
+      }
+
+      const asset = result.assets[0]
+      const contentType = asset.mimeType || 'image/jpeg'
+      console.log('[ProfilePicture] Selected asset:', {
+        uri: asset.uri,
+        contentType,
+        fileSize: asset.fileSize,
+        width: asset.width,
+        height: asset.height,
+      })
+      const longestSide = Math.max(asset.width || 0, asset.height || 0)
+      const resizeAction = longestSide > 512
+        ? asset.width >= asset.height
+          ? { resize: { width: 512 } }
+          : { resize: { height: 512 } }
+        : { resize: { width: asset.width || 512 } }
+      console.log('[ProfilePicture] Compressing avatar before upload')
+      const compressedAsset = await withTimeout(
+        ImageManipulator.manipulateAsync(
+          asset.uri,
+          [resizeAction],
+          {
+            compress: 0.72,
+            format: ImageManipulator.SaveFormat.JPEG,
+          }
+        ),
+        15000,
+        'Profile picture compression'
+      )
+      const compressedInfo = await FileSystem.getInfoAsync(compressedAsset.uri)
+      const uploadContentType = 'image/jpeg'
+      console.log('[ProfilePicture] Compressed asset:', {
+        uri: compressedAsset.uri,
+        width: compressedAsset.width,
+        height: compressedAsset.height,
+        originalSize: asset.fileSize,
+        compressedSize: compressedInfo.exists ? compressedInfo.size : undefined,
+      })
+      const token = await AsyncStorage.getItem('accessToken')
+      if (!token) throw new Error('No access token found')
+
+      setProfilePictureUploading(true)
+      console.log('[ProfilePicture] Requesting presigned upload URL')
+      const presignResponse = await withTimeout(
+        axios.post(
+          `${API_URL}api/profile-picture/`,
+          {
+            action: 'presign',
+            content_type: uploadContentType,
+            file_size: compressedInfo.exists ? compressedInfo.size : undefined,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 15000,
+          }
+        ),
+        15000,
+        'Profile picture presign'
+      )
+      console.log('[ProfilePicture] Presign complete:', {
+        objectKey: presignResponse.data.object_key,
+        contentType: presignResponse.data.content_type,
+        expiresIn: presignResponse.data.expires_in,
+      })
+
+      console.log('[ProfilePicture] Uploading file directly to S3')
+      const uploadResponse = await withTimeout(
+        FileSystem.uploadAsync(presignResponse.data.upload_url, compressedAsset.uri, {
+          httpMethod: 'PUT',
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          sessionType: FileSystem.FileSystemSessionType.FOREGROUND,
+          headers: {
+            'Content-Type': presignResponse.data.content_type,
+          },
+        }),
+        30000,
+        'Profile picture S3 upload'
+      )
+      console.log('[ProfilePicture] S3 upload response:', uploadResponse.status)
+
+      if (uploadResponse.status < 200 || uploadResponse.status >= 300) {
+        console.log('[ProfilePicture] S3 upload body:', uploadResponse.body)
+        throw new Error(`S3 upload failed with status ${uploadResponse.status}`)
+      }
+
+      console.log('[ProfilePicture] Completing upload with backend')
+      await withTimeout(
+        axios.post(
+          `${API_URL}api/profile-picture/`,
+          {
+            action: 'complete',
+            object_key: presignResponse.data.object_key,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 15000,
+          }
+        ),
+        15000,
+        'Profile picture complete'
+      )
+
+      console.log('[ProfilePicture] Refreshing dashboard after upload')
+      await refreshDashboard()
+      console.log('[ProfilePicture] Profile picture update complete')
+    } catch (error) {
+      console.error('Profile picture upload failed:', error)
+      Alert.alert("Error", "Unable to update your profile picture. Please try again.")
+    } finally {
+      setProfilePictureUploading(false)
+    }
+  }
+
   // Save notification settings
   const handleSaveNotifications = async () => {
     setSaving(true)
@@ -111,23 +263,42 @@ const Profile = () => {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }}>
         <View className="px-4 pt-4">
           <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl p-4 shadow-sm">
-            <View className="flex-row items-center">
-              <View className="h-16 w-16 rounded-full bg-gg-surfaceLow items-center justify-center relative">
-                <Ionicons name="person" size={34} color="#006b2c" />
+            <View className="items-center">
+              <View className="relative mb-3">
+                <View className="h-28 w-28 rounded-full bg-gg-surfaceLow border border-gg-outlineVariant items-center justify-center overflow-hidden">
+                  {data.profile_picture_url ? (
+                    <Image
+                      source={{ uri: data.profile_picture_url }}
+                      className="h-28 w-28 rounded-full"
+                    />
+                  ) : (
+                    <Ionicons name="person" size={52} color="#006b2c" />
+                  )}
+                </View>
                 {data.live && (
-                  <View className="absolute right-0 top-0 bg-gg-error w-4 h-4 rounded-full border-2 border-white" />
+                  <View className="absolute right-2 top-2 bg-gg-error w-4 h-4 rounded-full border-2 border-white" />
                 )}
+                <TouchableOpacity
+                  onPress={handleProfilePicturePress}
+                  disabled={profilePictureUploading}
+                  className="absolute -right-2 bottom-1 h-10 w-10 rounded-full bg-gg-primary border-2 border-white items-center justify-center shadow-sm"
+                  accessibilityLabel="Change profile picture"
+                >
+                  {profilePictureUploading ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Ionicons name="camera" size={18} color="white" />
+                  )}
+                </TouchableOpacity>
               </View>
-              <View className="ml-4 flex-1">
-                <Text className="font-psemibold text-gg-text text-2xl">
-                  {data.first_name} {data.last_name}
-                </Text>
-                <Text className="font-pregular text-gg-muted mt-1">
-                  {data.email}
-                </Text>
-              </View>
+              <Text className="font-psemibold text-gg-text text-2xl text-center">
+                {data.first_name} {data.last_name}
+              </Text>
+              <Text className="font-pregular text-gg-muted mt-1 text-center">
+                {data.email}
+              </Text>
               {data.is_staff && (
-                <View className="bg-gg-surfaceLow border border-gg-outlineVariant rounded-full px-3 py-1">
+                <View className="bg-gg-surfaceLow border border-gg-outlineVariant rounded-full px-3 py-1 mt-3">
                   <Text className="font-psemibold text-gg-primary text-xs">Admin</Text>
                 </View>
               )}

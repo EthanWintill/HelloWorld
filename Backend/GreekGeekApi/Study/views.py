@@ -22,7 +22,11 @@ from django.utils import timezone
 from datetime import timedelta
 import json
 import requests
+import uuid
 from math import radians, sin, cos, sqrt, atan2
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError
 
 from .utils import get_or_create_period_instance, send_notification_to_users, send_notification_to_org
 
@@ -35,6 +39,18 @@ def distance_meters(lat1, lon1, lat2, lon2):
         + cos(radians(lat1)) * cos(radians(lat2)) * sin(d_lon / 2) ** 2
     )
     return earth_radius_meters * 2 * atan2(sqrt(a), sqrt(1 - a))
+
+def s3_client():
+    if not settings.AWS_STORAGE_BUCKET_NAME or not settings.AWS_ACCESS_KEY_ID or not settings.AWS_SECRET_ACCESS_KEY:
+        raise exceptions.APIException(detail="S3 storage is not configured")
+    return boto3.client(
+        's3',
+        region_name=settings.AWS_S3_REGION_NAME,
+        endpoint_url=settings.AWS_S3_ENDPOINT_URL,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        config=Config(signature_version=settings.AWS_S3_SIGNATURE_VERSION),
+    )
 
 @api_view(['GET'])
 def debug(request):
@@ -516,6 +532,87 @@ class CurrentUserAccount(APIView):
         user_id = user.id
         user.delete()
         return Response({"detail": f"Deleted account #{user_id}"}, status=status.HTTP_200_OK)
+
+class ProfilePictureUploadView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    allowed_content_types = {
+        'image/jpeg': 'jpg',
+        'image/jpg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+        'image/heic': 'heic',
+        'image/heif': 'heif',
+    }
+
+    def post(self, request, format=None):
+        action = request.data.get('action')
+        print(f"[ProfilePictureUpload] user={request.user.id} action={action}")
+        if action == 'presign':
+            return self.presign_upload(request)
+        if action == 'complete':
+            return self.complete_upload(request)
+        raise exceptions.ValidationError(detail="Action must be presign or complete")
+
+    def presign_upload(self, request):
+        content_type = request.data.get('content_type')
+        file_size = request.data.get('file_size')
+        print(f"[ProfilePictureUpload] presign content_type={content_type} file_size={file_size}")
+        if content_type not in self.allowed_content_types:
+            raise exceptions.ValidationError(detail="Profile picture must be a JPEG, PNG, WEBP, HEIC, or HEIF image")
+
+        bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+        extension = self.allowed_content_types[content_type]
+        object_key = f"profile-pictures/user-{request.user.id}/{uuid.uuid4()}.{extension}"
+        upload_url = s3_client().generate_presigned_url(
+            'put_object',
+            Params={
+                'Bucket': bucket_name,
+                'Key': object_key,
+                'ContentType': content_type,
+            },
+            ExpiresIn=300,
+        )
+        print(f"[ProfilePictureUpload] presign ok key={object_key}")
+        return Response({
+            'upload_url': upload_url,
+            'object_key': object_key,
+            'content_type': content_type,
+            'expires_in': 300,
+        })
+
+    def complete_upload(self, request):
+        object_key = request.data.get('object_key')
+        print(f"[ProfilePictureUpload] complete key={object_key}")
+        expected_prefix = f"profile-pictures/user-{request.user.id}/"
+        if not object_key or not object_key.startswith(expected_prefix):
+            raise exceptions.PermissionDenied(detail="Invalid profile picture key")
+
+        client = s3_client()
+        try:
+            client.head_object(
+                Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                Key=object_key,
+            )
+        except ClientError:
+            print(f"[ProfilePictureUpload] complete failed missing key={object_key}")
+            raise exceptions.ValidationError(detail="Uploaded profile picture was not found")
+
+        previous_key = request.user.profile_picture_key
+        request.user.profile_picture_key = object_key
+        request.user.save(update_fields=['profile_picture_key'])
+        if previous_key and previous_key != object_key and previous_key.startswith(expected_prefix):
+            try:
+                client.delete_object(
+                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                    Key=previous_key,
+                )
+                print(f"[ProfilePictureUpload] deleted previous key={previous_key}")
+            except ClientError as error:
+                print(f"[ProfilePictureUpload] previous delete failed key={previous_key} error={error}")
+        print(f"[ProfilePictureUpload] complete ok user={request.user.id} key={object_key}")
+        serializer = UserDashboardSerializer(request.user)
+        return Response(serializer.data)
 
 class AdminPasswordResetView(APIView):
     permission_classes = (IsAdminUser,)
@@ -1234,5 +1331,3 @@ class PasswordResetTokenValidationView(APIView):
                 {"valid": False, "detail": "Invalid token"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-

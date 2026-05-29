@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, FlatList, Modal } from 'react-native'
+import { Image, View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, FlatList, Modal } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -20,6 +20,7 @@ interface User {
   first_name: string;
   last_name: string;
   email: string;
+  profile_picture_url?: string | null;
   group?: {
     id: number;
     name: string;
@@ -40,6 +41,23 @@ const GroupsManagement = () => {
   const [newGroupName, setNewGroupName] = useState('')
   const [editGroupName, setEditGroupName] = useState('')
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([])
+
+  const UserAvatar = ({ user, size = 'small' }: { user: User; size?: 'small' | 'medium' }) => {
+    const sizeClass = size === 'small' ? 'h-5 w-5' : 'h-8 w-8';
+    const textClass = size === 'small' ? 'text-[9px]' : 'text-xs';
+
+    return (
+      <View className={`${sizeClass} rounded-full bg-gg-surfaceLow border border-gg-outlineVariant items-center justify-center overflow-hidden`}>
+        {user.profile_picture_url ? (
+          <Image source={{ uri: user.profile_picture_url }} className={`${sizeClass} rounded-full`} />
+        ) : (
+          <Text className={`font-pbold text-gg-primary ${textClass}`}>
+            {user.first_name?.[0]}{user.last_name?.[0]}
+          </Text>
+        )}
+      </View>
+    )
+  }
 
   // Load groups and users from the API
   useEffect(() => {
@@ -403,7 +421,7 @@ const GroupsManagement = () => {
                   <View className="mt-2">
                     {group.users.map(user => (
                       <View key={user.id} className="flex-row items-center py-1">
-                        <Ionicons name="person" size={14} color="#3e4a3d" />
+                        <UserAvatar user={user} />
                         <Text className="text-gg-muted text-sm ml-2">
                           {user.first_name} {user.last_name}
                         </Text>
@@ -427,9 +445,12 @@ const GroupsManagement = () => {
                 key={user.id}
                 className="p-3 bg-gg-bg border border-gg-outlineVariant rounded-lg flex-row justify-between items-center mb-2"
               >
-                <View>
-                  <Text className="font-psemibold text-gg-text">{user.first_name} {user.last_name}</Text>
-                  <Text className="text-gg-muted text-sm font-pregular">{user.email}</Text>
+                <View className="flex-row items-center flex-1">
+                  <UserAvatar user={user} size="medium" />
+                  <View className="ml-2 flex-1">
+                    <Text className="font-psemibold text-gg-text">{user.first_name} {user.last_name}</Text>
+                    <Text className="text-gg-muted text-sm font-pregular">{user.email}</Text>
+                  </View>
                 </View>
                 <Ionicons name="person-outline" size={20} color="#3e4a3d" />
               </View>

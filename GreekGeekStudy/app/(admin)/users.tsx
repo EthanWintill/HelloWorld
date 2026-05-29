@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, FlatList } from 'react-native'
+import { Image, View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, FlatList } from 'react-native'
 import React, { useState, useEffect } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -12,6 +12,7 @@ interface User {
   first_name: string;
   last_name: string;
   email: string;
+  profile_picture_url?: string | null;
   is_active: boolean;
   is_staff?: boolean;
   group?: {
@@ -62,6 +63,18 @@ const UsersManagement = () => {
       params: { id: userId }
     } as any)
   }
+
+  const UserAvatar = ({ user }: { user: User }) => (
+    <View className="h-10 w-10 rounded-full bg-gg-surfaceLow items-center justify-center mr-3 overflow-hidden">
+      {user.profile_picture_url ? (
+        <Image source={{ uri: user.profile_picture_url }} className="h-10 w-10 rounded-full" />
+      ) : (
+        <Text className="font-psemibold text-gg-primary">
+          {user.first_name?.[0]}{user.last_name?.[0]}
+        </Text>
+      )}
+    </View>
+  )
 
   const handleToggleUserStatus = (userId: number) => {
     const updatedUsers = users.map((user: User) => 
@@ -162,11 +175,7 @@ const UsersManagement = () => {
                 renderItem={({ item }) => (
                   <TouchableOpacity className="border-b border-gg-outlineVariant py-3" onPress={() => handleViewUser(item.id)}>
                     <View className="flex-row justify-between items-center">
-                      <View className="h-10 w-10 rounded-full bg-gg-surfaceLow items-center justify-center mr-3">
-                        <Text className="font-psemibold text-gg-primary">
-                          {item.first_name?.[0]}{item.last_name?.[0]}
-                        </Text>
-                      </View>
+                      <UserAvatar user={item} />
                       <View className="flex-1">
                         <Text className="font-psemibold text-gg-text">
                           {item.first_name} {item.last_name}

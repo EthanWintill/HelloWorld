@@ -31,6 +31,7 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view()),
     path('api/token/refresh/', TokenRefreshView.as_view()),
     path('api/user/<int:pk>/', views.UserDetail.as_view(), name='user-detail'),
+    path('api/profile-picture/', views.ProfilePictureUploadView.as_view(), name='profile-picture-upload'),
     path('api/user/<int:user_id>/reset-password/', views.AdminPasswordResetView.as_view(), name='admin-password-reset'),
     path('api/me/', views.CurrentUserAccount.as_view(), name='current-user-account'),
     path('api/orgs/', views.ListOrgs.as_view(), name='list-orgs'),

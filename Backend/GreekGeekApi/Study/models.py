@@ -137,6 +137,7 @@ class User(AbstractBaseUser):
     group = models.ForeignKey('Group', on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
     live = models.BooleanField(default=False)
     last_location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
+    profile_picture_key = models.CharField(max_length=512, blank=True, null=True)
 
     # Notification settings
     notify_org_starts_studying = models.BooleanField(default=True, help_text="Notify when someone in the same org starts studying.")

@@ -1,8 +1,11 @@
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from .models import User, Org, OrgSettings, Location, Session, PeriodSetting, PeriodInstance, NotificationToken, Group
+from django.conf import settings
 from django.utils import timezone
 from .utils import get_or_create_period_instance
+import boto3
+from botocore.config import Config
 
 
 class PeriodSettingSerializer(serializers.ModelSerializer):
@@ -189,6 +192,7 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(min_length=8, write_only=True, required=True)
     registration_code = serializers.CharField(write_only=True, required=True)
     last_location = LocationSerializer(read_only=True)
+    profile_picture_url = serializers.SerializerMethodField()
     notify_org_starts_studying = serializers.BooleanField(required=False)
     notify_user_leaves_zone = serializers.BooleanField(required=False)
     notify_study_deadline_approaching = serializers.BooleanField(required=False)
@@ -196,8 +200,30 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'email', 'password', 'first_name', 'last_name', 'phone_number', 'registration_code', 'is_staff', 'live', 'last_location',
+                  'profile_picture_key', 'profile_picture_url',
                   'notify_org_starts_studying', 'notify_user_leaves_zone', 'notify_study_deadline_approaching')
-        read_only_fields = ('is_staff', 'live', 'last_location')
+        read_only_fields = ('is_staff', 'live', 'last_location', 'profile_picture_key', 'profile_picture_url')
+
+    def get_profile_picture_url(self, obj):
+        if not obj.profile_picture_key:
+            return None
+        bucket_name = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', None)
+        region_name = getattr(settings, 'AWS_S3_REGION_NAME', None)
+        if not bucket_name or not region_name:
+            return None
+        client = boto3.client(
+            's3',
+            region_name=region_name,
+            endpoint_url=getattr(settings, 'AWS_S3_ENDPOINT_URL', None),
+            aws_access_key_id=getattr(settings, 'AWS_ACCESS_KEY_ID', None),
+            aws_secret_access_key=getattr(settings, 'AWS_SECRET_ACCESS_KEY', None),
+            config=Config(signature_version=getattr(settings, 'AWS_S3_SIGNATURE_VERSION', 's3v4')),
+        )
+        return client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket_name, 'Key': obj.profile_picture_key},
+            ExpiresIn=3600,
+        )
 
     def create(self, validated_data):
         registration_code = validated_data.pop('registration_code')
@@ -298,6 +324,7 @@ class UserDashboardSerializer(serializers.ModelSerializer):
     org_period_instances = serializers.SerializerMethodField()
     active_period_setting = serializers.SerializerMethodField()
     last_location = LocationSerializer(read_only=True)
+    profile_picture_url = serializers.SerializerMethodField()
     group = GroupSerializer(read_only=True)
     org_groups = serializers.SerializerMethodField()
     total_hours = serializers.SerializerMethodField()
@@ -308,9 +335,12 @@ class UserDashboardSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'first_name', 'last_name', 'phone_number', 'group',
                  'is_staff', 'live', 'org', 'org_locations', 'org_users', 
                  'user_sessions', 'org_period_instances', 'active_period_setting',
-                 'last_location', 'total_hours',
+                 'last_location', 'profile_picture_key', 'profile_picture_url', 'total_hours',
                  'notify_org_starts_studying', 'notify_user_leaves_zone', 'notify_study_deadline_approaching',
                  'org_groups', 'org_settings')
+
+    def get_profile_picture_url(self, obj):
+        return UserSerializer().get_profile_picture_url(obj)
 
     def get_org_settings(self, obj):
         if not obj.org:

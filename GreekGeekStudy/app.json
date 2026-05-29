@@ -12,6 +12,7 @@
       "bundleIdentifier": "com.sambryant.GreekGeekStudy",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "GreekGeek uses your location to verify that study sessions are started from approved study locations.",
+        "NSPhotoLibraryUsageDescription": "GreekGeek uses your photo library to let you choose a profile picture.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -30,6 +31,12 @@
           "locationWhenInUsePermission": "GreekGeek uses your location to verify that study sessions are started from approved study locations.",
           "locationAlwaysPermission": "GreekGeek uses background location to detect when you leave an approved study location and end your active study session.",
           "isIosBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GreekGeek uses your photo library to let you choose a profile picture."
         }
       ]
     ],

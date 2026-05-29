@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Switch, FlatList, Modal } from 'react-native'
+import { Image, View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Switch, FlatList, Modal } from 'react-native'
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -577,8 +577,12 @@ const UserDetail = () => {
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
         <Card className="mb-4">
           <View className="flex-row items-center">
-            <View className="h-16 w-16 rounded-full bg-gg-surfaceLow items-center justify-center mr-4">
-              <Text className="font-pbold text-gg-primary text-xl">{getInitials(user)}</Text>
+            <View className="h-16 w-16 rounded-full bg-gg-surfaceLow items-center justify-center mr-4 overflow-hidden">
+              {user.profile_picture_url ? (
+                <Image source={{ uri: user.profile_picture_url }} className="h-16 w-16 rounded-full" />
+              ) : (
+                <Text className="font-pbold text-gg-primary text-xl">{getInitials(user)}</Text>
+              )}
             </View>
             <View className="flex-1">
               <Text className="font-psemibold text-gg-text text-[22px] leading-7">

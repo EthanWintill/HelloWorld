@@ -59,6 +59,8 @@
     <string>GreekGeek uses background location to detect when you leave an approved study location and end your active study session.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>GreekGeek uses your location to verify that study sessions are started from approved study locations.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>GreekGeek uses your photo library to let you choose a profile picture.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

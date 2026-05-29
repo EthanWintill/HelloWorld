@@ -23,3 +23,7 @@ Updated `AGENTS.md` to state that project-local `AGENTS.md`, `wiki/`, and `skill
 ## [2026-05-29] fix | Study location map creation controls
 
 Fixed the admin Study Locations create/edit modal so users can close it from the header, search addresses with suggestions, move the map after searching without GPS snap-back, and adjust radius with a touch slider as well as map zoom.
+
+## [2026-05-29] feature | S3-backed profile pictures
+
+Added the first profile-picture implementation using direct client-to-S3 uploads. The backend now stores a user `profile_picture_key`, generates short-lived S3 PUT/GET presigned URLs, and the mobile profile screen can pick a photo, upload it to S3, and refresh the profile image.

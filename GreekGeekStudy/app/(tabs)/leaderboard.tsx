@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native'
+import { Image, View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native'
 import React, { useCallback, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -14,6 +14,7 @@ interface User {
   is_staff: boolean;
   live: boolean;
   total_hours?: number;
+  profile_picture_url?: string | null;
   last_location?: {
     name: string;
     gps_address?: string;
@@ -145,6 +146,27 @@ const Leaderboard = () => {
   const listUsers = rankedUsers.slice(3);
   const initials = (user: User) => `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase();
   const liveLocationName = (user?: User) => user?.live ? user.last_location?.name : undefined;
+  const UserAvatar = ({ user, size, isFirst = false }: { user?: User; size: 'podium' | 'list'; isFirst?: boolean }) => {
+    const sizeClass = size === 'podium'
+      ? isFirst ? 'w-16 h-16' : 'w-14 h-14'
+      : 'h-10 w-10';
+    const textClass = size === 'podium'
+      ? isFirst ? 'text-lg' : 'text-base'
+      : 'text-xs';
+    const borderClass = isFirst ? 'border-gg-primary' : 'border-gg-outlineVariant';
+
+    return (
+      <View className={`${sizeClass} ${borderClass} rounded-full border-2 bg-gg-surface items-center justify-center overflow-hidden`}>
+        {user?.profile_picture_url ? (
+          <Image source={{ uri: user.profile_picture_url }} className={`${sizeClass} rounded-full`} />
+        ) : (
+          <Text className={`${textClass} font-psemibold text-gg-primary`}>
+            {user ? initials(user) : '--'}
+          </Text>
+        )}
+      </View>
+    )
+  };
 
   const groupRankMap = allUsers.reduce((acc: Record<number, GroupRank>, user: User) => {
     if (!user.group) return acc;
@@ -214,11 +236,7 @@ const Leaderboard = () => {
             return (
               <View key={user?.id || rank} className="flex-1 items-center justify-end px-1">
                 <View className="relative mb-2">
-                  <View className={`${isFirst ? 'w-16 h-16 border-gg-primary' : 'w-14 h-14 border-gg-outlineVariant'} rounded-full border-2 bg-gg-surface items-center justify-center`}>
-                    <Text className={`${isFirst ? 'text-lg' : 'text-base'} font-psemibold text-gg-primary`}>
-                      {user ? initials(user) : '--'}
-                    </Text>
-                  </View>
+                  <UserAvatar user={user} size="podium" isFirst={isFirst} />
                   <View className={`absolute -bottom-1 -right-1 rounded-full px-1.5 py-0.5 border ${isFirst ? 'bg-gg-primary border-gg-primary' : 'bg-gg-surface border-gg-outlineVariant'}`}>
                     <Text className={`text-[10px] font-pbold ${isFirst ? 'text-white' : 'text-gg-text'}`}>{rank}</Text>
                   </View>
@@ -283,8 +301,8 @@ const Leaderboard = () => {
               className={`min-h-[56px] rounded-xl px-3 py-2 mb-2 flex-row items-center ${user.id === data.id ? 'border border-gg-primary bg-gg-surfaceLow' : ''}`}
             >
               <Text className={`w-7 font-pbold text-sm ${user.id === data.id ? 'text-gg-text' : 'text-gg-outline'}`}>{getRank(user.id)}</Text>
-              <View className="h-10 w-10 rounded-full bg-gg-surfaceHighest border border-gg-outlineVariant items-center justify-center mr-3">
-                <Text className="font-pbold text-gg-primary text-xs">{initials(user)}</Text>
+              <View className="mr-3">
+                <UserAvatar user={user} size="list" />
               </View>
               <View className="flex-1">
                 <View className="flex-row items-center">
