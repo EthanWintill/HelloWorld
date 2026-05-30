@@ -87,6 +87,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'Study.context_processors.public_site_settings',
             ],
         },
     },
@@ -209,6 +210,8 @@ FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8000')  # Default to 
 ZEPTOMAIL_API_URL = os.getenv('ZEPTOMAIL_API_URL', 'https://api.zeptomail.com/v1.1/email')
 ZEPTOMAIL_TOKEN = os.getenv('ZEPTOMAIL_TOKEN', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@greekgeek.app')
+CONTACT_TO_EMAIL = os.getenv('CONTACT_TO_EMAIL', 'support@greekgeek.app')
+APP_STORE_URL = os.getenv('APP_STORE_URL', 'https://apps.apple.com/us/search?term=GreekGeek')
 
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')

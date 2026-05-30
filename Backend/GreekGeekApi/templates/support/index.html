@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}GreekGeek Support | Study Hour Tracking Help{% endblock %}
+{% block meta_description %}GreekGeek support articles for fraternity and sorority study hour tracking, GPS-approved locations, chapter requirements, member codes, and reports.{% endblock %}
+{% block canonical_url %}https://greekgeek.app/support/{% endblock %}
+{% block og_title %}GreekGeek Support | Study Hour Tracking Help{% endblock %}
+{% block og_description %}Help articles for chapter leaders using GreekGeek to track study hours, approved locations, requirements, member codes, and reports.{% endblock %}
+{% block twitter_title %}GreekGeek Support | Study Hour Tracking Help{% endblock %}
+{% block twitter_description %}Help articles for chapter leaders using GreekGeek to track study hours, approved locations, requirements, member codes, and reports.{% endblock %}
+
+{% block content %}
+<section class="section support-hero">
+    <div class="container">
+        <div class="section-heading">
+            <p class="eyebrow">GreekGeek support</p>
+            <h1>Study hour tracking help for chapters.</h1>
+            <p>
+                Practical answers for academic chairs, chapter officers, and members using
+                GreekGeek to manage required study hours, approved locations, chapter codes, and reports.
+            </p>
+        </div>
+        <div class="support-grid">
+            {% for article in articles %}
+            <article class="feature-card support-card">
+                <p class="eyebrow">{{ article.eyebrow }}</p>
+                <h2><a href="/support/{{ article.slug }}/">{{ article.h1 }}</a></h2>
+                <p>{{ article.meta_description }}</p>
+                <a class="support-link" href="/support/{{ article.slug }}/">Read article</a>
+            </article>
+            {% endfor %}
+        </div>
+        <div class="inline-cta-panel support-contact-panel">
+            <div>
+                <h2>Need help with your chapter setup?</h2>
+                <p>Send GreekGeek support a question about approved locations, member codes, requirements, billing, or technical issues.</p>
+            </div>
+            <a class="btn btn-primary" href="/contact/?topic=Technical%20support">Contact us</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

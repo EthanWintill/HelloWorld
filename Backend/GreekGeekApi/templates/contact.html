@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact GreekGeek Support{% endblock %}
+{% block meta_description %}Contact GreekGeek for organization setup, member access, approved study locations, billing, trial, or technical support questions.{% endblock %}
+{% block canonical_url %}https://greekgeek.app/contact/{% endblock %}
+{% block og_title %}Contact GreekGeek Support{% endblock %}
+{% block og_description %}Get help with GreekGeek organization setup, member access, approved study locations, billing, trials, and technical support.{% endblock %}
+{% block twitter_title %}Contact GreekGeek Support{% endblock %}
+{% block twitter_description %}Get help with GreekGeek organization setup, member access, approved study locations, billing, trials, and technical support.{% endblock %}
+
+{% block content %}
+<section class="section contact-section">
+    <div class="container">
+        <div class="contact-layout">
+            <div class="contact-copy">
+                <p class="eyebrow">Contact GreekGeek</p>
+                <h1>Get help with study hour tracking.</h1>
+                <p class="support-intro">
+                    Send a question about chapter setup, member access, approved study locations,
+                    billing, trials, or technical support. We route contact form messages to GreekGeek support.
+                </p>
+
+                <div class="contact-summary-grid">
+                    <div>
+                        <span>01</span>
+                        <h2>Chapter setup</h2>
+                        <p>Questions about creating an organization, study periods, approved locations, and member codes.</p>
+                    </div>
+                    <div>
+                        <span>02</span>
+                        <h2>Member support</h2>
+                        <p>Help with joining by chapter code, accessing the mobile app, or understanding study requirements.</p>
+                    </div>
+                    <div>
+                        <span>03</span>
+                        <h2>Billing and trial</h2>
+                        <p>Support for the one-month trial, annual organization plan, and account questions.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="contact-card">
+                <div class="contact-card-heading">
+                    <h2>Send a message</h2>
+                    <p>Include your organization and role if it helps us answer faster.</p>
+                </div>
+
+                {% if submitted %}
+                <div class="form-success" role="status">
+                    <h2>Message sent.</h2>
+                    <p>Thanks for contacting GreekGeek. We will review your message and respond by email.</p>
+                </div>
+                {% endif %}
+
+                {% if errors.form %}
+                <div class="form-error" role="alert">{{ errors.form }}</div>
+                {% endif %}
+
+                <form method="post" action="/contact/" novalidate>
+                    {% csrf_token %}
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="name">Name</label>
+                            <input id="name" name="name" type="text" autocomplete="name" value="{{ form.name|default:'' }}" required>
+                            {% if errors.name %}<p class="field-error">{{ errors.name }}</p>{% endif %}
+                        </div>
+
+                        <div class="form-field">
+                            <label for="email">Email</label>
+                            <input id="email" name="email" type="email" autocomplete="email" value="{{ form.email|default:'' }}" required>
+                            {% if errors.email %}<p class="field-error">{{ errors.email }}</p>{% endif %}
+                        </div>
+
+                        <div class="form-field">
+                            <label for="organization">Organization or chapter</label>
+                            <input id="organization" name="organization" type="text" autocomplete="organization" value="{{ form.organization|default:'' }}">
+                        </div>
+
+                        <div class="form-field">
+                            <label for="topic">Topic</label>
+                            <select id="topic" name="topic" required>
+                                <option value="">Choose a topic</option>
+                                {% for value, label in topics %}
+                                <option value="{{ value }}"{% if form.topic == value %} selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            {% if errors.topic %}<p class="field-error">{{ errors.topic }}</p>{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="message">Message</label>
+                        <textarea id="message" name="message" rows="6" required>{{ form.message|default:'' }}</textarea>
+                        {% if errors.message %}<p class="field-error">{{ errors.message }}</p>{% endif %}
+                    </div>
+
+                    <div class="hidden-field" aria-hidden="true">
+                        <label for="company">Company</label>
+                        <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
+                    </div>
+
+                    <button class="btn btn-primary btn-lg w-100" type="submit">Send message</button>
+                    <p class="contact-form-note">For urgent account access issues, include the email address used for your GreekGeek account.</p>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
