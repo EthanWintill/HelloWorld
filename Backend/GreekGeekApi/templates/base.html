@@ -3,12 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% load static %}
     <meta name="description" content="{% block meta_description %}GreekGeek helps fraternities, sororities, and campus organizations set study requirements, verify study sessions, and track chapter progress from one clean scorecard.{% endblock %}">
+    <link rel="canonical" href="{% block canonical_url %}https://greekgeek.app/{% endblock %}">
     <meta property="og:title" content="{% block og_title %}GreekGeek | Study Hour Tracking for Greek Organizations{% endblock %}">
     <meta property="og:description" content="{% block og_description %}Set study requirements, verify sessions, and track chapter progress before deadlines become a problem.{% endblock %}">
     <meta property="og:type" content="website">
+    <meta property="og:url" content="{% block og_url %}https://greekgeek.app/{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}https://greekgeek.app{% static 'img/greekgeek-social-card.png' %}{% endblock %}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}GreekGeek | Study Hour Tracking for Greek Organizations{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Set study requirements, verify sessions, and track chapter progress before deadlines become a problem.{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}https://greekgeek.app{% static 'img/greekgeek-social-card.png' %}{% endblock %}">
     <title>{% block title %}GreekGeek{% endblock %}</title>
-    {% load static %}
+    <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
     {% block extra_css %}{% endblock %}
@@ -17,10 +26,10 @@
     <nav class="navbar navbar-expand-lg site-navbar">
         <div class="container">
             <a class="navbar-brand fw-bold" href="/">
-                <span class="brand-mark">GG</span>
+                <img class="brand-mark" src="{% static 'img/greekgeek-pillar-logo.png' %}" width="32" height="32" alt="" aria-hidden="true">
                 <span>GreekGeek</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -61,19 +70,21 @@
             <div class="footer-grid">
                 <div>
                     <a class="navbar-brand fw-bold" href="/">
-                        <span class="brand-mark">GG</span>
+                        <img class="brand-mark" src="{% static 'img/greekgeek-pillar-logo.png' %}" width="32" height="32" alt="" aria-hidden="true">
                         <span>GreekGeek</span>
                     </a>
                     <p class="footer-copy">Study hour tracking for Greek organizations and campus groups.</p>
-                    <a class="app-store-badge-link footer-app-store" href="/#member-access" data-track="footer_app_store_clicked" aria-label="Download GreekGeek on the App Store">
-                        <img class="app-store-badge app-store-badge-sm" src="{% static 'img/download-on-the-app-store.svg' %}" width="135" height="45" alt="Download on the App Store">
-                    </a>
+                    <p class="footer-copy footer-note">Member access is available through invited chapter codes.</p>
+                    <div class="footer-app-store">
+                        {% include 'partials/app_store_badge.html' with track='footer_app_store_clicked' badge_class='app-store-badge-sm' width=135 height=45 %}
+                    </div>
                 </div>
                 <div class="footer-links">
                     <a href="/#how-it-works">How it works</a>
                     <a href="/#for-organizations">Organizations</a>
                     <a href="/login/">Sign in</a>
-                    <a href="/register/">Register organization</a>
+                    <a href="/register/">Start free trial</a>
+                    <a href="mailto:support@greekgeek.app">Support</a>
                     <a href="/privacy/">Privacy</a>
                     <a href="/terms/">Terms</a>
                 </div>

@@ -18,6 +18,12 @@ Finish launch-critical product, backend, onboarding, and operational work so the
 - The highest-value work is launch readiness rather than broad ideation.
 - Root-level workstation files should support planning without disrupting the nested project repository.
 
+## Pricing And Trial
+
+- Charge `$149.99` per year per organization.
+- Offer a one-month free trial before paid annual billing.
+- Do not use a one-year free trial; it was considered and rejected as too generous for launch.
+
 ## Near-Term Priorities
 
 - Confirm backend deployment and environment setup.
@@ -28,5 +34,4 @@ Finish launch-critical product, backend, onboarding, and operational work so the
 ## Open Questions
 
 - What exact launch channel comes first: TestFlight, internal beta, app store, or direct web onboarding?
-- What payment or subscription flow is required for launch?
 - Which customer segment is the first paid target?

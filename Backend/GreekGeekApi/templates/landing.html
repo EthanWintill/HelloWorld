@@ -1,10 +1,12 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}GreekGeek | Study Hour Tracking for Greek Organizations{% endblock %}
-{% block meta_description %}GreekGeek helps fraternities, sororities, and campus organizations set study requirements, verify study sessions, and track chapter progress from one clean scorecard.{% endblock %}
-{% block og_title %}GreekGeek | The study scorecard for Greek organizations{% endblock %}
-{% block og_description %}Set study requirements, verify sessions, and track chapter progress before deadlines become a problem.{% endblock %}
+{% block title %}GreekGeek | Study Hour Tracking for Fraternities and Sororities{% endblock %}
+{% block meta_description %}GreekGeek helps fraternity, sorority, and campus organization leaders set study requirements, verify location-based sessions, and track chapter progress.{% endblock %}
+{% block og_title %}GreekGeek | Study Hour Tracking for Fraternities and Sororities{% endblock %}
+{% block og_description %}Start a one-month free trial for chapter study-hour tracking with location-based sessions, member codes, and admin reports.{% endblock %}
+{% block twitter_title %}GreekGeek | Study Hour Tracking for Fraternities and Sororities{% endblock %}
+{% block twitter_description %}Start a one-month free trial for chapter study-hour tracking with location-based sessions, member codes, and admin reports.{% endblock %}
 
 {% block content %}
 <section class="landing-hero">
@@ -14,24 +16,43 @@
                 <p class="eyebrow">Study hour accountability for campus organizations</p>
                 <h1>The study scorecard for Greek organizations.</h1>
                 <p class="hero-lede">
-                    GreekGeek helps chapters set study requirements, verify sessions at approved locations,
-                    and see who is on track before deadlines become a problem.
+                    GreekGeek helps fraternity, sorority, and campus organization leaders set study
+                    requirements, verify sessions at approved locations, and see who is on track before
+                    deadlines become a problem.
                 </p>
                 <div class="hero-actions">
-                    <a class="btn btn-primary btn-lg" href="/register/" data-track="org_register_clicked">Register your organization</a>
-                    <a class="app-store-badge-link" href="#member-access" data-track="app_store_clicked" aria-label="Download GreekGeek on the App Store">
-                        <img class="app-store-badge" src="{% static 'img/download-on-the-app-store.svg' %}" width="160" height="53" alt="Download on the App Store">
-                    </a>
+                    <a class="btn btn-primary btn-lg" href="/register/" data-track="org_trial_clicked">Start your one-month free trial</a>
+                    {% include 'partials/app_store_badge.html' with track='app_store_clicked' %}
+                    <a class="btn btn-outline-dark btn-lg" href="#member-access" data-track="member_access_clicked">Member access</a>
                 </div>
-                <p class="hero-note">Already managing a chapter? <a href="/login/">Sign in to the admin portal</a>.</p>
+                <p class="hero-note">One month free, then $149.99 per year. Already managing a chapter? <a href="/login/">Sign in</a>.</p>
             </div>
             <div class="hero-media" aria-label="GreekGeek product preview">
                 <figure class="device-shot hero-device hero-device-primary">
-                    <img class="device-image" src="{% static 'screenshots/landing/study_screen_user.png' %}" width="260" height="534" alt="GreekGeek member study status, approved area map, and clock-in screen" fetchpriority="high">
+                    <img class="device-image" src="{% static 'screenshots/landing/study_screen_user.webp' %}" width="260" height="534" alt="GreekGeek member study status, approved area map, and clock-in screen" fetchpriority="high">
                 </figure>
                 <figure class="device-shot hero-device hero-device-secondary">
-                    <img class="device-image" src="{% static 'screenshots/landing/ranking_screen_user.png' %}" width="222" height="456" alt="GreekGeek member rankings screen with chapter leaderboard and study hours" fetchpriority="high">
+                    <img class="device-image" src="{% static 'screenshots/landing/ranking_screen_user.webp' %}" width="222" height="456" alt="GreekGeek member rankings screen with chapter leaderboard and study hours" fetchpriority="high">
                 </figure>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="proof-strip-section">
+    <div class="container">
+        <div class="proof-strip" aria-label="GreekGeek product proof">
+            <div>
+                <strong>Verified sessions</strong>
+                <span>Members clock in from approved study locations.</span>
+            </div>
+            <div>
+                <strong>Member codes</strong>
+                <span>Admins invite members with an organization code.</span>
+            </div>
+            <div>
+                <strong>Admin reports</strong>
+                <span>Officers see study progress before deadlines.</span>
             </div>
         </div>
     </div>
@@ -66,6 +87,13 @@
                 <p>Use approved study locations and clock-in behavior to make accountability clearer.</p>
             </article>
         </div>
+        <div class="inline-cta-panel">
+            <div>
+                <h3>Ready to run one study period?</h3>
+                <p>Start with a free month, configure your first requirement, and share a member registration code.</p>
+            </div>
+            <a class="btn btn-primary" href="/register/" data-track="org_trial_midpage_clicked">Start free trial</a>
+        </div>
     </div>
 </section>
 
@@ -92,13 +120,13 @@
                 <p>Officers review leaderboards, live study activity, reports, and progress by period.</p>
             </div>
             <figure class="screenshot-card desktop-shot">
-                <img src="{% static 'screenshots/landing/studyperiods_admin.png' %}" width="220" height="452" alt="Admin study period setup screen" loading="lazy" decoding="async">
+                <img src="{% static 'screenshots/landing/studyperiods_admin.webp' %}" width="220" height="452" alt="Admin study period setup screen" loading="lazy" decoding="async">
             </figure>
             <figure class="screenshot-card desktop-shot">
-                <img src="{% static 'screenshots/landing/study_screen_user.png' %}" width="220" height="452" alt="Member study clock-in screen" loading="lazy" decoding="async">
+                <img src="{% static 'screenshots/landing/study_screen_user.webp' %}" width="220" height="452" alt="Member study clock-in screen" loading="lazy" decoding="async">
             </figure>
             <figure class="screenshot-card desktop-shot">
-                <img src="{% static 'screenshots/landing/reports_admin.png' %}" width="220" height="452" alt="Admin reports screen" loading="lazy" decoding="async">
+                <img src="{% static 'screenshots/landing/reports_admin.webp' %}" width="220" height="452" alt="Admin reports screen" loading="lazy" decoding="async">
             </figure>
         </div>
         <div class="workflow-showcase">
@@ -109,7 +137,7 @@
                     <p>Admins create the study period, required hours, groups, and approved locations before members ever clock in.</p>
                 </div>
                 <figure class="screenshot-card">
-                    <img src="{% static 'screenshots/landing/studyperiods_admin.png' %}" width="270" height="555" alt="Admin study period setup screen" loading="lazy" decoding="async">
+                    <img src="{% static 'screenshots/landing/studyperiods_admin.webp' %}" width="270" height="555" alt="Admin study period setup screen" loading="lazy" decoding="async">
                 </figure>
             </article>
             <article class="workflow-panel">
@@ -119,7 +147,7 @@
                     <p>Members see their current requirement, confirm they are inside an approved study area, and start a verified session.</p>
                 </div>
                 <figure class="screenshot-card">
-                    <img src="{% static 'screenshots/landing/study_screen_user.png' %}" width="270" height="555" alt="Member study clock-in screen" loading="lazy" decoding="async">
+                    <img src="{% static 'screenshots/landing/study_screen_user.webp' %}" width="270" height="555" alt="Member study clock-in screen" loading="lazy" decoding="async">
                 </figure>
             </article>
             <article class="workflow-panel">
@@ -129,7 +157,7 @@
                     <p>Officers can review progress by member, leaderboard position, reports, and study period before the deadline.</p>
                 </div>
                 <figure class="screenshot-card">
-                    <img src="{% static 'screenshots/landing/reports_admin.png' %}" width="270" height="555" alt="Admin reports screen" loading="lazy" decoding="async">
+                    <img src="{% static 'screenshots/landing/reports_admin.webp' %}" width="270" height="555" alt="Admin reports screen" loading="lazy" decoding="async">
                 </figure>
             </article>
         </div>
@@ -147,16 +175,18 @@
                     clock in at study locations, review history, and see where they stand on the leaderboard.
                 </p>
                 <div class="action-row">
-                    <a class="btn btn-primary" href="#member-code-note">Register with code</a>
+                    <span class="status-pill">Join with chapter code</span>
+                    {% include 'partials/app_store_badge.html' with track='member_app_store_clicked' badge_class='app-store-badge-sm' width=135 height=45 %}
                     <a class="btn btn-link-dark" href="/login/">Admin sign in</a>
                 </div>
                 <p class="small-note" id="member-code-note">
-                    Member code registration currently happens inside the mobile app. This section is ready
-                    for App Store, TestFlight, or deep-link buttons when those links are finalized.
+                    Already have an organization code? Download GreekGeek from the App Store, choose
+                    join organization, and enter the code from your chapter admin. No code yet? Ask your
+                    chapter admin or start an organization trial.
                 </p>
             </div>
             <figure class="device-shot feature-device">
-                <img class="device-image" src="{% static 'screenshots/landing/manageusers_admin.png' %}" width="250" height="514" alt="GreekGeek admin member management screen" loading="lazy" decoding="async">
+                <img class="device-image" src="{% static 'screenshots/landing/profile_user.webp' %}" width="250" height="514" alt="GreekGeek member profile and organization access screen" loading="lazy" decoding="async">
             </figure>
         </div>
     </div>
@@ -166,7 +196,7 @@
     <div class="container">
         <div class="split-grid reverse">
             <figure class="device-shot feature-device feature-device-left">
-                <img class="device-image" src="{% static 'screenshots/landing/dashboard_admin.png' %}" width="250" height="514" alt="GreekGeek admin dashboard with users, active areas, setup checklist, and chapter controls" loading="lazy" decoding="async">
+                <img class="device-image" src="{% static 'screenshots/landing/dashboard_admin.webp' %}" width="250" height="514" alt="GreekGeek admin dashboard with users, active areas, setup checklist, and chapter controls" loading="lazy" decoding="async">
             </figure>
             <div>
                 <p class="eyebrow">Organization admin experience</p>
@@ -179,6 +209,13 @@
                     <li>Reduce manual follow-up before study deadlines.</li>
                 </ul>
             </div>
+        </div>
+        <div class="inline-cta-panel organization-cta">
+            <div>
+                <h3>Launch with a real price and a short trial.</h3>
+                <p>One month free, then $149.99 per year.</p>
+            </div>
+            <a class="btn btn-primary" href="/register/" data-track="org_trial_admin_clicked">Start free trial</a>
         </div>
     </div>
 </section>
@@ -210,21 +247,48 @@
     </div>
 </section>
 
+<section class="section trust-section">
+    <div class="container">
+        <div class="section-heading narrow">
+            <p class="eyebrow">Launch-ready basics</p>
+            <h2>Built for the first study period.</h2>
+        </div>
+        <div class="trust-grid">
+            <article class="trust-card">
+                <h3>Setup support</h3>
+                <p>GreekGeek includes the admin tools to create your first study period, approved locations, groups, and member registration code.</p>
+            </article>
+            <article class="trust-card">
+                <h3>Location privacy</h3>
+                <p>Location is used to verify study sessions at approved areas. Members can review privacy details and account controls in the app.</p>
+                <a href="/privacy/">Read the privacy policy</a>
+            </article>
+            <article class="trust-card">
+                <h3>Support contact</h3>
+                <p>Need help setting up a chapter or preparing member invites?</p>
+                <a href="mailto:support@greekgeek.app">support@greekgeek.app</a>
+            </article>
+        </div>
+    </div>
+</section>
+
 <section class="section pricing-section" id="pricing">
     <div class="container">
         <div class="pricing-card">
             <div>
-                <p class="eyebrow">Pilot access</p>
+                <p class="eyebrow">One-month free trial</p>
                 <h2>Start with one chapter and one study period.</h2>
                 <p>
-                    Early organization access includes setup help, a registration code, admin access,
-                    study locations, user onboarding, and first-period configuration.
+                    Create an organization workspace, configure the first study period, and share
+                    a registration code with members. After the first month, GreekGeek is billed
+                    annually per organization.
                 </p>
             </div>
             <div class="pricing-action">
-                <p class="price-label">Chapter pricing</p>
-                <strong>Request access</strong>
-                <a class="btn btn-primary btn-lg w-100" href="/register/">Register your organization</a>
+                <p class="price-label">Organization plan</p>
+                <strong>$149.99/year</strong>
+                <p class="pricing-note">One-month free trial included.</p>
+                <a class="btn btn-primary btn-lg w-100" href="/register/" data-track="org_trial_pricing_clicked">Start free trial</a>
             </div>
         </div>
     </div>
@@ -259,7 +323,15 @@
             </details>
             <details>
                 <summary>How do we start?</summary>
-                <p>Register your organization to create an admin account, set up your chapter, and share your registration code with members.</p>
+                <p>Start a one-month free trial to create an admin account, set up your chapter, and share your registration code with members.</p>
+            </details>
+            <details>
+                <summary>How much does GreekGeek cost?</summary>
+                <p>GreekGeek is $149.99 per year after a one-month free trial.</p>
+            </details>
+            <details>
+                <summary>Is GreekGeek available on the App Store?</summary>
+                <p>Yes. Download GreekGeek on the App Store, then join your organization with the code from your chapter admin.</p>
             </details>
         </div>
     </div>
@@ -270,8 +342,9 @@
         <div class="final-cta-inner">
             <h2>Give your chapter a cleaner way to manage study accountability.</h2>
             <div class="hero-actions justify-content-center">
-                <a class="btn btn-primary btn-lg" href="/register/">Register your organization</a>
-                <a class="btn btn-outline-dark btn-lg" href="#member-access">Register with code</a>
+                <a class="btn btn-primary btn-lg" href="/register/" data-track="org_trial_final_clicked">Start your one-month free trial</a>
+                {% include 'partials/app_store_badge.html' with track='final_app_store_clicked' %}
+                <a class="btn btn-outline-dark btn-lg" href="#member-access" data-track="member_access_final_clicked">Member access</a>
             </div>
         </div>
     </div>
@@ -282,14 +355,16 @@
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "GreekGeek",
+    "url": "https://greekgeek.app/",
     "applicationCategory": "EducationalApplication",
-    "operatingSystem": "iOS, Android, Web",
-    "description": "GreekGeek is a study hour tracking app for Greek organizations and campus groups.",
+    "operatingSystem": "iOS, Web",
+    "description": "GreekGeek is a study hour tracking app for fraternities, sororities, and campus organizations.",
     "offers": {
         "@type": "Offer",
         "availability": "https://schema.org/LimitedAvailability",
         "priceSpecification": {
             "@type": "PriceSpecification",
+            "price": "149.99",
             "priceCurrency": "USD"
         }
     }
@@ -322,6 +397,46 @@
             "acceptedAnswer": {
                 "@type": "Answer",
                 "text": "Admins define approved study locations, and members use the mobile app to clock in when they are at those locations."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Can admins set custom study periods?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "GreekGeek supports organization study periods and required hours for tracking member progress."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Is this only for Greek life?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "The product is built around Greek organization workflows, but it can also support campus groups with required study hours."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How do we start?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Start a one-month free trial to create an admin account, set up your chapter, and share your registration code with members."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How much does GreekGeek cost?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "GreekGeek is $149.99 per year after a one-month free trial."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Is GreekGeek available on the App Store?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Download GreekGeek on the App Store, then join your organization with the code from your chapter admin."
             }
         }
     ]

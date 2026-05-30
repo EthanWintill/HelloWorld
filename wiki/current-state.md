@@ -24,10 +24,12 @@ Finish launch-critical product, backend, onboarding, and operational work so the
 - Previous local bring-up used local Postgres on `localhost:5432`.
 - Frontend API target is controlled by `GreekGeekStudy/constants/api.js`.
 - Backend environment values are expected from `Backend/.env`.
+- Confirmed organization pricing is `$149.99` per year per organization.
+- Confirmed launch trial is one month free; do not use a one-year free trial.
+- First landing-page remediation pass is implemented: landing copy assumes App Store availability, App Store badges are retained with a centralized placeholder href for the final store URL, one-month trial pricing, trust/support section, SEO/social metadata, favicon, and optimized WebP landing screenshots.
 
 ## Open Questions
 
-- What launch channel comes first: TestFlight, internal beta, App Store, or direct web onboarding?
-- What payment or subscription flow is required for launch?
+- What is the final GreekGeek App Store product URL for the centralized badge link?
 - Which customer segment is the first paid target?
 - What is the next concrete milestone?

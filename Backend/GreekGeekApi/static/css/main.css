@@ -72,15 +72,8 @@ h6 {
 }
 
 .brand-mark {
-    align-items: center;
-    background: var(--color-green);
-    border-radius: 6px;
-    color: #ffffff;
-    display: inline-flex;
-    font-size: 0.78rem;
     height: 2rem;
-    justify-content: center;
-    line-height: 1;
+    object-fit: contain;
     width: 2rem;
 }
 
@@ -92,6 +85,24 @@ h6 {
 .site-navbar .navbar-nav .nav-link:hover,
 .site-navbar .navbar-nav .nav-link:focus {
     color: var(--color-text);
+}
+
+.site-navbar .nav-cta {
+    align-items: center;
+    border: 1px solid var(--color-text);
+    border-radius: var(--radius);
+    color: var(--color-text) !important;
+    display: inline-flex;
+    font-weight: 800;
+    margin-left: 0.35rem;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+}
+
+.site-navbar .nav-cta:hover,
+.site-navbar .nav-cta:focus {
+    background: var(--color-text);
+    color: #ffffff !important;
 }
 
 .navbar-toggler {
@@ -224,6 +235,39 @@ h6 {
     color: var(--color-muted);
     font-size: 0.95rem;
     margin-top: 1rem;
+}
+
+.proof-strip-section {
+    padding: 0 0 3rem;
+}
+
+.proof-strip {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    display: grid;
+    gap: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+}
+
+.proof-strip div {
+    display: grid;
+    gap: 0.35rem;
+    padding: 1.15rem 1.3rem;
+}
+
+.proof-strip div + div {
+    border-left: 1px solid var(--color-border);
+}
+
+.proof-strip strong {
+    color: var(--color-text);
+    font-size: 0.98rem;
+}
+
+.proof-strip span {
+    color: var(--color-muted);
+    font-size: 0.92rem;
 }
 
 .hero-media {
@@ -361,6 +405,33 @@ h6 {
     margin-bottom: 1.6rem;
 }
 
+.inline-cta-panel {
+    align-items: center;
+    background: var(--color-green-soft);
+    border: 1px solid var(--color-green-soft);
+    border-radius: var(--radius);
+    display: flex;
+    gap: 1.5rem;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    padding: 1.2rem 1.35rem;
+}
+
+.inline-cta-panel h3 {
+    font-size: 1.08rem;
+    font-weight: 800;
+    margin-bottom: 0.25rem;
+}
+
+.inline-cta-panel p {
+    color: var(--color-muted);
+    margin-bottom: 0;
+}
+
+.organization-cta {
+    margin-top: 3rem;
+}
+
 .workflow-desktop {
     display: grid;
     column-gap: 1rem;
@@ -456,6 +527,18 @@ h6 {
     width: min(100%, 250px);
 }
 
+.status-pill {
+    align-items: center;
+    background: var(--color-green-soft);
+    border: 1px solid var(--color-green);
+    border-radius: var(--radius);
+    color: var(--color-green-dark);
+    display: inline-flex;
+    font-weight: 800;
+    min-height: 2.4rem;
+    padding: 0.45rem 0.8rem;
+}
+
 .check-list {
     color: var(--color-text);
     display: grid;
@@ -480,6 +563,36 @@ h6 {
 
 .pricing-section {
     background: var(--color-text);
+}
+
+.trust-section {
+    background: #ffffff;
+}
+
+.trust-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.trust-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 1.35rem;
+}
+
+.trust-card h3 {
+    font-size: 1.08rem;
+    font-weight: 800;
+    margin-bottom: 0.65rem;
+}
+
+.trust-card p {
+    color: var(--color-muted);
+}
+
+.trust-card a {
+    font-weight: 800;
 }
 
 .pricing-card {
@@ -509,6 +622,12 @@ h6 {
 .pricing-action strong {
     display: block;
     font-size: 1.6rem;
+    margin-bottom: 0.35rem;
+}
+
+.pricing-note {
+    color: var(--color-muted) !important;
+    font-size: 0.95rem !important;
     margin-bottom: 1rem;
 }
 
@@ -573,6 +692,10 @@ details p {
     margin: 1rem 0 0;
 }
 
+.footer-note {
+    margin-top: 0.35rem;
+}
+
 .footer-app-store {
     margin-top: 1rem;
 }
@@ -610,6 +733,21 @@ details p {
     border-radius: var(--radius);
 }
 
+.trial-summary {
+    background: var(--color-green-soft);
+    border: 1px solid var(--color-green-soft);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.95rem 1rem;
+}
+
+.trial-summary span {
+    color: var(--color-muted);
+    font-size: 0.95rem;
+}
+
 ::-webkit-scrollbar {
     width: 8px;
 }
@@ -638,6 +776,8 @@ details p {
 
     .feature-grid.three,
     .feature-grid.four,
+    .proof-strip,
+    .trust-grid,
     .workflow-panel {
         grid-template-columns: 1fr 1fr;
     }
@@ -700,8 +840,30 @@ details p {
 
     .feature-grid.three,
     .feature-grid.four,
+    .proof-strip,
+    .trust-grid,
     .workflow-panel {
         grid-template-columns: 1fr;
+    }
+
+    .proof-strip div + div {
+        border-left: 0;
+        border-top: 1px solid var(--color-border);
+    }
+
+    .inline-cta-panel {
+        align-items: stretch;
+        display: grid;
+    }
+
+    .inline-cta-panel .btn {
+        width: 100%;
+    }
+
+    .site-navbar .nav-cta {
+        justify-content: center;
+        margin: 0.4rem 0 0;
+        width: 100%;
     }
 
     .screenshot-card {

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Start Free Trial - GreekGeek{% endblock %}
+{% block title %}Start Your One-Month Free Trial - GreekGeek{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
@@ -9,8 +9,12 @@
             <div class="card shadow">
                 <div class="card-body p-4">
                     <div class="text-center mb-4">
-                        <h2 class="card-title">Start Your Free Trial</h2>
-                        <p class="text-muted">Create your organization and admin account</p>
+                        <h2 class="card-title">Start Your One-Month Free Trial</h2>
+                        <p class="text-muted">Create your organization workspace and admin account</p>
+                    </div>
+                    <div class="trial-summary mb-4">
+                        <strong>$149.99/year per organization after the first month.</strong>
+                        <span>No payment details are collected on this form.</span>
                     </div>
                     
                     <div id="error-container">
@@ -26,37 +30,37 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                                <input type="text" class="form-control" id="first_name" name="first_name" autocomplete="given-name" required>
                                 <div class="invalid-feedback"></div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                                <input type="text" class="form-control" id="last_name" name="last_name" autocomplete="family-name" required>
                                 <div class="invalid-feedback"></div>
                             </div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-                            <input type="email" class="form-control" id="email" name="email" required>
+                            <input type="email" class="form-control" id="email" name="email" autocomplete="email" required>
                             <div class="invalid-feedback"></div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                            <input type="password" class="form-control" id="password" name="password" autocomplete="new-password" required>
                             <div class="invalid-feedback"></div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="password_confirm" class="form-label">Confirm Password <span class="text-danger">*</span></label>
-                            <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
+                            <input type="password" class="form-control" id="password_confirm" name="password_confirm" autocomplete="new-password" required>
                             <div class="invalid-feedback"></div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="phone_number" class="form-label">Phone Number</label>
-                            <input type="tel" class="form-control" id="phone_number" name="phone_number">
+                            <input type="tel" class="form-control" id="phone_number" name="phone_number" autocomplete="tel">
                             <div class="invalid-feedback"></div>
                         </div>
                         
@@ -64,13 +68,13 @@
                         
                         <div class="mb-3">
                             <label for="org_name" class="form-label">Organization Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="org_name" name="org_name" required>
+                            <input type="text" class="form-control" id="org_name" name="org_name" autocomplete="organization" required>
                             <div class="invalid-feedback"></div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="school" class="form-label">School/University <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="school" name="school" required>
+                            <input type="text" class="form-control" id="school" name="school" autocomplete="organization" required>
                             <div class="invalid-feedback"></div>
                         </div>
                         
@@ -84,7 +88,7 @@
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary btn-lg" id="register-btn">
                                 <span id="register-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                <span id="register-text">Start Free Trial</span>
+                                <span id="register-text">Start One-Month Free Trial</span>
                             </button>
                         </div>
                     </form>
@@ -242,7 +246,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset loading state
             registerBtn.disabled = false;
             registerSpinner.classList.add('d-none');
-            registerText.textContent = 'Start Free Trial';
+            registerText.textContent = 'Start One-Month Free Trial';
             return;
         }
         
@@ -389,9 +393,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset loading state
             registerBtn.disabled = false;
             registerSpinner.classList.add('d-none');
-            registerText.textContent = 'Start Free Trial';
+            registerText.textContent = 'Start One-Month Free Trial';
         }
     });
 });
 </script>
-{% endblock %} 
+{% endblock %}

@@ -180,8 +180,8 @@ function updateNavbar() {
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="/register/">
-                    <i class="fas fa-plus me-1"></i>Register organization
+                <a class="nav-link nav-cta" href="/register/">
+                    <i class="fas fa-plus me-1"></i>Start free trial
                 </a>
             </li>
         `;

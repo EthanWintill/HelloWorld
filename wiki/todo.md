@@ -7,4 +7,5 @@
 
 ## Monetization And Distribution
 
+- Confirmed pricing package: `$149.99` per year per organization with a one-month free trial. Do not use a one-year free trial.
 - [ ] Research web-to-app purchase funnels for iOS. Determine how to combine in-app purchases with a web purchase path that can funnel paid users into the iOS app cleanly, including App Store rule constraints, account linking, onboarding handoff, entitlement sync, and analytics needed to measure conversion.

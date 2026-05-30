@@ -35,3 +35,15 @@ Fixed the admin Study Locations create/edit modal so users can close it from the
 ## [2026-05-29] feature | S3-backed profile pictures
 
 Added the first profile-picture implementation using direct client-to-S3 uploads. The backend now stores a user `profile_picture_key`, generates short-lived S3 PUT/GET presigned URLs, and the mobile profile screen can pick a photo, upload it to S3, and refresh the profile image.
+
+## [2026-05-29] audit | Landing page conversion review
+
+Audited the GreekGeek Django landing page with desktop/mobile screenshots, source inventory, current competitor/SEO research, and remediation artifacts. Added `landing-page-audit-2026-05-29.md`, `landing-page-audit-assets-2026-05-29/`, and issue plans under `landing-page-remediations-2026-05-29/`.
+
+## [2026-05-29] decision | Organization pricing and trial
+
+Documented the launch pricing package: `$149.99` per year per organization with a one-month free trial. Captured that the one-year free trial idea was rejected and should not be used in launch materials.
+
+## [2026-05-30] implementation | Landing page remediation pass
+
+Implemented the first landing-page remediation pass: retained App Store badges as live download CTAs with a centralized placeholder href for the final store URL, replaced misleading member-code CTAs with App Store/chapter-code copy, aligned the organization funnel around a one-month free trial and `$149.99/year` pricing, added trust/support/privacy proof, added SEO/social/favicons, switched landing screenshots to optimized WebP assets, and captured verification screenshots under `landing-page-remediation-assets-2026-05-30/`.

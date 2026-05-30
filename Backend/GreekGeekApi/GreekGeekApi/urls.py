@@ -15,6 +15,7 @@ router = routers.DefaultRouter()
 # Additionally, we include login URLs for the browsable API.
 urlpatterns = [
     # Web routes
+    path('favicon.ico', web_views.favicon, name='favicon'),
     path('', web_views.landing_page, name='landing-page'),
     path('login/', web_views.login_page, name='login-page'),
     path('register/', web_views.register_page, name='register-page'),

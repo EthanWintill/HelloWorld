@@ -11,6 +11,7 @@
 - [Repo README](../README.md): original repo notes and useful links.
 - [Venture Brief](../venture.md): project goal and launch priorities.
 - [Landing Page PRD](../landing-page-prd-2026-04-28.md): landing page requirements.
+- [Landing Page Audit 2026-05-29](../landing-page-audit-2026-05-29.md): conversion audit, scorecard, evidence, and remediation links.
 - [QA Full Test Run](../QA_FULL_TEST_RUN_2026-04-28.md): prior QA run notes.
 - [Design](../DESIGN.md): visual/design guidance.
 

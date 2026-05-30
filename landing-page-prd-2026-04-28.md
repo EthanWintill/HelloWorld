@@ -252,19 +252,21 @@ Convert organization buyers without forcing a full self-serve purchase before tr
 
 Recommended initial offer:
 
-- `Pilot plan for one chapter`
-- CTA: `Request organization access`
+- Annual organization plan at `$149.99 / organization / year`
+- One-month free trial
+- CTA: `Start your one-month free trial` or `Register your organization`
 - Include: setup help, registration code, admin access, study locations, user import, first study period configuration.
+- Do not offer a one-year free trial.
 
-Pricing display options:
+Confirmed pricing:
 
-1. `Contact for chapter pricing` for early launch.
-2. `Starting at $X / organization / semester` once pricing is decided.
-3. `Pilot access available` if the priority is first customer learning.
+- `$149.99 / organization / year`
+- `One-month free trial`
+- Annual billing per organization after the trial.
 
 Recommendation:
 
-Use `Request organization access` now. Do not show public pricing until payment packaging is final.
+Show the public price and one-month trial once the checkout/subscription flow can honor that offer. If payment is not wired yet, the page can say `Start your one-month free trial` but must explain what happens next.
 
 ### Section 8: FAQ
 
@@ -333,12 +335,11 @@ Flow:
 
 1. Landing page
 2. Click `Register your organization`
-3. Organization intake form
-4. Qualification and setup call
-5. Pilot setup
-6. Admin activation
-7. Member invites
-8. Paid plan / semester renewal
+3. Start one-month free trial
+4. Create organization and admin account
+5. Set up first study period, approved locations, and member registration code
+6. Member invites
+7. Paid annual plan at `$149.99 / organization / year`
 
 Recommended organization intake fields:
 
@@ -357,11 +358,11 @@ Metrics:
 - Visitor to organization CTA click rate
 - Form completion rate
 - Qualified organization lead rate
-- Setup-call booking rate
-- Pilot activation rate
+- Trial activation rate
+- Trial-to-paid conversion rate
 - Paid conversion rate
 - Active members per organization
-- Renewal intent after first study period
+- Annual renewal intent after first study period
 
 ## 7. SEO Plan
 
@@ -597,7 +598,6 @@ The landing page is ready for launch when:
 ## 13. Open Questions
 
 - Should public-facing branding use `Greek Geek`, `GreekGeek`, or `HelloWorld` anywhere? Recommendation: use `Greek Geek` publicly and keep `HelloWorld` file-internal only.
-- What is the first paid package: semester plan, annual plan, pilot plan, or per-member pricing?
 - Should organization registration be self-serve immediately or sales-assisted for early pilots?
 - What domain will host the landing page: existing `greekgeek.app`, a marketing subdomain, or the app web root?
 - Are there real chapter/school names we have permission to use?
@@ -609,6 +609,5 @@ Before implementation, capture or create the first set of product visuals:
 
 1. Record current mobile app screenshots.
 2. Decide whether organization leads should go to a form, calendar, or email.
-3. Decide the first paid organization offer.
-4. Draft the exact landing-page copy from this PRD.
-5. Build a low-fidelity page wireframe before writing production code.
+3. Draft the exact landing-page copy from this PRD using the confirmed `$149.99/year` organization plan and one-month free trial.
+4. Build a low-fidelity page wireframe before writing production code.

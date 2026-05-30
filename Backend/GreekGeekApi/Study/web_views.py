@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.http import FileResponse
 from django.shortcuts import render
 from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
@@ -19,6 +21,10 @@ class RegisterPageView(TemplateView):
 def landing_page(request):
     """Landing page function-based view"""
     return render(request, 'landing.html')
+
+def favicon(request):
+    """Serve the site favicon at the browser-default path."""
+    return FileResponse(open(settings.BASE_DIR / 'static' / 'img' / 'favicon.ico', 'rb'), content_type='image/x-icon')
 
 def login_page(request):
     """Login page function-based view"""
