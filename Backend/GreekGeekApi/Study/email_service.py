@@ -1,25 +1,42 @@
 from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
+import requests
 import logging
 
 logger = logging.getLogger(__name__)
 
 class EmailService:
     def __init__(self):
-        # From-address is configured via DEFAULT_FROM_EMAIL (env: DEFAULT_FROM_EMAIL),
-        # delivered through the SMTP backend configured in settings (ZeptoMail).
+        # From-address is configured via DEFAULT_FROM_EMAIL (env: DEFAULT_FROM_EMAIL).
         self.from_email = settings.DEFAULT_FROM_EMAIL
 
     def _send(self, to_email, subject, html_content, plain_text_content):
-        """Send a multipart (text + HTML) email via the configured SMTP backend."""
-        message = EmailMultiAlternatives(
-            subject=subject,
-            body=plain_text_content,
-            from_email=self.from_email,
-            to=[to_email],
+        """Send a multipart (text + HTML) email via the ZeptoMail HTTP API.
+
+        Uses HTTPS (port 443) rather than SMTP because some hosts (e.g. DigitalOcean
+        droplets) block outbound SMTP ports 25/465/587 by default.
+        """
+        token = settings.ZEPTOMAIL_TOKEN
+        auth = token if token.startswith("Zoho-enczapikey") else f"Zoho-enczapikey {token}"
+        resp = requests.post(
+            settings.ZEPTOMAIL_API_URL,
+            headers={
+                "Authorization": auth,
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json={
+                "from": {"address": self.from_email, "name": "GreekGeek"},
+                "to": [{"email_address": {"address": to_email}}],
+                "subject": subject,
+                "htmlbody": html_content,
+                "textbody": plain_text_content,
+            },
+            timeout=15,
         )
-        message.attach_alternative(html_content, "text/html")
-        message.send()
+        if resp.status_code >= 400:
+            # Surface ZeptoMail's error detail before raising (caught/logged by callers).
+            logger.error("ZeptoMail API error %s: %s", resp.status_code, resp.text)
+            resp.raise_for_status()
     
     def send_password_reset_email(self, user_email, reset_token, user_name=None):
         """
