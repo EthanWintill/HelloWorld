@@ -24,6 +24,11 @@ urlpatterns = [
     path('reset-password/<str:token>/', web_views.reset_password_page, name='reset-password-page'),
     path('privacy/', web_views.privacy_page, name='privacy-page'),
     path('terms/', web_views.terms_page, name='terms-page'),
+    path('contact/', web_views.contact_page, name='contact-page'),
+    path('compare/', web_views.compare_index, name='compare-index'),
+    path('compare/<slug:slug>/', web_views.compare_page, name='compare-page'),
+    path('support/', web_views.support_index, name='support-index'),
+    path('support/<slug:slug>/', web_views.support_article, name='support-article'),
     
     # API routes
     path('admin/', admin.admin.site.urls),

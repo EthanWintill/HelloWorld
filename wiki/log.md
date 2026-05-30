@@ -1,5 +1,25 @@
 # HelloWorld Log
 
+## [2026-05-30] seo | Product comparison pages
+
+Added a public `/compare/` hub and comparison pages for GreekGeek vs CampusStudy, GreekGeek vs MyGreekStudy, and CampusStudy vs MyGreekStudy. The pages target comparison-search intent with pricing, feature, and decision-guide copy grounded in public competitor claims.
+
+## [2026-05-30] fix | Landing page CTA focus
+
+Removed dead member-code/member-access CTAs from the landing page, made the free trial CTA the primary path, kept app download as the secondary path, and centralized App Store badge destinations behind `APP_STORE_URL` instead of scrolling to a member-access section.
+
+## [2026-05-30] feature | Public contact form
+
+Added a `/contact/` page with backend validation and ZeptoMail-backed support email delivery. Replaced footer/homepage/support-page contact links with the new contact form and configured recipient routing through `CONTACT_TO_EMAIL`.
+
+## [2026-05-30] seo | Support article pages
+
+Added a public `/support/` hub and five SEO-focused support articles for GreekGeek app workflows: approved-location study hours for fraternity members, sorority GPS study tracking, spreadsheet replacement, chapter study hour requirements, and member chapter-code onboarding. Linked the support hub from the site nav and footer.
+
+## [2026-05-30] seo | CampusStudy-informed landing copy
+
+Tightened the landing page's SEO copy against CampusStudy-style search intent: fraternity and sorority study hour tracking, GPS-verified timers, academic chair workflow, chapter invite codes, approved study locations, progress reports, and spreadsheet replacement. Updated visible headings, metadata, FAQ copy, and structured data in `Backend/GreekGeekApi/templates/landing.html`.
+
 ## [2026-05-29] polish | Pre-framed landing screenshots
 
 Replaced the landing page's CSS-built iPhone mock frame with the pre-framed screenshot assets from `screenshots/with_frame/WithFrame Screenshots(1)` and updated the static landing screenshots to use those generated frames directly.

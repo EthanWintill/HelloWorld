@@ -1,4 +1,8 @@
 {% load static %}
-<a class="app-store-badge-link{% if link_class %} {{ link_class }}{% endif %}" href="/#member-access" data-track="{{ track|default:'app_store_clicked' }}" aria-label="Download GreekGeek on the App Store">
+<a class="app-store-badge-link{% if link_class %} {{ link_class }}{% endif %}" href="{{ APP_STORE_URL }}" data-track="{{ track|default:'app_store_clicked' }}" aria-label="Download GreekGeek on the App Store">
+    {% if variant == 'white' %}
+    <img class="app-store-badge{% if badge_class %} {{ badge_class }}{% endif %}" src="{% static 'img/download-on-the-app-store-white.svg' %}" width="{{ width|default:'160' }}" height="{{ height|default:'53' }}" alt="Download on the App Store">
+    {% else %}
     <img class="app-store-badge{% if badge_class %} {{ badge_class }}{% endif %}" src="{% static 'img/download-on-the-app-store.svg' %}" width="{{ width|default:'160' }}" height="{{ height|default:'53' }}" alt="Download on the App Store">
+    {% endif %}
 </a>

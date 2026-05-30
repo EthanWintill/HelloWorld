@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page.title }}{% endblock %}
+{% block meta_description %}{{ page.meta_description }}{% endblock %}
+{% block canonical_url %}https://greekgeek.app/compare/{{ page.slug }}/{% endblock %}
+{% block og_title %}{{ page.title }}{% endblock %}
+{% block og_description %}{{ page.meta_description }}{% endblock %}
+{% block twitter_title %}{{ page.title }}{% endblock %}
+{% block twitter_description %}{{ page.meta_description }}{% endblock %}
+
+{% block content %}
+<article class="section compare-detail">
+    <div class="container">
+        <div class="support-layout">
+            <div class="support-main">
+                <p class="eyebrow">{{ page.eyebrow }}</p>
+                <h1>{{ page.h1 }}</h1>
+                <p class="support-intro">{{ page.intro }}</p>
+
+                <section class="compare-panel compare-verdict">
+                    <p class="eyebrow">Verdict</p>
+                    <h2>Why chapters choose GreekGeek</h2>
+                    <p>{{ page.verdict }}</p>
+                </section>
+
+                <section class="support-section">
+                    <h2>Side-by-side comparison</h2>
+                    <div class="comparison-matrix" role="table" aria-label="{{ page.eyebrow }} comparison">
+                        <div class="comparison-header" role="row">
+                            <span role="columnheader">What matters</span>
+                            <strong role="columnheader">GreekGeek</strong>
+                            <strong role="columnheader">{{ page.competitor }}</strong>
+                        </div>
+                        <div class="comparison-row price-row" role="row">
+                            <span role="cell">Pricing</span>
+                            <div class="comparison-cell winner price-cell" role="cell">
+                                <strong>{{ page.greekgeek_price }}</strong>
+                            </div>
+                            <div class="comparison-cell competitor price-cell" role="cell">
+                                <strong>{{ page.competitor_price }}</strong>
+                            </div>
+                        </div>
+                        {% for feature, greekgeek_has, competitor_has in page.rows %}
+                        <div class="comparison-row" role="row">
+                            <span role="cell">{{ feature }}</span>
+                            <div class="comparison-cell winner" role="cell">
+                                {% if greekgeek_has %}
+                                <span class="comparison-check">✓</span>
+                                {% else %}
+                                <span class="comparison-bad">✕</span>
+                                {% endif %}
+                            </div>
+                            <div class="comparison-cell competitor" role="cell">
+                                {% if competitor_has %}
+                                <span class="comparison-check">✓</span>
+                                {% else %}
+                                <span class="comparison-bad">✕</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="compare-product-pitch">
+                    <div class="compare-product-copy">
+                        <p class="eyebrow">Try GreekGeek</p>
+                        <h2>Run your next study period from one clean app.</h2>
+                        <p>
+                            Set custom periods, approve study locations, let members clock in from the app,
+                            and see progress before the deadline.
+                        </p>
+                        <div class="compare-product-tags" aria-label="GreekGeek highlights">
+                            <span>Custom periods</span>
+                            <span>Live tracking</span>
+                            <span>Clean reports</span>
+                        </div>
+                        <div class="compare-product-actions">
+                            <a class="btn btn-primary btn-lg" href="/register/" data-track="compare_detail_trial_clicked">Start your one-month free trial</a>
+                            {% include 'partials/app_store_badge.html' with track='compare_detail_app_store_clicked' variant='white' %}
+                        </div>
+                    </div>
+                    <div class="compare-product-shots" aria-label="GreekGeek product screenshots">
+                        <figure class="screenshot-card">
+                            <img src="{% static 'screenshots/landing/study_screen_user.webp' %}" width="210" height="432" alt="GreekGeek study clock-in screen" loading="lazy" decoding="async">
+                        </figure>
+                        <figure class="screenshot-card">
+                            <img src="{% static 'screenshots/landing/reports_admin.webp' %}" width="210" height="432" alt="GreekGeek admin reports screen" loading="lazy" decoding="async">
+                        </figure>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="support-sidebar" aria-label="Related comparison pages">
+                <h2>Related comparisons</h2>
+                {% for related in related_pages %}
+                <a href="/compare/{{ related.slug }}/">{{ related.eyebrow }}</a>
+                {% endfor %}
+                <a href="/support/">Study hour support</a>
+                <a href="/contact/?topic=Organization%20setup">Contact GreekGeek</a>
+            </aside>
+        </div>
+    </div>
+</article>
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "{{ page.h1|escapejs }}",
+    "description": "{{ page.meta_description|escapejs }}",
+    "mainEntityOfPage": "https://greekgeek.app/compare/{{ page.slug }}/",
+    "author": {
+        "@type": "Organization",
+        "name": "GreekGeek"
+    },
+    "publisher": {
+        "@type": "Organization",
+        "name": "GreekGeek"
+    }
+}
+</script>
+{% endblock %}

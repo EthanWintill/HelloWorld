@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.utils.html import escape
 import requests
 import logging
 
@@ -276,4 +277,54 @@ class EmailService:
 
         except Exception:
             logger.exception(f"Failed to send password reset confirmation email to {user_email}")
+            return False
+
+    def send_contact_email(self, name, reply_to_email, topic, message, organization=''):
+        """Send a public contact form submission to GreekGeek support."""
+        try:
+            safe_name = escape(name)
+            safe_reply_to_email = escape(reply_to_email)
+            safe_topic = escape(topic)
+            safe_organization = escape(organization or 'Not provided')
+            safe_message = escape(message).replace('\n', '<br>')
+            subject = f"GreekGeek contact form: {topic}"
+
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>GreekGeek Contact Form</title>
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #0b0f0e;">
+                <h2>New GreekGeek contact form submission</h2>
+                <p><strong>Name:</strong> {safe_name}</p>
+                <p><strong>Email:</strong> {safe_reply_to_email}</p>
+                <p><strong>Organization:</strong> {safe_organization}</p>
+                <p><strong>Topic:</strong> {safe_topic}</p>
+                <h3>Message</h3>
+                <p>{safe_message}</p>
+            </body>
+            </html>
+            """
+
+            plain_text_content = f"""
+            New GreekGeek contact form submission
+
+            Name: {name}
+            Email: {reply_to_email}
+            Organization: {organization or 'Not provided'}
+            Topic: {topic}
+
+            Message:
+            {message}
+            """
+
+            self._send(settings.CONTACT_TO_EMAIL, subject, html_content, plain_text_content)
+            logger.info("Contact form email sent for %s", reply_to_email)
+            return True
+
+        except Exception:
+            logger.exception("Failed to send contact form email for %s", reply_to_email)
             return False

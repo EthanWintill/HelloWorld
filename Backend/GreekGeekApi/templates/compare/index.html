@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Study Hour Tracking App Comparisons | GreekGeek{% endblock %}
+{% block meta_description %}Compare GreekGeek, CampusStudy, and MyGreekStudy for fraternity and sorority study hour tracking, GPS study locations, reports, pricing, and setup.{% endblock %}
+{% block canonical_url %}https://greekgeek.app/compare/{% endblock %}
+{% block og_title %}Study Hour Tracking App Comparisons | GreekGeek{% endblock %}
+{% block og_description %}Compare GreekGeek, CampusStudy, and MyGreekStudy for Greek organization study hour tracking, pricing, approved locations, reports, and setup.{% endblock %}
+{% block twitter_title %}Study Hour Tracking App Comparisons | GreekGeek{% endblock %}
+{% block twitter_description %}Compare GreekGeek, CampusStudy, and MyGreekStudy for Greek organization study hour tracking, pricing, approved locations, reports, and setup.{% endblock %}
+
+{% block content %}
+<section class="section compare-hero">
+    <div class="container">
+        <div class="section-heading">
+            <p class="eyebrow">Product comparisons</p>
+            <h1>Compare study hour tracking apps for Greek organizations.</h1>
+            <p>
+                GreekGeek comparison pages help academic chairs compare study-hour tracking tools
+                by pricing, GPS-approved locations, reports, onboarding, and chapter setup workflow.
+            </p>
+        </div>
+
+        <div class="support-grid">
+            {% for page in pages %}
+            <article class="feature-card support-card">
+                <p class="eyebrow">{{ page.eyebrow }}</p>
+                <h2><a href="/compare/{{ page.slug }}/">{{ page.h1 }}</a></h2>
+                <p>{{ page.meta_description }}</p>
+                <a class="support-link" href="/compare/{{ page.slug }}/">Read comparison</a>
+            </article>
+            {% endfor %}
+        </div>
+
+        <div class="inline-cta-panel support-contact-panel">
+            <div>
+                <h2>Want to compare using your chapter's rules?</h2>
+                <p>Start a free trial and test approved locations, reports, and member onboarding with your actual workflow.</p>
+            </div>
+            <a class="btn btn-primary" href="/register/" data-track="compare_trial_clicked">Start free trial</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

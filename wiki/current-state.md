@@ -26,7 +26,11 @@ Finish launch-critical product, backend, onboarding, and operational work so the
 - Backend environment values are expected from `Backend/.env`.
 - Confirmed organization pricing is `$149.99` per year per organization.
 - Confirmed launch trial is one month free; do not use a one-year free trial.
-- First landing-page remediation pass is implemented: landing copy assumes App Store availability, App Store badges are retained with a centralized placeholder href for the final store URL, one-month trial pricing, trust/support section, SEO/social metadata, favicon, and optimized WebP landing screenshots.
+- First landing-page remediation pass is implemented: landing copy assumes App Store availability, App Store badges are retained with a centralized placeholder href for the final store URL, one-month trial pricing, trust/support section, SEO/social metadata, favicon, optimized WebP landing screenshots, and CampusStudy-informed SEO language for fraternity/sorority GPS study hour tracking.
+- SEO support pages are live in the Django site under `/support/`, covering approved-location study hours, sorority GPS study tracking, spreadsheet replacement, chapter study hour requirements, and member chapter-code onboarding.
+- Public contact form is live under `/contact/`, linked from the footer, landing support section, and support pages, and sends to `CONTACT_TO_EMAIL` through the existing ZeptoMail-backed email service.
+- Landing CTAs are focused on starting a free organization trial first and downloading the mobile app second; member-code CTA buttons were removed, and App Store badge links are controlled by `APP_STORE_URL`.
+- Product comparison pages are live under `/compare/`, covering GreekGeek vs CampusStudy, GreekGeek vs MyGreekStudy, and CampusStudy vs MyGreekStudy with a GreekGeek alternative angle.
 
 ## Open Questions
 

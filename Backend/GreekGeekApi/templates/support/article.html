@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ article.title }}{% endblock %}
+{% block meta_description %}{{ article.meta_description }}{% endblock %}
+{% block canonical_url %}https://greekgeek.app/support/{{ article.slug }}/{% endblock %}
+{% block og_title %}{{ article.title }}{% endblock %}
+{% block og_description %}{{ article.meta_description }}{% endblock %}
+{% block twitter_title %}{{ article.title }}{% endblock %}
+{% block twitter_description %}{{ article.meta_description }}{% endblock %}
+
+{% block content %}
+<article class="section support-article">
+    <div class="container">
+        <div class="support-layout">
+            <div class="support-main">
+                <p class="eyebrow">{{ article.eyebrow }}</p>
+                <h1>{{ article.h1 }}</h1>
+                <p class="support-intro">{{ article.intro }}</p>
+
+                <section class="support-section">
+                    <h2>How to do it in GreekGeek</h2>
+                    <div class="support-steps">
+                        {% for step in article.steps %}
+                        <section class="support-step">
+                            <span>{{ forloop.counter }}</span>
+                            <div>
+                                <h3>{{ step.title }}</h3>
+                                <p>{{ step.body }}</p>
+                            </div>
+                        </section>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="support-section">
+                    <h2>Best practices</h2>
+                    <ul class="check-list">
+                        {% for tip in article.tips %}
+                        <li>{{ tip }}</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+
+                <section class="inline-cta-panel support-cta">
+                    <div>
+                        <h2>Ready to set this up?</h2>
+                        <p>Start a free month, create your chapter workspace, and configure the first study period.</p>
+                    </div>
+                    <a class="btn btn-primary" href="/register/" data-track="support_trial_clicked">Start free trial</a>
+                </section>
+            </div>
+
+            <aside class="support-sidebar" aria-label="Related support articles">
+                <h2>Related articles</h2>
+                {% for related in related_articles %}
+                <a href="/support/{{ related.slug }}/">{{ related.h1 }}</a>
+                {% endfor %}
+                <a href="/contact/?topic=Technical%20support">Contact GreekGeek support</a>
+                <a href="/support/">All support articles</a>
+            </aside>
+        </div>
+    </div>
+</article>
+
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "{{ article.h1|escapejs }}",
+    "description": "{{ article.meta_description|escapejs }}",
+    "mainEntityOfPage": "https://greekgeek.app/support/{{ article.slug }}/",
+    "author": {
+        "@type": "Organization",
+        "name": "GreekGeek"
+    },
+    "publisher": {
+        "@type": "Organization",
+        "name": "GreekGeek"
+    }
+}
+</script>
+{% endblock %}
