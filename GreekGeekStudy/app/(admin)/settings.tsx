@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, Alert, Switch } from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, SafeAreaView, Alert, Switch } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -11,8 +11,6 @@ import { Card, ScreenHeader } from '../../components/Design'
 type AdminSettingsState = {
   requireLocationVerification: boolean
   allowManualEntry: boolean
-  requirePhotos: boolean
-  photoFrequency: number
   sendReminderEmails: boolean
   reminderFrequency: string
   sendProgressReports: boolean
@@ -27,8 +25,6 @@ type AdminSettingsState = {
 const defaultSettings: AdminSettingsState = {
   requireLocationVerification: true,
   allowManualEntry: false,
-  requirePhotos: false,
-  photoFrequency: 60,
   sendReminderEmails: true,
   reminderFrequency: 'daily',
   sendProgressReports: true,
@@ -43,8 +39,6 @@ const defaultSettings: AdminSettingsState = {
 const mapApiToSettings = (apiSettings: any): AdminSettingsState => ({
   requireLocationVerification: apiSettings.require_location_verification,
   allowManualEntry: apiSettings.allow_manual_entry,
-  requirePhotos: false,
-  photoFrequency: apiSettings.photo_frequency,
   sendReminderEmails: apiSettings.send_reminder_emails,
   reminderFrequency: apiSettings.reminder_frequency,
   sendProgressReports: apiSettings.send_progress_reports,
@@ -189,7 +183,7 @@ const AdminSettings = () => {
     <SafeAreaView className="flex-1 bg-gg-bg">
       <ScreenHeader
         title="Admin Settings"
-        subtitle="Verification, notifications, and operational controls"
+        subtitle="Verification and planned notifications"
       />
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
         <Card className="mb-4">
@@ -220,37 +214,6 @@ const AdminSettings = () => {
               thumbColor="#f4f3f4"
             />
           </View>
-          
-          <View className="mb-4 flex-row justify-between items-center">
-            <View className="flex-1">
-              <Text className="font-psemibold">Require Photos</Text>
-              <Text className="text-gg-muted text-sm">Photo verification is not available yet</Text>
-            </View>
-            <Switch
-              value={false}
-              onValueChange={() => Alert.alert("Coming Soon", "Photo verification is intentionally deferred for now.")}
-              trackColor={{ false: "#767577", true: "#006b2c" }}
-              thumbColor="#f4f3f4"
-            />
-          </View>
-          
-          {settings.requirePhotos && (
-            <View className="mb-4">
-              <Text className="font-psemibold mb-1">Photo Frequency (minutes)</Text>
-              <View className="flex-row items-center">
-                <TextInput
-                  value={settings.photoFrequency.toString()}
-                  onChangeText={(text) => {
-                    const frequency = parseInt(text) || 60
-                    setSettings({...settings, photoFrequency: frequency})
-                  }}
-                  className="border border-gg-outline rounded-lg p-2 w-20 mr-2"
-                  keyboardType="numeric"
-                />
-                <Text className="text-gg-muted">minutes</Text>
-              </View>
-            </View>
-          )}
         </Card>
         
         <Card className="mb-4">
@@ -277,101 +240,6 @@ const AdminSettings = () => {
             <Switch
               value={false}
               disabled={true}
-              trackColor={{ false: "#767577", true: "#006b2c" }}
-              thumbColor="#f4f3f4"
-            />
-          </View>
-        </Card>
-        
-        <Card className="mb-4">
-          <Text className="text-lg font-psemibold mb-4 text-gg-text">Planned Security Controls</Text>
-          
-          <View className="mb-4">
-            <Text className="font-psemibold mb-1 text-gg-muted">Password Reset Period</Text>
-            <View className="flex-row items-center">
-              <TextInput
-                value={settings.requirePasswordReset.toString()}
-                editable={false}
-                className="border border-gg-outlineVariant bg-gg-surfaceContainer rounded-lg p-2 w-20 mr-2 text-gg-muted"
-                keyboardType="numeric"
-              />
-              <Text className="text-gg-muted">not active yet</Text>
-            </View>
-            <Text className="text-gg-muted text-sm mt-1">
-              Password age enforcement needs an auth policy pass before launch.
-            </Text>
-          </View>
-          
-          <View className="mb-4">
-            <Text className="font-psemibold mb-1 text-gg-muted">Session Timeout</Text>
-            <View className="flex-row items-center">
-              <TextInput
-                value={settings.sessionTimeout.toString()}
-                editable={false}
-                className="border border-gg-outlineVariant bg-gg-surfaceContainer rounded-lg p-2 w-20 mr-2 text-gg-muted"
-                keyboardType="numeric"
-              />
-              <Text className="text-gg-muted">not active yet</Text>
-            </View>
-            <Text className="text-gg-muted text-sm mt-1">
-              Current JWT tokens do not support server-side inactivity timeout.
-            </Text>
-          </View>
-          
-          <View className="mb-4 flex-row justify-between items-center">
-            <View className="flex-1">
-              <Text className="font-psemibold text-gg-muted">Allow Multiple Devices</Text>
-              <Text className="text-gg-muted text-sm">Not active yet. Device session tracking is not enabled.</Text>
-            </View>
-            <Switch
-              value={false}
-              disabled={true}
-              trackColor={{ false: "#767577", true: "#006b2c" }}
-              thumbColor="#f4f3f4"
-            />
-          </View>
-        </Card>
-        
-        <Card className="mb-4">
-          <Text className="text-lg font-psemibold mb-4 text-gg-text">Advanced</Text>
-          
-          <View className="mb-4 flex-row justify-between items-center">
-            <View className="flex-1">
-              <Text className="font-psemibold text-gg-muted">Debug Mode</Text>
-              <Text className="text-gg-muted text-sm">Not active yet. Server logging is configured outside the app.</Text>
-            </View>
-            <Switch
-              value={false}
-              disabled={true}
-              trackColor={{ false: "#767577", true: "#006b2c" }}
-              thumbColor="#f4f3f4"
-            />
-          </View>
-          
-          <View className="mb-4 flex-row justify-between items-center">
-            <View className="flex-1">
-              <Text className="font-psemibold">Maintenance Mode</Text>
-              <Text className="text-gg-muted text-sm">Temporarily disable the app for maintenance</Text>
-            </View>
-            <Switch
-              value={settings.maintenanceMode}
-              onValueChange={(value) => {
-                if (value) {
-                  Alert.alert(
-                    "Enable Maintenance Mode",
-                    "This will prevent all users from accessing the app. Are you sure?",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      { 
-                        text: "Enable", 
-                        onPress: () => setSettings({...settings, maintenanceMode: true})
-                      }
-                    ]
-                  )
-                } else {
-                  setSettings({...settings, maintenanceMode: false})
-                }
-              }}
               trackColor={{ false: "#767577", true: "#006b2c" }}
               thumbColor="#f4f3f4"
             />
