@@ -144,6 +144,21 @@ h6 {
     color: var(--color-green-dark);
 }
 
+.app-store-badge-link {
+    display: inline-flex;
+    line-height: 0;
+}
+
+.app-store-badge {
+    display: block;
+    height: auto;
+    width: 160px;
+}
+
+.app-store-badge-sm {
+    width: 135px;
+}
+
 .form-control:focus {
     border-color: var(--color-green);
     box-shadow: 0 0 0 0.2rem rgba(22, 163, 74, 0.14);
@@ -212,95 +227,42 @@ h6 {
 }
 
 .hero-media {
-    min-height: 520px;
+    align-items: end;
+    display: grid;
+    gap: clamp(1rem, 3vw, 2rem);
+    grid-template-columns: minmax(0, 260px) minmax(0, 220px);
+    justify-content: center;
+    min-height: 545px;
+    padding: 1rem 0 0.5rem;
     position: relative;
 }
 
-.media-placeholder,
-.phone-placeholder {
-    background:
-        linear-gradient(135deg, rgba(22, 163, 74, 0.08), rgba(22, 163, 74, 0)),
-        var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-}
-
-.media-placeholder {
+.device-shot {
     align-items: center;
-    color: var(--color-muted);
     display: flex;
-    font-weight: 700;
-    justify-content: center;
-    min-height: 260px;
-    padding: 2rem;
-    text-align: center;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    position: relative;
 }
 
-.media-placeholder-large {
-    height: 370px;
-    margin-left: 2rem;
-    margin-top: 1.5rem;
-}
-
-.phone-placeholder {
-    background: var(--color-text);
-    bottom: 0;
-    box-shadow: var(--shadow-soft);
-    height: 410px;
-    left: 0;
-    padding: 0.85rem;
-    position: absolute;
-    width: 220px;
-}
-
-.phone-top {
-    background: #202725;
-    border-radius: 999px;
-    height: 0.35rem;
-    margin: 0 auto 0.8rem;
-    width: 3rem;
-}
-
-.phone-screen {
-    background: #ffffff;
-    border-radius: 6px;
-    height: calc(100% - 1.15rem);
-    padding: 1rem;
-}
-
-.screen-label {
-    color: var(--color-text);
+.device-image {
     display: block;
-    font-size: 0.82rem;
-    font-weight: 800;
-    margin-bottom: 1rem;
+    filter: drop-shadow(0 24px 32px rgba(11, 15, 14, 0.18));
+    height: auto;
+    width: min(100%, 245px);
 }
 
-.progress-line {
-    background: var(--color-green);
-    border-radius: 999px;
-    height: 0.65rem;
-    margin-bottom: 0.7rem;
-    width: 100%;
+.hero-device-primary .device-image {
+    width: min(100%, 260px);
 }
 
-.progress-line.short {
-    background: var(--color-green-soft);
-    width: 62%;
+.hero-device-secondary {
+    transform: translateY(2.25rem);
 }
 
-.metric-row {
-    align-items: center;
-    border-bottom: 1px solid var(--color-border);
-    color: var(--color-muted);
-    display: flex;
-    font-size: 0.78rem;
-    justify-content: space-between;
-    padding: 0.8rem 0;
-}
-
-.metric-row strong {
-    color: var(--color-text);
+.hero-device-secondary .device-image {
+    width: min(100%, 222px);
 }
 
 .section {
@@ -373,14 +335,16 @@ h6 {
 }
 
 .feature-card h3,
-.workflow-step h3 {
+.workflow-step h3,
+.workflow-copy h3 {
     font-size: 1.08rem;
     font-weight: 800;
     margin-bottom: 0.7rem;
 }
 
 .feature-card p,
-.workflow-step p {
+.workflow-step p,
+.workflow-copy p {
     color: var(--color-muted);
     margin-bottom: 0;
 }
@@ -397,10 +361,12 @@ h6 {
     margin-bottom: 1.6rem;
 }
 
-.workflow-grid {
+.workflow-desktop {
     display: grid;
-    gap: 1rem;
+    column-gap: 1rem;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 2rem;
+    row-gap: 2rem;
 }
 
 .workflow-step span {
@@ -416,11 +382,55 @@ h6 {
     width: 2.15rem;
 }
 
-.media-strip {
+.workflow-showcase {
+    border-top: 1px solid var(--color-border);
+    display: none;
+    margin-top: 2rem;
+}
+
+.workflow-panel {
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
     display: grid;
-    gap: 1rem;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin-top: 1rem;
+    gap: 2rem;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 310px);
+    padding: 2.25rem 0;
+}
+
+.workflow-copy {
+    max-width: 620px;
+}
+
+.workflow-number {
+    align-items: center;
+    background: var(--color-green-soft);
+    border-radius: 999px;
+    color: var(--color-green-dark);
+    display: inline-flex;
+    font-weight: 900;
+    height: 2.15rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+    width: 2.15rem;
+}
+
+.screenshot-card {
+    justify-self: end;
+    margin: 0;
+    max-width: 270px;
+    width: 100%;
+}
+
+.screenshot-card img {
+    display: block;
+    filter: drop-shadow(0 18px 24px rgba(11, 15, 14, 0.14));
+    height: auto;
+    width: 100%;
+}
+
+.screenshot-card.desktop-shot {
+    justify-self: center;
+    max-width: 220px;
 }
 
 .split-grid {
@@ -434,12 +444,16 @@ h6 {
     grid-template-columns: minmax(300px, 0.75fr) minmax(0, 0.85fr);
 }
 
-.vertical-placeholder {
-    min-height: 520px;
+.feature-device {
+    justify-self: end;
 }
 
-.dashboard-placeholder {
-    min-height: 430px;
+.feature-device-left {
+    justify-self: start;
+}
+
+.feature-device .device-image {
+    width: min(100%, 250px);
 }
 
 .check-list {
@@ -559,6 +573,10 @@ details p {
     margin: 1rem 0 0;
 }
 
+.footer-app-store {
+    margin-top: 1rem;
+}
+
 .footer-links {
     display: flex;
     flex-wrap: wrap;
@@ -615,17 +633,12 @@ details p {
     }
 
     .hero-media {
-        min-height: 470px;
-    }
-
-    .media-placeholder-large {
-        margin-left: 4rem;
+        min-height: 535px;
     }
 
     .feature-grid.three,
     .feature-grid.four,
-    .workflow-grid,
-    .media-strip {
+    .workflow-panel {
         grid-template-columns: 1fr 1fr;
     }
 }
@@ -644,39 +657,65 @@ details p {
     }
 
     .hero-actions .btn,
+    .hero-actions .app-store-badge-link,
     .action-row .btn {
         width: 100%;
     }
 
+    .hero-actions .app-store-badge {
+        width: 160px;
+    }
+
     .hero-media {
-        min-height: 410px;
+        grid-template-columns: 1fr;
+        justify-content: start;
+        min-height: auto;
+        padding-top: 0;
     }
 
-    .media-placeholder-large {
-        height: 300px;
-        margin-left: 2rem;
-        margin-top: 0;
+    .hero-device {
+        align-items: flex-start;
+        margin-top: 1.5rem;
     }
 
-    .phone-placeholder {
-        height: 330px;
-        width: 180px;
+    .hero-device-primary .device-image {
+        width: min(100%, 240px);
+    }
+
+    .hero-device-secondary {
+        display: none;
     }
 
     .section {
         padding: 3rem 0;
     }
 
+    .workflow-desktop {
+        display: none;
+    }
+
+    .workflow-showcase {
+        display: grid;
+    }
+
     .feature-grid.three,
     .feature-grid.four,
-    .workflow-grid,
-    .media-strip {
+    .workflow-panel {
         grid-template-columns: 1fr;
     }
 
-    .vertical-placeholder,
-    .dashboard-placeholder {
-        min-height: 320px;
+    .screenshot-card {
+        justify-self: start;
+        max-width: 230px;
+    }
+
+    .feature-device,
+    .feature-device-left {
+        justify-self: start;
+    }
+
+    .feature-device .device-image {
+        width: min(100%, 220px);
     }
 
     .footer-grid {

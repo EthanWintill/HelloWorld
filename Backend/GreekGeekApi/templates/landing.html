@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}GreekGeek | Study Hour Tracking for Greek Organizations{% endblock %}
 {% block meta_description %}GreekGeek helps fraternities, sororities, and campus organizations set study requirements, verify study sessions, and track chapter progress from one clean scorecard.{% endblock %}
@@ -18,24 +19,19 @@
                 </p>
                 <div class="hero-actions">
                     <a class="btn btn-primary btn-lg" href="/register/" data-track="org_register_clicked">Register your organization</a>
-                    <a class="btn btn-outline-dark btn-lg" href="#member-access" data-track="member_register_clicked">Register with code</a>
+                    <a class="app-store-badge-link" href="#member-access" data-track="app_store_clicked" aria-label="Download GreekGeek on the App Store">
+                        <img class="app-store-badge" src="{% static 'img/download-on-the-app-store.svg' %}" width="160" height="53" alt="Download on the App Store">
+                    </a>
                 </div>
                 <p class="hero-note">Already managing a chapter? <a href="/login/">Sign in to the admin portal</a>.</p>
             </div>
             <div class="hero-media" aria-label="GreekGeek product preview">
-                <div class="media-placeholder media-placeholder-large">
-                    <span>Product screenshot placeholder</span>
-                </div>
-                <div class="phone-placeholder">
-                    <div class="phone-top"></div>
-                    <div class="phone-screen">
-                        <span class="screen-label">Study Scorecard</span>
-                        <div class="progress-line"></div>
-                        <div class="progress-line short"></div>
-                        <div class="metric-row"><span>Hours</span><strong>3.5 / 4</strong></div>
-                        <div class="metric-row"><span>Status</span><strong>On track</strong></div>
-                    </div>
-                </div>
+                <figure class="device-shot hero-device hero-device-primary">
+                    <img class="device-image" src="{% static 'screenshots/landing/study_screen_user.png' %}" width="260" height="534" alt="GreekGeek member study status, approved area map, and clock-in screen" fetchpriority="high">
+                </figure>
+                <figure class="device-shot hero-device hero-device-secondary">
+                    <img class="device-image" src="{% static 'screenshots/landing/ranking_screen_user.png' %}" width="222" height="456" alt="GreekGeek member rankings screen with chapter leaderboard and study hours" fetchpriority="high">
+                </figure>
             </div>
         </div>
     </div>
@@ -79,27 +75,63 @@
             <p class="eyebrow">How it works</p>
             <h2>One clean loop for requirements, study sessions, and progress.</h2>
         </div>
-        <div class="workflow-grid">
-            <article class="workflow-step">
+        <div class="workflow-desktop">
+            <div class="workflow-step">
                 <span>1</span>
                 <h3>Set requirements</h3>
                 <p>Admins create study periods, required hours, groups, and approved study locations.</p>
-            </article>
-            <article class="workflow-step">
+            </div>
+            <div class="workflow-step">
                 <span>2</span>
                 <h3>Members clock in</h3>
                 <p>Members start study sessions from the app when they are at an approved location.</p>
-            </article>
-            <article class="workflow-step">
+            </div>
+            <div class="workflow-step">
                 <span>3</span>
                 <h3>Track progress</h3>
                 <p>Officers review leaderboards, live study activity, reports, and progress by period.</p>
-            </article>
+            </div>
+            <figure class="screenshot-card desktop-shot">
+                <img src="{% static 'screenshots/landing/studyperiods_admin.png' %}" width="220" height="452" alt="Admin study period setup screen" loading="lazy" decoding="async">
+            </figure>
+            <figure class="screenshot-card desktop-shot">
+                <img src="{% static 'screenshots/landing/study_screen_user.png' %}" width="220" height="452" alt="Member study clock-in screen" loading="lazy" decoding="async">
+            </figure>
+            <figure class="screenshot-card desktop-shot">
+                <img src="{% static 'screenshots/landing/reports_admin.png' %}" width="220" height="452" alt="Admin reports screen" loading="lazy" decoding="async">
+            </figure>
         </div>
-        <div class="media-strip">
-            <div class="media-placeholder"><span>Clock-in screen placeholder</span></div>
-            <div class="media-placeholder"><span>Leaderboard placeholder</span></div>
-            <div class="media-placeholder"><span>Reports placeholder</span></div>
+        <div class="workflow-showcase">
+            <article class="workflow-panel">
+                <div class="workflow-copy">
+                    <span class="workflow-number">1</span>
+                    <h3>Set requirements</h3>
+                    <p>Admins create the study period, required hours, groups, and approved locations before members ever clock in.</p>
+                </div>
+                <figure class="screenshot-card">
+                    <img src="{% static 'screenshots/landing/studyperiods_admin.png' %}" width="270" height="555" alt="Admin study period setup screen" loading="lazy" decoding="async">
+                </figure>
+            </article>
+            <article class="workflow-panel">
+                <div class="workflow-copy">
+                    <span class="workflow-number">2</span>
+                    <h3>Members clock in</h3>
+                    <p>Members see their current requirement, confirm they are inside an approved study area, and start a verified session.</p>
+                </div>
+                <figure class="screenshot-card">
+                    <img src="{% static 'screenshots/landing/study_screen_user.png' %}" width="270" height="555" alt="Member study clock-in screen" loading="lazy" decoding="async">
+                </figure>
+            </article>
+            <article class="workflow-panel">
+                <div class="workflow-copy">
+                    <span class="workflow-number">3</span>
+                    <h3>Track progress</h3>
+                    <p>Officers can review progress by member, leaderboard position, reports, and study period before the deadline.</p>
+                </div>
+                <figure class="screenshot-card">
+                    <img src="{% static 'screenshots/landing/reports_admin.png' %}" width="270" height="555" alt="Admin reports screen" loading="lazy" decoding="async">
+                </figure>
+            </article>
         </div>
     </div>
 </section>
@@ -123,7 +155,9 @@
                     for App Store, TestFlight, or deep-link buttons when those links are finalized.
                 </p>
             </div>
-            <div class="media-placeholder vertical-placeholder"><span>Member app screenshot placeholder</span></div>
+            <figure class="device-shot feature-device">
+                <img class="device-image" src="{% static 'screenshots/landing/manageusers_admin.png' %}" width="250" height="514" alt="GreekGeek admin member management screen" loading="lazy" decoding="async">
+            </figure>
         </div>
     </div>
 </section>
@@ -131,7 +165,9 @@
 <section class="section" id="for-organizations">
     <div class="container">
         <div class="split-grid reverse">
-            <div class="media-placeholder dashboard-placeholder"><span>Admin dashboard placeholder</span></div>
+            <figure class="device-shot feature-device feature-device-left">
+                <img class="device-image" src="{% static 'screenshots/landing/dashboard_admin.png' %}" width="250" height="514" alt="GreekGeek admin dashboard with users, active areas, setup checklist, and chapter controls" loading="lazy" decoding="async">
+            </figure>
             <div>
                 <p class="eyebrow">Organization admin experience</p>
                 <h2>Built for the people responsible for chapter accountability.</h2>
