@@ -17,3 +17,5 @@ AppScreenshots/
 Backend/GreekGeekApi/staticfiles/
 
 screenshots/
+
+GreekGeekStudy/constants/api.js
