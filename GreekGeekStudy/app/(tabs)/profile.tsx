@@ -433,7 +433,7 @@ const Profile = () => {
           transparent={true}
           onRequestClose={() => setModalVisible(false)}
         >
-          <View className="flex-1 justify-end bg-black/40">
+          <View className="flex-1 justify-end">
             <View className="bg-gg-surface p-5 rounded-t-2xl">
               <View className="flex-row items-center justify-between mb-5">
                 <Text className="text-xl font-psemibold text-gg-text">Notification settings</Text>
