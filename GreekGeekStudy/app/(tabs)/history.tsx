@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, useWindowDimensions } from 'react-native'
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, useWindowDimensions, Modal, Pressable } from 'react-native'
 import React, { useRef, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useDashboard } from '../../context/DashboardContext'
@@ -23,7 +23,7 @@ interface Session {
 }
 
 interface PeriodInstance {
-  id: string;
+  id: number;
   start_date: string;
   end_date: string;
   is_active: boolean;
@@ -32,6 +32,17 @@ interface PeriodInstance {
 const History = () => {
   const { dashboardState } = useDashboard()
   const { isLoading, error, data } = dashboardState
+
+  // All hooks must be declared before any early returns
+  const { width } = useWindowDimensions()
+  const SESSIONS_PER_PAGE = 6
+  const [currentPage, setCurrentPage] = useState(0)
+  const pagerRef = useRef<ScrollView>(null)
+  const [filterVisible, setFilterVisible] = useState(false)
+  const [pendingLocationIds, setPendingLocationIds] = useState<Set<number>>(new Set())
+  const [pendingPeriodId, setPendingPeriodId] = useState<number | null>(null)
+  const [activeLocationIds, setActiveLocationIds] = useState<Set<number>>(new Set())
+  const [activePeriodId, setActivePeriodId] = useState<number | null>(null)
 
   const getLocationName = (locationValue: number | Location | null) => {
     if (!locationValue) return 'Manual Entry'
@@ -118,21 +129,9 @@ const History = () => {
     );
   }
 
-  const getRequiredHours = () => {
-    if (!data?.active_period_setting) return 0;
-    return data.active_period_setting.required_hours;
-  }
-
-  // Add study progress functions
   const requiredHours = () => {
     if (!data?.active_period_setting) return 0;
     return Number(data.active_period_setting.required_hours);
-  }
-
-  const studyHoursLeft = () => {
-    const required = requiredHours();
-    const studied = hoursStudied();
-    return Math.max(0, required - studied);
   }
 
   const calculatePercentComplete = () => {
@@ -225,12 +224,58 @@ const History = () => {
     )
   }
 
-  const { width } = useWindowDimensions()
-  const SESSIONS_PER_PAGE = 6
-  const [currentPage, setCurrentPage] = useState(0)
-  const pagerRef = useRef<ScrollView>(null)
+  const activeFilterCount = (activeLocationIds.size > 0 ? 1 : 0) + (activePeriodId ? 1 : 0)
 
-  const sessions = getSortedSessions()
+  const getFilteredSessions = () => {
+    let result = getSortedSessions()
+    if (activeLocationIds.size > 0) {
+      result = result.filter((s: Session) => {
+        const locId = typeof s.location === 'object' && s.location ? s.location.id : s.location as number | null
+        return locId != null && activeLocationIds.has(locId)
+      })
+    }
+    if (activePeriodId) {
+      const period = data?.org_period_instances?.find((p: PeriodInstance) => p.id === activePeriodId)
+      if (period) {
+        const start = new Date(period.start_date).getTime()
+        const end = new Date(period.end_date).getTime()
+        result = result.filter((s: Session) => {
+          const t = new Date(s.start_time).getTime()
+          return t >= start && t <= end
+        })
+      }
+    }
+    return result
+  }
+
+  const openFilter = () => {
+    setPendingLocationIds(new Set(activeLocationIds))
+    setPendingPeriodId(activePeriodId)
+    setFilterVisible(true)
+  }
+
+  const applyFilter = () => {
+    setActiveLocationIds(new Set(pendingLocationIds))
+    setActivePeriodId(pendingPeriodId)
+    setCurrentPage(0)
+    pagerRef.current?.scrollTo({ x: 0, animated: false })
+    setFilterVisible(false)
+  }
+
+  const clearFilter = () => {
+    setPendingLocationIds(new Set())
+    setPendingPeriodId(null)
+  }
+
+  const toggleLocation = (id: number) => {
+    setPendingLocationIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const sessions = getFilteredSessions()
   const periodInfo = getActivePeriodInfo()
 
   const pages: Session[][] = []
@@ -287,9 +332,14 @@ const History = () => {
 
         <View className="flex-row items-center justify-between mb-3">
           <Text className="font-psemibold text-[17px] leading-6 text-gg-text">Study Sessions</Text>
-          <TouchableOpacity className="flex-row items-center px-3 py-2 rounded-lg bg-gg-surface border border-gg-outlineVariant">
-            <Text className="font-pmedium text-sm text-gg-muted mr-1">Filter</Text>
-            <Ionicons name="filter-outline" size={16} color="#3e4a3d" />
+          <TouchableOpacity
+            onPress={openFilter}
+            className={`flex-row items-center px-3 py-2 rounded-lg border ${activeFilterCount > 0 ? 'bg-gg-primary border-gg-primary' : 'bg-gg-surface border-gg-outlineVariant'}`}
+          >
+            <Text className={`font-pmedium text-sm mr-1 ${activeFilterCount > 0 ? 'text-white' : 'text-gg-muted'}`}>
+              {activeFilterCount > 0 ? `Filter (${activeFilterCount})` : 'Filter'}
+            </Text>
+            <Ionicons name="filter-outline" size={16} color={activeFilterCount > 0 ? '#fff' : '#3e4a3d'} />
           </TouchableOpacity>
         </View>
       </View>
@@ -374,6 +424,82 @@ const History = () => {
           ))}
         </View>
       )}
+      {/* Filter bottom sheet */}
+      <Modal
+        visible={filterVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFilterVisible(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/40"
+          onPress={() => setFilterVisible(false)}
+        />
+        <View className="bg-gg-bg rounded-t-2xl px-5 pt-4 pb-10">
+          <View className="w-10 h-1 bg-gg-outlineVariant rounded-full self-center mb-4" />
+
+          <View className="flex-row items-center justify-between mb-5">
+            <Text className="font-pbold text-lg text-gg-text">Filter Sessions</Text>
+            <TouchableOpacity onPress={clearFilter}>
+              <Text className="font-pmedium text-sm text-gg-primary">Clear all</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Location filter */}
+          {data?.org_locations?.length > 0 && (
+            <View className="mb-5">
+              <Text className="font-psemibold text-xs uppercase tracking-wider text-gg-muted mb-3">Location</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {data.org_locations.map((loc: Location) => {
+                  const selected = pendingLocationIds.has(loc.id)
+                  return (
+                    <TouchableOpacity
+                      key={loc.id}
+                      onPress={() => toggleLocation(loc.id)}
+                      className={`px-3 py-1.5 rounded-full border ${selected ? 'bg-gg-primary border-gg-primary' : 'bg-gg-surface border-gg-outlineVariant'}`}
+                    >
+                      <Text className={`font-pmedium text-sm ${selected ? 'text-white' : 'text-gg-text'}`}>
+                        {loc.name}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Period filter */}
+          {data?.org_period_instances?.length > 0 && (
+            <View className="mb-6">
+              <Text className="font-psemibold text-xs uppercase tracking-wider text-gg-muted mb-3">Period</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {data.org_period_instances.map((instance: PeriodInstance) => {
+                  const selected = pendingPeriodId === instance.id
+                  const label = `${new Date(instance.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${new Date(instance.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                  return (
+                    <TouchableOpacity
+                      key={instance.id}
+                      onPress={() => setPendingPeriodId(selected ? null : instance.id)}
+                      className={`px-3 py-1.5 rounded-full border ${selected ? 'bg-gg-primary border-gg-primary' : 'bg-gg-surface border-gg-outlineVariant'}`}
+                    >
+                      <Text className={`font-pmedium text-sm ${selected ? 'text-white' : 'text-gg-text'}`}>
+                        {label}{instance.is_active ? ' (Active)' : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </View>
+          )}
+
+          <TouchableOpacity
+            onPress={applyFilter}
+            className="bg-gg-primary rounded-xl py-3.5 items-center"
+          >
+            <Text className="font-pbold text-base text-white">Apply</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
