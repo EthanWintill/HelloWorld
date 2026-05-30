@@ -1,5 +1,5 @@
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native'
-import React from 'react'
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, useWindowDimensions } from 'react-native'
+import React, { useRef, useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -225,16 +225,24 @@ const History = () => {
     )
   }
 
+  const { width } = useWindowDimensions()
+  const SESSIONS_PER_PAGE = 6
+  const [currentPage, setCurrentPage] = useState(0)
+  const pagerRef = useRef<ScrollView>(null)
+
   const sessions = getSortedSessions()
   const periodInfo = getActivePeriodInfo()
 
+  const pages: Session[][] = []
+  for (let i = 0; i < sessions.length; i += SESSIONS_PER_PAGE) {
+    pages.push(sessions.slice(i, i + SESSIONS_PER_PAGE))
+  }
+  if (pages.length === 0) pages.push([])
+
   return (
     <SafeAreaView className="bg-gg-bg flex-1">
-      <ScrollView
-        className="flex-1 px-4 pt-6"
-        contentContainerStyle={{ paddingBottom: 128 }}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* Fixed header — progress card + section title */}
+      <View className="px-4 pt-6">
         <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl overflow-hidden relative mb-6">
           <View className="absolute left-0 top-0 bottom-0 w-1 bg-gg-primary" />
           <View className="p-6">
@@ -277,59 +285,95 @@ const History = () => {
           </View>
         </View>
 
-        <View className="flex-row items-center justify-between mb-2">
+        <View className="flex-row items-center justify-between mb-3">
           <Text className="font-psemibold text-[17px] leading-6 text-gg-text">Study Sessions</Text>
           <TouchableOpacity className="flex-row items-center px-3 py-2 rounded-lg bg-gg-surface border border-gg-outlineVariant">
             <Text className="font-pmedium text-sm text-gg-muted mr-1">Filter</Text>
             <Ionicons name="filter-outline" size={16} color="#3e4a3d" />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {sessions.map((session: Session, index: number) => {
-          const iconNames = ['book-outline', 'school-outline', 'desktop-outline', 'library-outline'] as const
-          const iconName = iconNames[index % iconNames.length]
+      {/* Swipeable pages of sessions */}
+      <ScrollView
+        ref={pagerRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => {
+          const page = Math.round(e.nativeEvent.contentOffset.x / width)
+          setCurrentPage(page)
+        }}
+        className="flex-1"
+      >
+        {pages.map((pageSessions, pageIndex) => (
+          <View key={pageIndex} style={{ width }} className="px-4">
+            {pageSessions.length === 0 ? (
+              <View className="bg-gg-surface border border-gg-outlineVariant rounded-lg p-6 mt-2">
+                <EmptyState icon="time-outline" title="No sessions yet" message="Completed study sessions will appear here." />
+              </View>
+            ) : (
+              pageSessions.map((session: Session, index: number) => {
+                const iconNames = ['book-outline', 'school-outline', 'desktop-outline', 'library-outline'] as const
+                const iconName = iconNames[(pageIndex * SESSIONS_PER_PAGE + index) % iconNames.length]
 
-          return (
-            <View
-              key={session.id}
-              className="bg-gg-surface border border-gg-outlineVariant rounded-lg p-4 mb-2 flex-row items-center justify-between"
-            >
-              <View className="flex-row items-center flex-1 pr-3">
-                <View className="w-10 h-10 rounded-full bg-gg-surfaceContainer items-center justify-center mr-3">
-                  <Ionicons name={iconName} size={20} color="#006b2c" />
-                </View>
+                return (
+                  <View
+                    key={session.id}
+                    className="bg-gg-surface border border-gg-outlineVariant rounded-lg p-4 mb-2 flex-row items-center justify-between"
+                  >
+                    <View className="flex-row items-center flex-1 pr-3">
+                      <View className="w-10 h-10 rounded-full bg-gg-surfaceContainer items-center justify-center mr-3">
+                        <Ionicons name={iconName} size={20} color="#006b2c" />
+                      </View>
 
-                <View className="flex-1">
-                  <Text className="font-psemibold text-[15px] leading-5 text-gg-text" numberOfLines={1}>
-                    {formatSessionDate(session.start_time)}
-                  </Text>
-                  <View className="flex-row items-center mt-1">
-                    <Ionicons name="location-outline" size={14} color="#3e4a3d" />
-                    <Text className="font-pregular text-xs leading-4 text-gg-muted ml-1 flex-1" numberOfLines={1}>
-                      {getLocationName(session.location)}
-                    </Text>
+                      <View className="flex-1">
+                        <Text className="font-psemibold text-[15px] leading-5 text-gg-text" numberOfLines={1}>
+                          {formatSessionDate(session.start_time)}
+                        </Text>
+                        <View className="flex-row items-center mt-1">
+                          <Ionicons name="location-outline" size={14} color="#3e4a3d" />
+                          <Text className="font-pregular text-xs leading-4 text-gg-muted ml-1 flex-1" numberOfLines={1}>
+                            {getLocationName(session.location)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View className="items-end">
+                      <Text className="font-psemibold text-base leading-5 text-gg-primary">
+                        {formatDuration(session.hours)}
+                      </Text>
+                      <Text className="font-pregular text-xs leading-4 text-gg-muted mt-1">
+                        {formatSessionTime(session.start_time, session.hours)}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </View>
-
-              <View className="items-end">
-                <Text className="font-psemibold text-base leading-5 text-gg-primary">
-                  {formatDuration(session.hours)}
-                </Text>
-                <Text className="font-pregular text-xs leading-4 text-gg-muted mt-1">
-                  {formatSessionTime(session.start_time, session.hours)}
-                </Text>
-              </View>
-            </View>
-          )
-        })}
-
-        {sessions.length === 0 && (
-          <View className="bg-gg-surface border border-gg-outlineVariant rounded-lg p-6 mt-2">
-            <EmptyState icon="time-outline" title="No sessions yet" message="Completed study sessions will appear here." />
+                )
+              })
+            )}
           </View>
-        )}
+        ))}
       </ScrollView>
+
+      {/* Page dots */}
+      {pages.length > 1 && (
+        <View className="flex-row justify-center items-center pb-8 pt-3 gap-x-1.5">
+          {pages.map((_, i) => (
+            <TouchableOpacity
+              key={i}
+              onPress={() => {
+                pagerRef.current?.scrollTo({ x: i * width, animated: true })
+                setCurrentPage(i)
+              }}
+            >
+              <View
+                className={`rounded-full ${i === currentPage ? 'w-5 h-2 bg-gg-primary' : 'w-2 h-2 bg-gg-outlineVariant'}`}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </SafeAreaView>
   )
 }
