@@ -72,6 +72,8 @@ document.addEventListener('DOMContentLoaded', function() {
         loginSpinner.classList.remove('d-none');
         loginText.textContent = 'Signing in...';
         errorMessage.classList.add('d-none');
+        errorMessage.classList.add('alert-danger');
+        errorMessage.classList.remove('alert-info');
         
         const formData = new FormData(form);
         const data = {
@@ -154,9 +156,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     errorText = result.detail;
                 } else if (result.non_field_errors) {
                     errorText = result.non_field_errors.join(' ');
+                } else if (Array.isArray(result.errors)) {
+                    errorText = result.errors.map((error) => error.detail).join(' ');
                 }
+                const isUnverified = result.code === 'email_not_verified' || errorText.toLowerCase().includes('verify your email');
                 
-                errorMessage.textContent = errorText;
+                if (isUnverified) {
+                    errorMessage.innerHTML = `
+                        ${errorText}
+                        <button type="button" class="btn btn-link p-0 ms-1 align-baseline" id="resend-verification-btn">Resend verification email</button>
+                    `;
+                    document.getElementById('resend-verification-btn').addEventListener('click', async function() {
+                        await resendVerification(data.email, data.password);
+                    });
+                } else {
+                    errorMessage.textContent = errorText;
+                }
                 errorMessage.classList.remove('d-none');
             }
         } catch (error) {
@@ -170,6 +185,28 @@ document.addEventListener('DOMContentLoaded', function() {
             loginText.textContent = 'Sign In';
         }
     });
+
+    async function resendVerification(email, password) {
+        try {
+            const response = await fetch('/api/email-verification/resend/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email, password })
+            });
+            const result = await response.json();
+            let message = result.detail || 'Verification email sent. Please check your inbox.';
+            if (result.verification_url) {
+                message += ` <a href="${result.verification_url}">Open local verification link</a>`;
+            }
+            errorMessage.classList.remove('alert-danger');
+            errorMessage.classList.add('alert-info');
+            errorMessage.innerHTML = message;
+        } catch (error) {
+            errorMessage.textContent = 'Unable to resend verification email. Please try again.';
+        }
+    }
 });
 </script>
 {% endblock %}

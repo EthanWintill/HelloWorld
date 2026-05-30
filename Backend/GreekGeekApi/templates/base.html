@@ -47,6 +47,9 @@
                         <a class="nav-link" href="/support/">Support</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="/contact/">Contact</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="/compare/">Compare</a>
                     </li>
                     <li class="nav-item">
@@ -74,28 +77,37 @@
     <footer class="site-footer">
         <div class="container">
             <div class="footer-grid">
-                <div>
+                <div class="footer-brand">
                     <a class="navbar-brand fw-bold" href="/">
                         <img class="brand-mark" src="{% static 'img/greekgeek-pillar-logo.png' %}" width="32" height="32" alt="" aria-hidden="true">
                         <span>GreekGeek</span>
                     </a>
                     <p class="footer-copy">Study hour tracking for Greek organizations and campus groups.</p>
-                    <p class="footer-copy footer-note">Start a free trial, then invite members when your chapter is ready.</p>
                     <div class="footer-app-store">
                         {% include 'partials/app_store_badge.html' with track='footer_app_store_clicked' badge_class='app-store-badge-sm' width=135 height=45 %}
                     </div>
                 </div>
-                <div class="footer-links">
-                    <a href="/#how-it-works">How it works</a>
-                    <a href="/#for-organizations">Organizations</a>
-                    <a href="/compare/">Compare</a>
-                    <a href="/support/">Support</a>
-                    <a href="/login/">Sign in</a>
-                    <a href="/register/">Start free trial</a>
-                    <a href="/contact/">Contact</a>
-                    <a href="/privacy/">Privacy</a>
-                    <a href="/terms/">Terms</a>
-                </div>
+                <nav class="footer-links" aria-label="Footer navigation">
+                    <div>
+                        <h2>Product</h2>
+                        <a href="/#how-it-works">How it works</a>
+                        <a href="/#for-organizations">Organizations</a>
+                        <a href="/#pricing">Pricing</a>
+                        <a href="/compare/">Compare</a>
+                    </div>
+                    <div>
+                        <h2>Company</h2>
+                        <a href="/support/">Support</a>
+                        <a href="/contact/">Contact</a>
+                        <a href="/login/">Sign in</a>
+                        <a href="/register/">Start free trial</a>
+                    </div>
+                    <div>
+                        <h2>Legal</h2>
+                        <a href="/privacy/">Privacy</a>
+                        <a href="/terms/">Terms</a>
+                    </div>
+                </nav>
             </div>
             <div class="footer-bottom">&copy; 2026 GreekGeek. All rights reserved.</div>
         </div>

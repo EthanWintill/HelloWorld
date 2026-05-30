@@ -273,67 +273,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await response.json();
             
             if (response.ok) {
-                // Auto-login the newly created user
-                registerText.textContent = 'Signing you in...';
-                
-                try {
-                    const loginResponse = await fetch('/api/token/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            email: data.email,
-                            password: data.password
-                        })
-                    });
-                    
-                    if (loginResponse.ok) {
-                        const loginResult = await loginResponse.json();
-                        
-                        // Store tokens
-                        localStorage.setItem('access_token', loginResult.access);
-                        localStorage.setItem('refresh_token', loginResult.refresh);
-                        
-                        // Store organization data for success page
-                        sessionStorage.setItem('new_org_data', JSON.stringify({
-                            user: result.user,
-                            organization: result.organization
-                        }));
-                        
-                        // Redirect to success page
-                        window.location.href = '/success/';
-                    } else {
-                        // Login failed, show success message and redirect to login
-                        successMessage.innerHTML = `
-                            <strong>Success!</strong> Your organization and admin account have been created successfully!<br>
-                            <strong>Organization:</strong> ${result.organization.name}<br>
-                            <strong>Registration Code:</strong> <code>${result.organization.reg_code}</code><br>
-                            Please <a href="/login/">sign in</a> to continue.
-                        `;
-                        successMessage.classList.remove('d-none');
-                        scrollToTop();
-                        
-                        setTimeout(() => {
-                            window.location.href = '/login/';
-                        }, 3000);
-                    }
-                } catch (loginError) {
-                    console.error('Auto-login error:', loginError);
-                    // Show success message and redirect to login as fallback
-                    successMessage.innerHTML = `
-                        <strong>Success!</strong> Your organization and admin account have been created successfully!<br>
-                        <strong>Organization:</strong> ${result.organization.name}<br>
-                        <strong>Registration Code:</strong> <code>${result.organization.reg_code}</code><br>
-                        Please <a href="/login/">sign in</a> to continue.
-                    `;
-                    successMessage.classList.remove('d-none');
-                    scrollToTop();
-                    
-                    setTimeout(() => {
-                        window.location.href = '/login/';
-                    }, 3000);
+                let debugLink = '';
+                if (result.verification_url) {
+                    debugLink = `<br><a href="${result.verification_url}">Open local verification link</a>`;
                 }
+                successMessage.innerHTML = `
+                    <strong>Check your email.</strong> Your organization and admin account have been created.<br>
+                    <strong>Organization:</strong> ${result.organization.name}<br>
+                    <strong>Registration Code:</strong> <code>${result.organization.reg_code}</code><br>
+                    Verify ${result.user.email}, then sign in to start your one-month trial.${debugLink}
+                `;
+                successMessage.classList.remove('d-none');
+                form.classList.add('d-none');
+                scrollToTop();
             } else {
                 // Map API field names to form field names
                 const fieldMapping = {

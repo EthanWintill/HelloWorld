@@ -4,6 +4,7 @@ from .models import User, Org, OrgSettings, Location, Session, PeriodSetting, Pe
 from django.conf import settings
 from django.utils import timezone
 from .utils import get_or_create_period_instance
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 import boto3
 from botocore.config import Config
 
@@ -459,6 +460,7 @@ class OrgOwnerSignupSerializer(serializers.Serializer):
             'reg_code': validated_data['reg_code'],
             'study_req': 2.0,  # Default values
             'study_goal': 4.0,
+            'is_premium': False,
         }
         
         # Create organization
@@ -484,9 +486,21 @@ class OrgOwnerSignupSerializer(serializers.Serializer):
             org=user_data['org']
         )
         user.is_staff = True
+        user.email_verified = False
         user.save()
         
         return {
             'user': user,
             'org': org
         }
+
+class VerifiedEmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        if self.user.is_staff and not self.user.email_verified:
+            raise serializers.ValidationError({
+                'detail': 'Please verify your email before signing in.',
+                'code': 'email_not_verified',
+                'email': self.user.email,
+            })
+        return data

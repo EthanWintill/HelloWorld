@@ -1,10 +1,11 @@
 from django.test import TestCase
-from .models import Org, OrgSettings, User, Group, Location, Session
+from .models import Org, OrgSettings, User, Group, Location, Session, EmailVerificationToken
 from rest_framework import status
 from rest_framework.test import APIClient
 from django.urls import reverse
 from datetime import datetime, timedelta
 from django.utils import timezone
+from unittest.mock import patch
 
 
 class UserDashboardTestCase(TestCase):
@@ -1005,3 +1006,72 @@ class OrganizationTestCase(TestCase):
         # Verify that the location is correctly assigned
         self.assertEqual(self.user1.last_location, location)
         self.assertEqual(self.user1.last_location.name, "Test Location")
+
+
+class AdminEmailVerificationTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.signup_url = reverse('org-owner-signup')
+
+    @patch('Study.email_service.EmailService.send_email_verification_email', return_value=True)
+    def test_org_owner_signup_requires_email_verification_and_non_premium_org(self, mock_send):
+        response = self.client.post(self.signup_url, {
+            'first_name': 'Ada',
+            'last_name': 'Lovelace',
+            'email': 'ada@example.com',
+            'password': 'password123',
+            'phone_number': '',
+            'org_name': 'Alpha Beta',
+            'school': 'Test University',
+            'reg_code': 'AB123',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        user = User.objects.get(email='ada@example.com')
+        org = Org.objects.get(reg_code='AB123')
+        self.assertTrue(user.is_staff)
+        self.assertFalse(user.email_verified)
+        self.assertFalse(org.is_premium)
+        self.assertIsNone(org.trial_started_at)
+        self.assertTrue(EmailVerificationToken.objects.filter(user=user, is_used=False).exists())
+        mock_send.assert_called_once()
+
+    @patch('Study.email_service.EmailService.send_email_verification_email', return_value=True)
+    def test_unverified_admin_cannot_sign_in_until_email_verified(self, mock_send):
+        signup_response = self.client.post(self.signup_url, {
+            'first_name': 'Grace',
+            'last_name': 'Hopper',
+            'email': 'grace@example.com',
+            'password': 'password123',
+            'phone_number': '',
+            'org_name': 'Gamma Delta',
+            'school': 'Test University',
+            'reg_code': 'GD123',
+        }, format='json')
+        self.assertEqual(signup_response.status_code, status.HTTP_201_CREATED)
+
+        login_response = self.client.post('/api/token/', {
+            'email': 'grace@example.com',
+            'password': 'password123',
+        }, format='json')
+        self.assertEqual(login_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('verify your email', str(login_response.data).lower())
+
+        token = EmailVerificationToken.objects.get(user__email='grace@example.com')
+        verify_response = self.client.post(reverse('email-verification-confirm'), {
+            'token': token.token,
+        }, format='json')
+        self.assertEqual(verify_response.status_code, status.HTTP_200_OK)
+
+        user = User.objects.select_related('org').get(email='grace@example.com')
+        self.assertTrue(user.email_verified)
+        self.assertIsNotNone(user.org.trial_started_at)
+        self.assertIsNotNone(user.org.trial_ends_at)
+        self.assertFalse(user.org.is_premium)
+
+        login_response = self.client.post('/api/token/', {
+            'email': 'grace@example.com',
+            'password': 'password123',
+        }, format='json')
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', login_response.data)

@@ -8,6 +8,10 @@ from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
+from django.utils import timezone
+from datetime import timedelta
+
+from .models import EmailVerificationToken
 
 SUPPORT_ARTICLES = [
     {
@@ -289,6 +293,38 @@ def reset_password_page(request, token):
     """Reset password page function-based view"""
     # The token validation will be handled by JavaScript on the frontend
     return render(request, 'reset-password.html', {'token': token})
+
+def verify_email_page(request, token):
+    """Verify an admin email address from the emailed link."""
+    context = {
+        'verified': False,
+        'message': 'Invalid or expired verification link.',
+    }
+    try:
+        verification = EmailVerificationToken.objects.select_related('user', 'user__org').get(
+            token=token,
+            is_used=False,
+        )
+        if verification.is_expired():
+            context['message'] = 'This verification link has expired. Sign in again to resend the verification email.'
+        else:
+            user = verification.user
+            user.email_verified = True
+            user.save(update_fields=['email_verified'])
+            verification.is_used = True
+            verification.save(update_fields=['is_used'])
+
+            if user.is_staff and user.org and user.org.trial_started_at is None:
+                user.org.trial_started_at = timezone.now()
+                user.org.trial_ends_at = user.org.trial_started_at + timedelta(days=30)
+                user.org.save(update_fields=['trial_started_at', 'trial_ends_at'])
+
+            context['verified'] = True
+            context['message'] = 'Your email is verified. You can now sign in.'
+    except EmailVerificationToken.DoesNotExist:
+        pass
+
+    return render(request, 'verify-email.html', context)
 
 def privacy_page(request):
     """Privacy policy page."""
