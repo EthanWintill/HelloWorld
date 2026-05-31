@@ -8,8 +8,6 @@ from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
-from django.utils import timezone
-from datetime import timedelta
 
 from .models import EmailVerificationToken
 
@@ -314,13 +312,8 @@ def verify_email_page(request, token):
             verification.is_used = True
             verification.save(update_fields=['is_used'])
 
-            if user.is_staff and user.org and user.org.trial_started_at is None:
-                user.org.trial_started_at = timezone.now()
-                user.org.trial_ends_at = user.org.trial_started_at + timedelta(days=30)
-                user.org.save(update_fields=['trial_started_at', 'trial_ends_at'])
-
             context['verified'] = True
-            context['message'] = 'Your email is verified. You can now sign in.'
+            context['message'] = 'Your email is verified. Sign in to start your Stripe-backed one-month trial.'
     except EmailVerificationToken.DoesNotExist:
         pass
 
@@ -372,8 +365,6 @@ def contact_page(request):
             errors['topic'] = 'Choose a topic.'
         if not form['message']:
             errors['message'] = 'Enter a message.'
-        elif len(form['message']) < 12:
-            errors['message'] = 'Add a little more detail so we can help.'
 
         context['form'] = form
         context['errors'] = errors

@@ -62,6 +62,8 @@ urlpatterns = [
     path('api/password-reset/validate/<str:token>/', views.PasswordResetTokenValidationView.as_view(), name='password-reset-validate'),
     path('api/email-verification/confirm/', views.EmailVerificationConfirmView.as_view(), name='email-verification-confirm'),
     path('api/email-verification/resend/', views.EmailVerificationResendView.as_view(), name='email-verification-resend'),
+    path('api/billing/checkout-session/', views.BillingCheckoutSessionView.as_view(), name='billing-checkout-session'),
+    path('api/billing/stripe-webhook/', views.StripeWebhookView.as_view(), name='stripe-webhook'),
     
     # Period-related URLs
     path('api/period-settings/', views.PeriodSettingViewSet.as_view({'get': 'list', 'post': 'create'}), name='period-settings'),

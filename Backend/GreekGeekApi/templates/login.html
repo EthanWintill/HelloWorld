@@ -134,6 +134,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             return;
                         }
                         
+                        if (!userData.org.is_premium && !['active', 'trialing'].includes(userData.org.stripe_subscription_status || '')) {
+                            window.location.href = '/success/?start_trial=1';
+                            return;
+                        }
+
                         // Admin verification successful - redirect to dashboard
                         window.location.href = '/';
                     } else {

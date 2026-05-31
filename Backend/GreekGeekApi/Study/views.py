@@ -20,11 +20,12 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as datetime_timezone
 import json
 import requests
 import uuid
 import secrets
+import stripe
 from math import radians, sin, cos, sqrt, atan2
 import boto3
 from botocore.config import Config
@@ -53,6 +54,58 @@ def send_admin_verification_email(user):
         user_name=user_name,
     )
     return verification, email_sent
+
+
+def configure_stripe():
+    if not settings.STRIPE_API_KEY:
+        raise exceptions.APIException(detail="Stripe is not configured")
+    stripe.api_key = settings.STRIPE_API_KEY
+    stripe.api_version = "2026-05-27.dahlia"
+
+
+def stripe_timestamp_to_datetime(value):
+    if not value:
+        return None
+    return datetime.fromtimestamp(value, tz=datetime_timezone.utc)
+
+
+def sync_org_subscription(
+    org,
+    subscription_id=None,
+    customer_id=None,
+    status_value=None,
+    trial_started_at=None,
+    trial_ends_at=None,
+):
+    update_fields = []
+
+    if subscription_id and org.stripe_subscription_id != subscription_id:
+        org.stripe_subscription_id = subscription_id
+        update_fields.append('stripe_subscription_id')
+
+    if customer_id and org.stripe_customer_id != customer_id:
+        org.stripe_customer_id = customer_id
+        update_fields.append('stripe_customer_id')
+
+    if status_value is not None and org.stripe_subscription_status != status_value:
+        org.stripe_subscription_status = status_value
+        update_fields.append('stripe_subscription_status')
+
+    if trial_started_at and org.trial_started_at != trial_started_at:
+        org.trial_started_at = trial_started_at
+        update_fields.append('trial_started_at')
+
+    if trial_ends_at and org.trial_ends_at != trial_ends_at:
+        org.trial_ends_at = trial_ends_at
+        update_fields.append('trial_ends_at')
+
+    has_paid_access = status_value in {'active', 'trialing'} if status_value else True
+    if org.is_premium != has_paid_access:
+        org.is_premium = has_paid_access
+        update_fields.append('is_premium')
+
+    if update_fields:
+        org.save(update_fields=update_fields)
 
 
 class VerifiedEmailTokenObtainPairView(TokenObtainPairView):
@@ -1213,15 +1266,142 @@ class EmailVerificationConfirmView(APIView):
         verification.is_used = True
         verification.save(update_fields=['is_used'])
 
-        if user.is_staff and user.org and user.org.trial_started_at is None:
-            user.org.trial_started_at = timezone.now()
-            user.org.trial_ends_at = user.org.trial_started_at + timedelta(days=30)
-            user.org.save(update_fields=['trial_started_at', 'trial_ends_at'])
-
         return Response({
             "detail": "Email verified successfully. You can now sign in.",
             "email": user.email,
         }, status=status.HTTP_200_OK)
+
+
+class BillingCheckoutSessionView(APIView):
+    """
+    Creates a Stripe-hosted Checkout Session for the org annual subscription.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, format=None):
+        user = request.user
+        if not user.is_staff or not user.org:
+            raise exceptions.PermissionDenied(detail="Only organization admins can manage billing")
+
+        if not settings.STRIPE_ORG_PRICE_ID:
+            raise exceptions.APIException(detail="Stripe organization price is not configured")
+
+        if user.org.stripe_subscription_status in {'active', 'trialing'}:
+            raise exceptions.ValidationError(detail="Your organization already has an active subscription or trial")
+
+        configure_stripe()
+
+        session_params = {
+            'mode': 'subscription',
+            'payment_method_collection': 'always',
+            'line_items': [
+                {
+                    'price': settings.STRIPE_ORG_PRICE_ID,
+                    'quantity': 1,
+                }
+            ],
+            'success_url': settings.STRIPE_BILLING_SUCCESS_URL,
+            'cancel_url': settings.STRIPE_BILLING_CANCEL_URL,
+            'client_reference_id': str(user.org.id),
+            'metadata': {
+                'org_id': str(user.org.id),
+                'user_id': str(user.id),
+            },
+            'subscription_data': {
+                'trial_period_days': 30,
+                'metadata': {
+                    'org_id': str(user.org.id),
+                    'user_id': str(user.id),
+                },
+            },
+        }
+
+        if user.org.stripe_customer_id:
+            session_params['customer'] = user.org.stripe_customer_id
+        else:
+            session_params['customer_email'] = user.email
+
+        checkout_session = stripe.checkout.Session.create(**session_params)
+
+        return Response({
+            'checkout_url': checkout_session.url,
+            'session_id': checkout_session.id,
+        }, status=status.HTTP_201_CREATED)
+
+
+class StripeWebhookView(APIView):
+    """
+    Receives Stripe billing events and keeps organization premium state in sync.
+    """
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    def post(self, request, format=None):
+        if not settings.STRIPE_WEBHOOK_SECRET:
+            raise exceptions.APIException(detail="Stripe webhook secret is not configured")
+
+        configure_stripe()
+
+        payload = request.body
+        signature = request.META.get('HTTP_STRIPE_SIGNATURE')
+
+        try:
+            event = stripe.Webhook.construct_event(
+                payload=payload,
+                sig_header=signature,
+                secret=settings.STRIPE_WEBHOOK_SECRET,
+            )
+        except ValueError:
+            return Response({"detail": "Invalid payload"}, status=status.HTTP_400_BAD_REQUEST)
+        except stripe.SignatureVerificationError:
+            return Response({"detail": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
+
+        event_type = event.get('type')
+        event_object = event.get('data', {}).get('object', {})
+
+        if event_type == 'checkout.session.completed':
+            org_id = event_object.get('metadata', {}).get('org_id') or event_object.get('client_reference_id')
+            if org_id:
+                try:
+                    org = Org.objects.get(id=org_id)
+                except Org.DoesNotExist:
+                    org = None
+
+                if org:
+                    sync_org_subscription(
+                        org,
+                        subscription_id=event_object.get('subscription'),
+                        customer_id=event_object.get('customer'),
+                        status_value='trialing',
+                    )
+
+        elif event_type in {
+            'customer.subscription.created',
+            'customer.subscription.updated',
+            'customer.subscription.deleted',
+        }:
+            subscription_id = event_object.get('id')
+            customer_id = event_object.get('customer')
+            org = Org.objects.filter(stripe_subscription_id=subscription_id).first()
+            if org is None and customer_id:
+                org = Org.objects.filter(stripe_customer_id=customer_id).first()
+            if org is None:
+                org_id = event_object.get('metadata', {}).get('org_id')
+                if org_id:
+                    org = Org.objects.filter(id=org_id).first()
+
+            if org:
+                sync_org_subscription(
+                    org,
+                    subscription_id=subscription_id,
+                    customer_id=customer_id,
+                    status_value=event_object.get('status', ''),
+                    trial_started_at=stripe_timestamp_to_datetime(event_object.get('trial_start')),
+                    trial_ends_at=stripe_timestamp_to_datetime(event_object.get('trial_end')),
+                )
+
+        return Response({"received": True}, status=status.HTTP_200_OK)
+
 
 class EmailVerificationResendView(APIView):
     """

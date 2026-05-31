@@ -220,6 +220,16 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'no-reply@greekgeek.app')
 CONTACT_TO_EMAIL = os.getenv('CONTACT_TO_EMAIL', 'support@greekgeek.app')
 APP_STORE_URL = os.getenv('APP_STORE_URL', 'https://apps.apple.com/us/search?term=GreekGeek')
 
+STRIPE_API_KEY = os.getenv('STRIPE_API_KEY', '')
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
+STRIPE_ORG_PRICE_ID = os.getenv('STRIPE_ORG_PRICE_ID', '')
+STRIPE_BILLING_SUCCESS_URL = os.getenv(
+    'STRIPE_BILLING_SUCCESS_URL',
+    f'{FRONTEND_URL}/success/?stripe_checkout=success&session_id={{CHECKOUT_SESSION_ID}}'
+)
+STRIPE_BILLING_CANCEL_URL = os.getenv('STRIPE_BILLING_CANCEL_URL', f'{FRONTEND_URL}/')
+
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')

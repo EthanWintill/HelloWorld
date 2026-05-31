@@ -1065,8 +1065,8 @@ class AdminEmailVerificationTestCase(TestCase):
 
         user = User.objects.select_related('org').get(email='grace@example.com')
         self.assertTrue(user.email_verified)
-        self.assertIsNotNone(user.org.trial_started_at)
-        self.assertIsNotNone(user.org.trial_ends_at)
+        self.assertIsNone(user.org.trial_started_at)
+        self.assertIsNone(user.org.trial_ends_at)
         self.assertFalse(user.org.is_premium)
 
         login_response = self.client.post('/api/token/', {
@@ -1075,3 +1075,20 @@ class AdminEmailVerificationTestCase(TestCase):
         }, format='json')
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
         self.assertIn('access', login_response.data)
+
+
+class ContactPageTestCase(TestCase):
+    @patch('Study.email_service.EmailService.send_contact_email', return_value=True)
+    def test_contact_form_allows_short_messages(self, mock_send):
+        response = self.client.post('/contact/', {
+            'name': 'Sam',
+            'email': 'sam@example.com',
+            'organization': '',
+            'topic': 'Technical support',
+            'message': 'Hi',
+            'company': '',
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, 'Message sent.')
+        mock_send.assert_called_once()

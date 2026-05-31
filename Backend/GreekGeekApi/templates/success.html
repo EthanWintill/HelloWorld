@@ -17,12 +17,29 @@
                         <div class="display-1 text-success mb-3">
                             <i class="fas fa-graduation-cap"></i>
                         </div>
-                        <h4 class="text-success">Your Organization is Ready!</h4>
-                        <p class="text-muted">Your one-month free trial has started successfully. After the trial, GreekGeek is $149.99 per organization per year.</p>
+                        <h4 class="text-success" id="success-heading">Your Organization is Ready!</h4>
+                        <p class="text-muted" id="success-copy">Start your one-month trial through Stripe when you are ready. GreekGeek is $149.99 per organization per year after the trial.</p>
                     </div>
                     
                     <div id="organization-info">
                         <!-- Organization details will be loaded here -->
+                    </div>
+
+                    <div id="billing-action" class="alert alert-primary d-none" role="status">
+                        <div class="d-flex flex-column gap-3">
+                            <div>
+                                <strong>Start your one-month trial.</strong>
+                                <div>Stripe will collect payment details now and automatically charge $149.99/year after the trial unless you cancel.</div>
+                            </div>
+                            <div class="d-flex flex-column flex-sm-row gap-2">
+                                <button type="button" class="btn btn-primary" id="start-trial-btn">
+                                    <span id="start-trial-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                    <span id="start-trial-text">Start Trial with Stripe</span>
+                                </button>
+                                <a href="/" class="btn btn-outline-secondary">Skip for now</a>
+                            </div>
+                            <div id="billing-error" class="text-danger d-none"></div>
+                        </div>
                     </div>
                     
                     <div class="row mt-4">
@@ -107,16 +124,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated
     const token = localStorage.getItem('access_token');
     if (!token) {
-        // Not authenticated, redirect to register
-        window.location.href = '/register/';
+        window.location.href = '/login/';
+        return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('stripe_checkout') === 'success') {
+        showBillingSuccess();
+        return;
+    }
+
+    if (params.get('start_trial') === '1') {
+        showTrialPrompt();
         return;
     }
     
     // Load organization data from session storage
     const orgDataStr = sessionStorage.getItem('new_org_data');
     if (!orgDataStr) {
-        // No organization data, redirect to home
-        window.location.href = '/';
+        loadDashboardForPrompt();
         return;
     }
     
@@ -131,6 +158,80 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '/';
     }
 });
+
+async function loadDashboardForPrompt() {
+    try {
+        const data = await fetchDashboard();
+        if (data.org && !data.org.is_premium && !['active', 'trialing'].includes(data.org.stripe_subscription_status || '')) {
+            showTrialPrompt(data);
+            return;
+        }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+    }
+    window.location.href = '/';
+}
+
+async function fetchDashboard() {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch('/api/dashboard/', {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        }
+    });
+    if (!response.ok) throw new Error('Unable to load dashboard');
+    return await response.json();
+}
+
+async function showTrialPrompt(existingData = null) {
+    const data = existingData || await fetchDashboard();
+    document.getElementById('success-heading').textContent = 'Start Your One-Month Trial';
+    document.getElementById('success-copy').textContent = 'Your organization is created but not premium yet. Start the Stripe trial to unlock premium access.';
+    displayOrganizationInfo(data);
+    document.getElementById('billing-action').classList.remove('d-none');
+    document.getElementById('start-trial-btn').addEventListener('click', startStripeTrial);
+}
+
+async function showBillingSuccess() {
+    const data = await fetchDashboard();
+    document.getElementById('success-heading').textContent = 'Trial Started';
+    document.getElementById('success-copy').textContent = 'Your Stripe trial is being activated. Premium access updates as soon as Stripe sends the confirmation webhook.';
+    displayOrganizationInfo(data);
+}
+
+async function startStripeTrial() {
+    const token = localStorage.getItem('access_token');
+    const button = document.getElementById('start-trial-btn');
+    const spinner = document.getElementById('start-trial-spinner');
+    const text = document.getElementById('start-trial-text');
+    const error = document.getElementById('billing-error');
+
+    button.disabled = true;
+    spinner.classList.remove('d-none');
+    text.textContent = 'Opening Stripe...';
+    error.classList.add('d-none');
+
+    try {
+        const response = await fetch('/api/billing/checkout-session/', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || 'Unable to start trial');
+        window.location.href = result.checkout_url;
+    } catch (err) {
+        error.textContent = err.message || 'Unable to start trial. Please try again.';
+        error.classList.remove('d-none');
+        button.disabled = false;
+        spinner.classList.add('d-none');
+        text.textContent = 'Start Trial with Stripe';
+    }
+}
 
 function displayOrganizationInfo(data) {
     const orgInfoContainer = document.getElementById('organization-info');

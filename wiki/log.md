@@ -1,5 +1,17 @@
 # HelloWorld Log
 
+## [2026-05-30] feature | Stripe Billing starter
+
+Added a backend Stripe Billing starter for the `$149.99/year` organization subscription: Checkout Session creation for org admins, Stripe webhook signature verification, org-level Stripe customer/subscription fields, premium-state sync, environment placeholders, and focused billing tests. The current app trial remains no-card signup; paid checkout is a separate admin handoff to Stripe-hosted Checkout.
+
+## [2026-05-30] config | Stripe sandbox credentials
+
+Updated the Stripe sandbox env to use the Dashboard-created annual price `price_1TcxhwFdUW1rAvnAxKr9UxvM` under product `prod_UcC6g2cLgVZwOa`, created a sandbox webhook endpoint for `https://greekgeek.app/api/billing/stripe-webhook/`, and populated ignored `Backend/.env` with the sandbox Stripe keys, price ID, redirect URLs, and webhook signing secret.
+
+## [2026-05-30] change | Stripe-managed trial model
+
+Changed the billing flow so email verification does not start the internal trial. Verified admins are prompted after sign-in to start a Stripe Checkout subscription with a 30-day trial and payment method collection; Stripe webhook subscription events now control premium access and trial timestamps.
+
 ## [2026-05-30] seo | Product comparison pages
 
 Added a public `/compare/` hub and comparison pages for GreekGeek vs CampusStudy, GreekGeek vs MyGreekStudy, and CampusStudy vs MyGreekStudy. The pages target comparison-search intent with pricing, feature, and decision-guide copy grounded in public competitor claims.

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Start Your One-Month Free Trial - GreekGeek{% endblock %}
+{% block title %}Create Your GreekGeek Organization - GreekGeek{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
@@ -9,12 +9,12 @@
             <div class="card shadow">
                 <div class="card-body p-4">
                     <div class="text-center mb-4">
-                        <h2 class="card-title">Start Your One-Month Free Trial</h2>
+                        <h2 class="card-title">Create Your GreekGeek Organization</h2>
                         <p class="text-muted">Create your organization workspace and admin account</p>
                     </div>
                     <div class="trial-summary mb-4">
                         <strong>$149.99/year per organization after the first month.</strong>
-                        <span>No payment details are collected on this form.</span>
+                        <span>Payment details are collected through Stripe when you start the trial.</span>
                     </div>
                     
                     <div id="error-container">
@@ -88,7 +88,7 @@
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary btn-lg" id="register-btn">
                                 <span id="register-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                <span id="register-text">Start One-Month Free Trial</span>
+                                <span id="register-text">Create Organization</span>
                             </button>
                         </div>
                     </form>
@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset loading state
             registerBtn.disabled = false;
             registerSpinner.classList.add('d-none');
-            registerText.textContent = 'Start One-Month Free Trial';
+            registerText.textContent = 'Create Organization';
             return;
         }
         
@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <strong>Check your email.</strong> Your organization and admin account have been created.<br>
                     <strong>Organization:</strong> ${result.organization.name}<br>
                     <strong>Registration Code:</strong> <code>${result.organization.reg_code}</code><br>
-                    Verify ${result.user.email}, then sign in to start your one-month trial.${debugLink}
+                    Verify ${result.user.email}, then sign in. You can start your Stripe-backed one-month trial after sign-in.${debugLink}
                 `;
                 successMessage.classList.remove('d-none');
                 form.classList.add('d-none');
@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset loading state
             registerBtn.disabled = false;
             registerSpinner.classList.add('d-none');
-            registerText.textContent = 'Start One-Month Free Trial';
+            registerText.textContent = 'Create Organization';
         }
     });
 });
