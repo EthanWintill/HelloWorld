@@ -28,6 +28,16 @@ const OrganizationManagement = () => {
   const [orgName, setOrgName] = useState('')
   const [school, setSchool] = useState('')
   const [regCode, setRegCode] = useState('')
+  const [orgTimezone, setOrgTimezone] = useState('UTC')
+  const [showTimezonePicker, setShowTimezonePicker] = useState(false)
+  const US_TIMEZONES = [
+    { label: 'Eastern (ET)', value: 'America/New_York' },
+    { label: 'Central (CT)', value: 'America/Chicago' },
+    { label: 'Mountain (MT)', value: 'America/Denver' },
+    { label: 'Pacific (PT)', value: 'America/Los_Angeles' },
+    { label: 'Alaska (AKT)', value: 'America/Anchorage' },
+    { label: 'Hawaii (HT)', value: 'Pacific/Honolulu' },
+  ]
   const [isEditingDetails, setIsEditingDetails] = useState(false)
   const [isEditingRegCode, setIsEditingRegCode] = useState(false)
   const [isSavingDetails, setIsSavingDetails] = useState(false)
@@ -348,6 +358,7 @@ const OrganizationManagement = () => {
       setOrgName(data.org.name || '')
       setSchool(data.org.school || '')
       setRegCode(data.org.reg_code || '')
+      setOrgTimezone(data.org.timezone || 'UTC')
     }
   }, [data])
 
@@ -362,7 +373,8 @@ const OrganizationManagement = () => {
         {
           name: orgName,
           school: school,
-          reg_code: data?.org?.reg_code || ''
+          reg_code: data?.org?.reg_code || '',
+          timezone: orgTimezone,
         },
         {
           headers: {
@@ -624,6 +636,27 @@ const OrganizationManagement = () => {
               />
             ) : (
               <Text className="text-gg-text font-psemibold">{school || 'Not set'}</Text>
+            )}
+          </View>
+
+          <View className="mb-2">
+            <Text className="text-gg-muted mb-1 font-pmedium text-xs">Timezone</Text>
+            {isEditingDetails ? (
+              <View className="flex-row flex-wrap gap-2">
+                {US_TIMEZONES.map(tz => (
+                  <TouchableOpacity
+                    key={tz.value}
+                    onPress={() => setOrgTimezone(tz.value)}
+                    className={`px-3 py-1.5 rounded-full border ${orgTimezone === tz.value ? 'bg-gg-primary border-gg-primary' : 'bg-gg-surface border-gg-outlineVariant'}`}
+                  >
+                    <Text className={`font-pmedium text-sm ${orgTimezone === tz.value ? 'text-white' : 'text-gg-text'}`}>{tz.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <Text className="text-gg-text font-psemibold">
+                {US_TIMEZONES.find(tz => tz.value === orgTimezone)?.label || orgTimezone}
+              </Text>
             )}
           </View>
         </Card>

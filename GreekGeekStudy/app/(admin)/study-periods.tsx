@@ -52,6 +52,7 @@ interface ApiError {
 const StudyPeriodsManagement = () => {
   const { dashboardState, refreshDashboard, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
+  const orgTz = data?.org?.timezone || 'UTC'
   
   const [showAddPeriodSetting, setShowAddPeriodSetting] = useState(false)
   const [isCreatingPeriodSetting, setIsCreatingPeriodSetting] = useState(false)
@@ -71,7 +72,7 @@ const StudyPeriodsManagement = () => {
   
   // Format date for display
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString(undefined, { timeZone: 'UTC' })
+    return new Date(dateString).toLocaleDateString(undefined, { timeZone: orgTz })
   }
   
   // Get day of week name

@@ -17,6 +17,7 @@ class Org(models.Model):
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
     stripe_subscription_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
     stripe_subscription_status = models.CharField(max_length=64, blank=True)
+    timezone = models.CharField(max_length=64, default='America/New_York')
 
     class Meta:
         ordering = ['id']
