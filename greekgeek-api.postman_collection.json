@@ -1,0 +1,380 @@
+{
+  "info": {
+    "name": "GreekGeek API",
+    "description": "Complete GreekGeek backend API collection. Set {{base_url}} = https://greekgeek.app and {{token}} = JWT access token from the Login request.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://greekgeek.app" },
+    { "key": "token", "value": "" },
+    { "key": "user_id", "value": "8" },
+    { "key": "org_id", "value": "1" },
+    { "key": "session_id", "value": "1" },
+    { "key": "location_id", "value": "1" },
+    { "key": "period_setting_id", "value": "c082b767-b077-46e5-b31b-1fda7010d66f" },
+    { "key": "group_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (get token)",
+          "event": [{ "listen": "test", "script": { "exec": ["var r = pm.response.json(); if(r.access) pm.collectionVariables.set('token', r.access);"] } }],
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/token/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}" }
+          }
+        },
+        {
+          "name": "Refresh token",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/token/refresh/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refresh\": \"<refresh_token>\"\n}" }
+          }
+        },
+        {
+          "name": "Signup (new member)",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/signup/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"newuser@test.com\",\n  \"password\": \"TestPass123!\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\",\n  \"registration_code\": \"dev\"\n}" }
+          }
+        },
+        {
+          "name": "Org owner signup (creates org + owner)",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/org-owner-signup/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"owner@test.com\",\n  \"password\": \"TestPass123!\",\n  \"first_name\": \"Owner\",\n  \"last_name\": \"Test\",\n  \"org_name\": \"Test Org\",\n  \"school\": \"Test University\",\n  \"reg_code\": \"TESTCODE\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Get current user profile",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/me/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } },
+            "description": "Note: GET is not supported on /me/. POST returns current user profile. Use /api/dashboard/ for full user+org data."
+          }
+        },
+        {
+          "name": "Delete account",
+          "request": {
+            "method": "DELETE", "url": "{{base_url}}/api/me/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get user by ID",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/user/{{user_id}}/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "method": "PUT", "url": "{{base_url}}/api/user/{{user_id}}/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"first_name\": \"Ethan\",\n  \"last_name\": \"Wintill\"\n}" }
+          }
+        },
+        {
+          "name": "Upload profile picture",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/profile-picture/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": { "mode": "formdata", "formdata": [{ "key": "profile_picture", "type": "file", "src": "" }] }
+          }
+        },
+        {
+          "name": "Manage staff status",
+          "request": {
+            "method": "PUT", "url": "{{base_url}}/api/users/{{user_id}}/staff-status/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"is_staff\": false\n}" }
+          }
+        },
+        {
+          "name": "Dashboard (full user + org data)",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/dashboard/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "description": "Returns user profile, sessions, org data, period instances, locations, leaderboard etc."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Password Reset",
+      "item": [
+        {
+          "name": "Request reset email",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/password-reset/request/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user@example.com\"\n}" },
+            "description": "Always returns 200 (doesn't reveal if email exists). Sends ZeptoMail reset email."
+          }
+        },
+        {
+          "name": "Validate reset token",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/password-reset/validate/<token>/",
+            "description": "Returns 400 + {valid:false} for invalid tokens, 200 + {valid:true} for valid."
+          }
+        },
+        {
+          "name": "Confirm reset (set new password)",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/password-reset/confirm/",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"<reset_token>\",\n  \"new_password\": \"NewPass123!\",\n  \"confirm_password\": \"NewPass123!\"\n}" }
+          }
+        },
+        {
+          "name": "Admin reset (sends email to user)",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/user/{{user_id}}/reset-password/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "description": "Admin only."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Org",
+      "item": [
+        {
+          "name": "List all orgs (admin only)",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/orgs/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get org by ID",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/org/{{org_id}}/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get org by registration code",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/org-by-code/?code=dev",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get/update my org",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/my-org/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get/update org settings",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/org-settings/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Org report",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/org-report/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Locations",
+      "item": [
+        {
+          "name": "List locations",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/locations/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get location",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/location/{{location_id}}/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Create location",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/locations/create/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Library\",\n  \"gps_lat\": 29.881,\n  \"gps_long\": -97.948,\n  \"gps_radius\": 50\n}" }
+          }
+        },
+        {
+          "name": "Modify location",
+          "request": {
+            "method": "PUT", "url": "{{base_url}}/api/location/{{location_id}}/modify",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Name\",\n  \"gps_radius\": 75\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Study Sessions",
+      "item": [
+        {
+          "name": "Clock in",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/clockin/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"location_id\": {{location_id}}\n}" }
+          }
+        },
+        {
+          "name": "Clock out",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/clockout/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        },
+        {
+          "name": "Manual session (org must have allow_manual_entry=true)",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/manual-session/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"start_time\": \"2026-05-30T10:00:00Z\",\n  \"hours\": 1.5,\n  \"location\": {{location_id}}\n}" }
+          }
+        },
+        {
+          "name": "Get sessions for user",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/users/{{user_id}}/sessions/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get session by ID",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/sessions/{{session_id}}/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Period Settings",
+      "item": [
+        {
+          "name": "List period settings",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/period-settings/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Create period setting",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/period-settings/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"period_type\": \"weekly\",\n  \"required_hours\": 15,\n  \"due_day_of_week\": 4\n}" }
+          }
+        },
+        {
+          "name": "Get/update/delete period setting",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/period-settings/{{period_setting_id}}/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get latest period instance",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/latest-period/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Deactivate all periods",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/deactivate-periods/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Groups",
+      "item": [
+        {
+          "name": "List groups",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/groups/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Create group",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/groups/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"New Group\",\n  \"user_ids\": []\n}" }
+          }
+        },
+        {
+          "name": "Get/update/delete group",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/groups/{{group_id}}/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Register push token",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/notifications/token/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"ExponentPushToken[xxx]\",\n  \"device_id\": \"device-uuid\"\n}" }
+          }
+        },
+        {
+          "name": "Send notification",
+          "request": {
+            "method": "POST", "url": "{{base_url}}/api/notifications/send/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Test\",\n  \"body\": \"Test notification\",\n  \"user_ids\": [{{user_id}}]\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Debug",
+      "item": [
+        {
+          "name": "Debug (shows request headers, IP, etc.)",
+          "request": {
+            "method": "GET", "url": "{{base_url}}/api/debug/",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    }
+  ]
+}

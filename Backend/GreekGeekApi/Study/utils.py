@@ -14,21 +14,18 @@ def calculate_period_start_date(period_setting, session_time):
         return start_date
         
     if period_setting.period_type == "weekly":
-        due_day = period_setting.due_day_of_week  # 0-6 (Monday-Sunday)
-        current_day = session_time.weekday()  # 0-6 (Monday-Sunday)
-        period_start = start_date.weekday()
-
-        first_due_date = period_setting.get_next_due_date()
-        if first_due_date > session_time:
+        first_due_date = period_setting.get_next_due_date()  # midnight UTC of first due date
+        if first_due_date.date() >= session_time.date():
             return start_date
-        
-        current_start = first_due_date
+
+        # Advance in full-week steps; each period starts the day after the previous due date
+        current_start = first_due_date + timedelta(days=1)
         current_end = period_setting.get_next_due_date(from_date=current_start)
 
-        while current_end < session_time:
-            current_start = current_end
-            current_end = period_setting.get_next_due_date(from_date=current_start) 
-        
+        while current_end.date() < session_time.date():
+            current_start = current_end + timedelta(days=1)
+            current_end = period_setting.get_next_due_date(from_date=current_start)
+
         return current_start
 
         
@@ -107,6 +104,7 @@ def get_or_create_period_instance(user, session_time):
                         end_date=end_date,
                         is_active=True
                     )
+                    backfill_sessions_for_instance(instance)
         else:
             instance = active_instance
         
@@ -114,6 +112,17 @@ def get_or_create_period_instance(user, session_time):
         
     except PeriodSetting.DoesNotExist:
         return None 
+
+def backfill_sessions_for_instance(period_instance):
+    """Set period_instance FK on any org sessions that fall within this period's date range
+    but were created before period tracking existed (period_instance=null)."""
+    Session.objects.filter(
+        org=period_instance.period_setting.org,
+        start_time__gte=period_instance.start_date,
+        start_time__lte=period_instance.end_date,
+        period_instance__isnull=True,
+    ).update(period_instance=period_instance)
+
 
 def calculate_user_hours(user, period_instance=None):
     """
@@ -130,9 +139,12 @@ def calculate_user_hours(user, period_instance=None):
     # Start with sessions that have hours recorded (completed sessions)
     query = Session.objects.filter(user=user, hours__isnull=False)
     
-    # If period instance is provided, filter by it
+    # Filter by period date range (not FK — existing sessions predate period tracking and have period_instance=null)
     if period_instance:
-        query = query.filter(period_instance=period_instance)
+        query = query.filter(
+            start_time__gte=period_instance.start_date,
+            start_time__lte=period_instance.end_date,
+        )
     
     # Sum the hours
     total_hours = query.aggregate(total=models.Sum('hours'))['total'] or 0.0

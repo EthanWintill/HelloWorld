@@ -95,11 +95,12 @@ const Leaderboard = () => {
       );
     }
 
-    // Filter and sum sessions for active period
-    const periodSessions = data.user_sessions.filter(
-      (session: any) => 
-        session.period_instance?.id === activePeriodInstance.id
-    );
+    const start = new Date(activePeriodInstance.start_date).getTime()
+    const end = new Date(activePeriodInstance.end_date).getTime()
+    const periodSessions = data.user_sessions.filter((session: any) => {
+      const t = new Date(session.start_time).getTime()
+      return t >= start && t <= end
+    });
 
     return periodSessions.reduce(
       (acc: number, session: any) => acc + (session.hours || 0),

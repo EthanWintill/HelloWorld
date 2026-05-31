@@ -71,8 +71,7 @@ const StudyPeriodsManagement = () => {
   
   // Format date for display
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString()
+    return new Date(dateString).toLocaleDateString(undefined, { timeZone: 'UTC' })
   }
   
   // Get day of week name

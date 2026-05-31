@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ActivityIndicator, Alert, Image, Linking, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, Modal } from 'react-native'
+import { ActivityIndicator, Alert, Image, Linking, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URL } from '@/constants';
@@ -22,6 +22,11 @@ const Profile = () => {
   const [saving, setSaving] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [profilePictureUploading, setProfilePictureUploading] = useState(false)
+  const [contactVisible, setContactVisible] = useState(false)
+  const [contactTopic, setContactTopic] = useState('')
+  const [contactMessage, setContactMessage] = useState('')
+  const [contactSending, setContactSending] = useState(false)
+  const CONTACT_TOPICS = ['Organization setup', 'Member access', 'Study locations', 'Billing or trial', 'Technical support', 'Other']
 
   const withTimeout = async <T,>(promise: Promise<T>, milliseconds: number, label: string): Promise<T> => {
     let timeoutId: ReturnType<typeof setTimeout>
@@ -245,6 +250,29 @@ const Profile = () => {
     }
   }
 
+  const handleSendContact = async () => {
+    if (!contactTopic) { Alert.alert('Required', 'Please choose a topic.'); return }
+    if (contactMessage.trim().length < 12) { Alert.alert('Required', 'Please add more detail to your message.'); return }
+    setContactSending(true)
+    try {
+      await axios.post(`${API_URL}api/contact/`, {
+        name: `${data?.first_name ?? ''} ${data?.last_name ?? ''}`.trim() || 'App user',
+        email: data?.email ?? '',
+        topic: contactTopic,
+        message: contactMessage.trim(),
+        organization: data?.org?.name ?? '',
+      })
+      setContactVisible(false)
+      setContactTopic('')
+      setContactMessage('')
+      Alert.alert('Sent', 'Your message has been sent to support@greekgeek.app.')
+    } catch {
+      Alert.alert('Error', 'Could not send your message. Email support@greekgeek.app directly.')
+    } finally {
+      setContactSending(false)
+    }
+  }
+
   if (isLoading) {
     return <LoadingScreen />
   }
@@ -382,7 +410,7 @@ const Profile = () => {
 
             <TouchableOpacity
               className="px-4 py-4 flex-row items-center"
-              onPress={() => Linking.openURL('mailto:support@greekgeek.app')}
+              onPress={() => setContactVisible(true)}
             >
               <Ionicons name="help-circle-outline" size={21} color="#3e4a3d" />
               <Text className="text-gg-text ml-3 font-pmedium flex-1">Help and support</Text>
@@ -473,6 +501,71 @@ const Profile = () => {
               </View>
             </View>
           </View>
+        </Modal>
+
+        <Modal
+          visible={contactVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setContactVisible(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            className="flex-1 justify-end"
+          >
+            <View className="bg-gg-surface p-5 rounded-t-2xl">
+              <View className="flex-row items-center justify-between mb-5">
+                <Text className="text-xl font-psemibold text-gg-text">Contact support</Text>
+                <TouchableOpacity
+                  onPress={() => setContactVisible(false)}
+                  className="h-9 w-9 rounded-full bg-gg-surfaceContainer items-center justify-center"
+                >
+                  <Ionicons name="close" size={20} color="#3e4a3d" />
+                </TouchableOpacity>
+              </View>
+
+              <Text className="text-gg-muted font-pregular text-xs uppercase tracking-wider mb-2">Topic</Text>
+              <View className="flex-row flex-wrap gap-2 mb-4">
+                {CONTACT_TOPICS.map(t => (
+                  <TouchableOpacity
+                    key={t}
+                    onPress={() => setContactTopic(t)}
+                    className={`px-3 py-1.5 rounded-full border ${contactTopic === t ? 'bg-gg-primary border-gg-primary' : 'bg-gg-surface border-gg-outlineVariant'}`}
+                  >
+                    <Text className={`font-pmedium text-sm ${contactTopic === t ? 'text-white' : 'text-gg-text'}`}>{t}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text className="text-gg-muted font-pregular text-xs uppercase tracking-wider mb-2">Message</Text>
+              <TextInput
+                value={contactMessage}
+                onChangeText={setContactMessage}
+                placeholder="Describe your issue or question…"
+                placeholderTextColor="#6e7b6c"
+                multiline
+                numberOfLines={4}
+                className="border border-gg-outlineVariant rounded-xl bg-gg-bg p-3 font-pregular text-gg-text mb-5"
+                style={{ minHeight: 100, textAlignVertical: 'top' }}
+              />
+
+              <View className="flex-row">
+                <TouchableOpacity
+                  onPress={() => setContactVisible(false)}
+                  className="flex-1 py-4 rounded-lg bg-gg-surfaceContainer mr-2 items-center"
+                >
+                  <Text className="text-gg-muted font-psemibold">Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleSendContact}
+                  disabled={contactSending}
+                  className={`flex-1 py-4 rounded-lg bg-gg-primary ml-2 items-center ${contactSending ? 'opacity-60' : ''}`}
+                >
+                  <Text className="text-white font-psemibold">{contactSending ? 'Sending…' : 'Send'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
         </Modal>
       </ScrollView>
     </SafeAreaView>

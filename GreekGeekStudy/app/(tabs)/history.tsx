@@ -118,10 +118,12 @@ const History = () => {
         0
       );
     }
-    const periodSessions = data.user_sessions.filter(
-      (session: any) => 
-        session.period_instance?.id === activePeriodInstance.id
-    );
+    const start = new Date(activePeriodInstance.start_date).getTime()
+    const end = new Date(activePeriodInstance.end_date).getTime()
+    const periodSessions = data.user_sessions.filter((session: any) => {
+      const t = new Date(session.start_time).getTime()
+      return t >= start && t <= end
+    });
 
     return periodSessions.reduce(
       (acc: number, session: any) => acc + (session.hours || 0),
@@ -288,6 +290,7 @@ const History = () => {
     <SafeAreaView className="bg-gg-bg flex-1">
       {/* Fixed header — progress card + section title */}
       <View className="px-4 pt-6">
+        <Text className="font-psemibold text-xs uppercase tracking-wider text-gg-muted mb-3">Current Period Progress</Text>
         <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl overflow-hidden relative mb-6">
           <View className="absolute left-0 top-0 bottom-0 w-1 bg-gg-primary" />
           <View className="p-6">

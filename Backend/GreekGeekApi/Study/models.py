@@ -84,12 +84,16 @@ class PeriodSetting(models.Model):
     is_active = models.BooleanField(default=True)  # New field
 
     def get_next_due_date(self, from_date=None):
-        """Calculate the next due date based on the period type."""
+        """Calculate the next due date based on the period type.
+
+        Always normalizes to midnight UTC so the time component from the frontend
+        (which sends local-midnight as a UTC offset) never bleeds into date arithmetic.
+        Returns midnight UTC on the due date; callers that need end-of-day must add time.
+        """
         from_date = from_date or self.start_date
+        from_date = from_date.replace(hour=0, minute=0, second=0, microsecond=0)
         if self.period_type == "weekly":
-            # Calculate days until next due date
             days_until_due = (self.due_day_of_week - from_date.weekday()) % 7
-            # If we're on the due day, add 7 days to get next week
             if days_until_due == 0:
                 days_until_due = 7
             return from_date + timedelta(days=days_until_due)
