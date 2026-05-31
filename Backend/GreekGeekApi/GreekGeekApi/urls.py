@@ -23,6 +23,7 @@ urlpatterns = [
     path('verify-email/<str:token>/', web_views.verify_email_page, name='verify-email-page'),
     path('privacy/', web_views.privacy_page, name='privacy-page'),
     path('terms/', web_views.terms_page, name='terms-page'),
+    path('cookies/', web_views.cookies_page, name='cookies-page'),
     path('contact/', web_views.contact_page, name='contact-page'),
     path('compare/', web_views.compare_index, name='compare-index'),
     path('compare/<slug:slug>/', web_views.compare_page, name='compare-page'),

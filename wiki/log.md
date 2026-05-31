@@ -1,5 +1,13 @@
 # HelloWorld Log
 
+## [2026-05-31] legal | Cookie policy page
+
+Added a public `/cookies/` cookie policy page and linked it from the footer Legal section.
+
+## [2026-05-31] polish | Registration success page onboarding
+
+Collapsed the registration success page onboarding into one main card: the trial prompt now links to `Dashboard`, the redundant invite/setup mini cards and separate continue button are gone, and Next Steps now appears inside the main success card.
+
 ## [2026-05-30] feature | Stripe Billing starter
 
 Added a backend Stripe Billing starter for the `$149.99/year` organization subscription: Checkout Session creation for org admins, Stripe webhook signature verification, org-level Stripe customer/subscription fields, premium-state sync, environment placeholders, and focused billing tests. The current app trial remains no-card signup; paid checkout is a separate admin handoff to Stripe-hosted Checkout.

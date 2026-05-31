@@ -1,0 +1,4 @@
+[ 1800396ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://127.0.0.1:8001/api/token/refresh/:0
+[ 1800398ms] [ERROR] Error refreshing token: TypeError: Failed to fetch
+    at refreshToken (http://127.0.0.1:8001/static/js/auth.js?v=1780195532:46:32)
+    at http://127.0.0.1:8001/static/js/auth.js?v=1780195532:283:13 @ http://127.0.0.1:8001/static/js/auth.js?v=1780195532:64

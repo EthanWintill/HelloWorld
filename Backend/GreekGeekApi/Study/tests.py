@@ -237,6 +237,15 @@ class WebDashboardPageTestCase(TestCase):
         self.assertContains(response, 'Start Free Trial')
 
 
+class WebLegalPageTestCase(TestCase):
+    def test_cookie_policy_page_renders_and_is_linked_from_footer(self):
+        response = self.client.get(reverse('cookies-page'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, 'Cookie Policy')
+        self.assertContains(response, 'href="/cookies/"')
+
+
 class ModifyOrgDetailsTestCase(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -1204,8 +1213,12 @@ class AdminEmailVerificationTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertContains(response, 'Start Free Trial')
+        self.assertContains(response, 'Dashboard')
         self.assertContains(response, 'onclick="startTrial()"')
         self.assertContains(response, 'user: data.user || data')
+        self.assertNotContains(response, 'Skip for Now')
+        self.assertNotContains(response, 'Continue Without Trial')
+        self.assertNotContains(response, 'Setup Complete')
 
     @override_settings(FAST_TEST_REGISTRATION_ENABLED=False)
     def test_fast_test_registration_is_hidden_and_disabled_by_default(self):
