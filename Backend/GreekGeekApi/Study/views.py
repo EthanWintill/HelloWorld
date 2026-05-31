@@ -156,28 +156,45 @@ class PeriodSettingViewSet(viewsets.ModelViewSet):
         return PeriodSetting.objects.filter(org=self.request.user.org)
 
     def perform_create(self, serializer):
-        # Deactivate existing period settings for this org
         PeriodSetting.objects.filter(org=self.request.user.org, is_active=True).update(is_active=False)
-        
-        # Deactivate existing active period instances
         PeriodInstance.objects.filter(
             period_setting__org=self.request.user.org,
             is_active=True
         ).update(is_active=False)
-        
-        # Create new period setting
+
         period_setting = serializer.save(org=self.request.user.org, is_active=True)
-        
-        # Create first period instance
-        start_date = period_setting.start_date
-        end_date = period_setting.get_next_due_date()
-        if end_date:
-            PeriodInstance.objects.create(
-                period_setting=period_setting,
-                start_date=start_date,
-                end_date=end_date,
-                is_active=True
-            )
+
+        current_time = timezone.now()
+        # Normalize to midnight UTC — strips local-time offset from the frontend ISO string
+        inst_start = period_setting.start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        if inst_start > current_time:
+            # Future start date: create just the first period as active
+            due = period_setting.get_next_due_date(from_date=inst_start)
+            if due:
+                PeriodInstance.objects.create(
+                    period_setting=period_setting,
+                    start_date=inst_start,
+                    end_date=due.replace(hour=23, minute=59, second=59, microsecond=999999),
+                    is_active=True,
+                )
+        else:
+            # Past/current start date: backfill all historical periods (inactive) + current (active)
+            while True:
+                due = period_setting.get_next_due_date(from_date=inst_start)
+                if not due:
+                    break
+                inst_end = due.replace(hour=23, minute=59, second=59, microsecond=999999)
+                is_current = inst_end >= current_time
+                PeriodInstance.objects.create(
+                    period_setting=period_setting,
+                    start_date=inst_start,
+                    end_date=inst_end,
+                    is_active=is_current,
+                )
+                if is_current:
+                    break
+                inst_start = due + timedelta(days=1)
 
 class PeriodInstanceViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAdminUser,)
