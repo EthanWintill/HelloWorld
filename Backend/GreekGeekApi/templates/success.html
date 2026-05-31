@@ -25,7 +25,7 @@
                         <!-- Organization details will be loaded here -->
                     </div>
 
-                    <div id="billing-action" class="alert alert-primary d-none" role="status">
+                    <div id="billing-action" class="alert alert-primary" role="status">
                         <div class="d-flex flex-column gap-3">
                             <div>
                                 <strong>Start your one-month trial.</strong>
@@ -34,7 +34,7 @@
                             <div class="d-flex flex-column flex-sm-row gap-2">
                                 <button type="button" class="btn btn-primary" id="start-trial-btn">
                                     <span id="start-trial-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                    <span id="start-trial-text">Start Trial</span>
+                                    <span id="start-trial-text">Start Free Trial</span>
                                 </button>
                                 <a href="/" class="btn btn-outline-secondary">Skip for Now</a>
                             </div>
@@ -243,7 +243,7 @@ async function startTrial() {
         error.classList.remove('d-none');
         button.disabled = false;
         spinner.classList.add('d-none');
-        text.textContent = 'Start Trial';
+        text.textContent = 'Start Free Trial';
     }
 }
 

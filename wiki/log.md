@@ -16,6 +16,10 @@ Changed the billing flow so email verification does not start the internal trial
 
 Fixed the post-registration billing prompt flow: valid email verification links now auto-sign in admins and redirect to the trial prompt, non-premium admins see a start-trial action, the misleading dashboard button was replaced with a skip/continue action, and visible copy no longer exposes unnecessary Stripe implementation details.
 
+## [2026-05-30] fix | Visible start-free-trial CTA
+
+Made the `Start Free Trial` CTA visible in the success page HTML instead of depending on a narrow JavaScript state path, and added a `Start Free Trial` link to the logged-in navbar dropdown for non-premium admins.
+
 ## [2026-05-30] seo | Product comparison pages
 
 Added a public `/compare/` hub and comparison pages for GreekGeek vs CampusStudy, GreekGeek vs MyGreekStudy, and CampusStudy vs MyGreekStudy. The pages target comparison-search intent with pricing, feature, and decision-guide copy grounded in public competitor claims.
