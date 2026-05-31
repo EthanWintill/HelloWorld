@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { images } from "@/constants";
 import FormField from '@/components/FormField';
 import CustomButton from '@/components/CustomButton';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import axios from 'axios';
 import { API_URL } from '@/constants'
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -153,6 +153,9 @@ const SignUp = () => {
     <SafeAreaView className="bg-gg-bg h-full">
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View className="flex-1 px-5 pt-8 pb-6">
+          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/')} className="absolute top-4 left-4 z-10 p-2">
+            <Ionicons name="arrow-back" size={26} color="#3e4a3d" />
+          </TouchableOpacity>
           <View className="items-center mb-8">
             <Image
               source={images.logoSmall}
@@ -309,12 +312,6 @@ const SignUp = () => {
             />
           </View>
 
-          <View className="justify-center pt-6 flex-row">
-            <Text className="text-base text-gg-muted font-pregular">
-              Already have an account?
-            </Text>
-            <Link href="/sign-in" className="text-base font-psemibold text-gg-primary ml-2">Sign in</Link>
-          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
