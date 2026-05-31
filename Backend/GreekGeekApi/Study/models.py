@@ -187,7 +187,7 @@ class Session(models.Model):
     before_pic = models.CharField(max_length=255, blank=True, null=True)  # Optional picture URL
     after_pic = models.CharField(max_length=255, blank=True, null=True)  # Optional picture URL
 
-    period_instance = models.ForeignKey(PeriodInstance, on_delete=models.CASCADE, related_name="sessions", null=True, blank=True)
+    period_instance = models.ForeignKey(PeriodInstance, on_delete=models.SET_NULL, related_name="sessions", null=True, blank=True)
 
     class Meta:
         ordering = ['id']

@@ -717,7 +717,7 @@ const UserDetail = () => {
               <Text className="text-lg font-psemibold text-gg-text">Study Sessions</Text>
               {currentPeriod && (
                 <Text className="text-gg-muted text-xs font-pregular mt-1">
-                  {new Date(currentPeriod.start_date).toLocaleDateString()} - {new Date(currentPeriod.end_date).toLocaleDateString()}
+                  {new Date(currentPeriod.start_date).toLocaleDateString(undefined, { timeZone: 'UTC' })} - {new Date(currentPeriod.end_date).toLocaleDateString(undefined, { timeZone: 'UTC' })}
                 </Text>
               )}
             </View>
