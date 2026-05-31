@@ -89,6 +89,9 @@ urlpatterns = [
     path('api/groups/', views.GroupManagementView.as_view(), name='groups-list-create'),
     path('api/groups/<int:group_id>/', views.GroupManagementView.as_view(), name='group-detail'),
 
+    # Contact form
+    path('api/contact/', views.ContactFormView.as_view(), name='contact'),
+
     # Debug endpoint
     path('api/debug/', views.debug, name='debug'),
 ]

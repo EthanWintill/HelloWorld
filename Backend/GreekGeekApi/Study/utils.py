@@ -104,6 +104,7 @@ def get_or_create_period_instance(user, session_time):
                         end_date=end_date,
                         is_active=True
                     )
+                    backfill_sessions_for_instance(instance)
         else:
             instance = active_instance
         
@@ -111,6 +112,17 @@ def get_or_create_period_instance(user, session_time):
         
     except PeriodSetting.DoesNotExist:
         return None 
+
+def backfill_sessions_for_instance(period_instance):
+    """Set period_instance FK on any org sessions that fall within this period's date range
+    but were created before period tracking existed (period_instance=null)."""
+    Session.objects.filter(
+        org=period_instance.period_setting.org,
+        start_time__gte=period_instance.start_date,
+        start_time__lte=period_instance.end_date,
+        period_instance__isnull=True,
+    ).update(period_instance=period_instance)
+
 
 def calculate_user_hours(user, period_instance=None):
     """

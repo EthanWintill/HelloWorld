@@ -30,7 +30,7 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
-from .utils import get_or_create_period_instance, send_notification_to_users, send_notification_to_org
+from .utils import get_or_create_period_instance, send_notification_to_users, send_notification_to_org, backfill_sessions_for_instance
 
 
 def create_email_verification_token(user):
@@ -200,12 +200,13 @@ class PeriodSettingViewSet(viewsets.ModelViewSet):
             # Future start date: create just the first period as active
             due = period_setting.get_next_due_date(from_date=inst_start)
             if due:
-                PeriodInstance.objects.create(
+                instance = PeriodInstance.objects.create(
                     period_setting=period_setting,
                     start_date=inst_start,
                     end_date=due.replace(hour=23, minute=59, second=59, microsecond=999999),
                     is_active=True,
                 )
+                backfill_sessions_for_instance(instance)
         else:
             # Past/current start date: backfill all historical periods (inactive) + current (active)
             while True:
@@ -214,12 +215,13 @@ class PeriodSettingViewSet(viewsets.ModelViewSet):
                     break
                 inst_end = due.replace(hour=23, minute=59, second=59, microsecond=999999)
                 is_current = inst_end >= current_time
-                PeriodInstance.objects.create(
+                instance = PeriodInstance.objects.create(
                     period_setting=period_setting,
                     start_date=inst_start,
                     end_date=inst_end,
                     is_active=is_current,
                 )
+                backfill_sessions_for_instance(instance)
                 if is_current:
                     break
                 inst_start = due + timedelta(days=1)
@@ -761,6 +763,38 @@ class DeactivateOrgPeriods(APIView):
         return Response({
             "detail": "Successfully deactivated all periods for organization."
         }, status=status.HTTP_200_OK)
+
+class ContactFormView(APIView):
+    permission_classes = (AllowAny,)
+
+    def post(self, request, format=None):
+        name = (request.data.get('name') or '').strip()
+        email = (request.data.get('email') or '').strip()
+        topic = (request.data.get('topic') or '').strip()
+        message = (request.data.get('message') or '').strip()
+        organization = (request.data.get('organization') or '').strip()
+
+        if not name:
+            raise exceptions.ValidationError(detail="Name is required.")
+        if not email:
+            raise exceptions.ValidationError(detail="Email is required.")
+        if not topic:
+            raise exceptions.ValidationError(detail="Topic is required.")
+        if not message or len(message) < 12:
+            raise exceptions.ValidationError(detail="Please add more detail to your message.")
+
+        from .email_service import EmailService
+        sent = EmailService().send_contact_email(
+            name=name,
+            reply_to_email=email,
+            topic=topic,
+            message=message,
+            organization=organization,
+        )
+        if not sent:
+            raise exceptions.APIException(detail="Could not send your message. Please email support@greekgeek.app directly.")
+        return Response({"detail": "Message sent."}, status=status.HTTP_200_OK)
+
 
 class ModifyOrgDetails(UpdateAPIView):
     """
