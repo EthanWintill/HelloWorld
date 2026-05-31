@@ -6,19 +6,19 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
-            <div class="card shadow-lg border-success">
-                <div class="card-header bg-success text-white text-center">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white text-center">
                     <h3 class="mb-0">
                         <i class="fas fa-check-circle me-2"></i>Welcome to GreekGeek!
                     </h3>
                 </div>
                 <div class="card-body p-4">
                     <div class="text-center mb-4">
-                        <div class="display-1 text-success mb-3">
+                        <div class="display-1 text-primary mb-3">
                             <i class="fas fa-graduation-cap"></i>
                         </div>
-                        <h4 class="text-success" id="success-heading">Your Organization is Ready!</h4>
-                        <p class="text-muted" id="success-copy">Start your one-month trial through Stripe when you are ready. GreekGeek is $149.99 per organization per year after the trial.</p>
+                        <h4 class="text-primary" id="success-heading">Your Organization is Ready</h4>
+                        <p class="text-muted" id="success-copy">Start your one-month trial when you are ready. GreekGeek is $149.99 per organization per year after the trial.</p>
                     </div>
                     
                     <div id="organization-info">
@@ -29,14 +29,14 @@
                         <div class="d-flex flex-column gap-3">
                             <div>
                                 <strong>Start your one-month trial.</strong>
-                                <div>Stripe will collect payment details now and automatically charge $149.99/year after the trial unless you cancel.</div>
+                                <div>Your organization gets premium access during the trial and continues automatically after the first month.</div>
                             </div>
                             <div class="d-flex flex-column flex-sm-row gap-2">
                                 <button type="button" class="btn btn-primary" id="start-trial-btn">
                                     <span id="start-trial-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                                    <span id="start-trial-text">Start Trial with Stripe</span>
+                                    <span id="start-trial-text">Start Trial</span>
                                 </button>
-                                <a href="/" class="btn btn-outline-secondary">Skip for now</a>
+                                <a href="/" class="btn btn-outline-secondary">Skip for Now</a>
                             </div>
                             <div id="billing-error" class="text-danger d-none"></div>
                         </div>
@@ -64,8 +64,8 @@
                     </div>
                     
                     <div class="text-center">
-                        <a href="/" class="btn btn-primary btn-lg">
-                            <i class="fas fa-tachometer-alt me-2"></i>Go to Dashboard
+                        <a href="/" class="btn btn-outline-secondary btn-lg" id="continue-link">
+                            Continue Without Trial
                         </a>
                     </div>
                 </div>
@@ -148,8 +148,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     try {
-        const orgData = JSON.parse(orgDataStr);
+        const orgData = normalizeOrgData(JSON.parse(orgDataStr));
         displayOrganizationInfo(orgData);
+        if (!orgData.org.is_premium && !['active', 'trialing'].includes(orgData.org.stripe_subscription_status || '')) {
+            showTrialPrompt(orgData);
+        }
         
         // Clear the session storage after displaying
         sessionStorage.removeItem('new_org_data');
@@ -161,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function loadDashboardForPrompt() {
     try {
-        const data = await fetchDashboard();
+        const data = normalizeOrgData(await fetchDashboard());
         if (data.org && !data.org.is_premium && !['active', 'trialing'].includes(data.org.stripe_subscription_status || '')) {
             showTrialPrompt(data);
             return;
@@ -185,22 +188,33 @@ async function fetchDashboard() {
 }
 
 async function showTrialPrompt(existingData = null) {
-    const data = existingData || await fetchDashboard();
+    const data = normalizeOrgData(existingData || await fetchDashboard());
     document.getElementById('success-heading').textContent = 'Start Your One-Month Trial';
-    document.getElementById('success-copy').textContent = 'Your organization is created but not premium yet. Start the Stripe trial to unlock premium access.';
+    document.getElementById('success-copy').textContent = 'Your organization is created but not premium yet. Start the trial to unlock premium access.';
     displayOrganizationInfo(data);
     document.getElementById('billing-action').classList.remove('d-none');
-    document.getElementById('start-trial-btn').addEventListener('click', startStripeTrial);
+    document.getElementById('continue-link').classList.remove('btn-primary');
+    document.getElementById('continue-link').classList.add('btn-outline-secondary');
+    document.getElementById('start-trial-btn').onclick = startTrial;
 }
 
 async function showBillingSuccess() {
-    const data = await fetchDashboard();
+    const data = normalizeOrgData(await fetchDashboard());
     document.getElementById('success-heading').textContent = 'Trial Started';
-    document.getElementById('success-copy').textContent = 'Your Stripe trial is being activated. Premium access updates as soon as Stripe sends the confirmation webhook.';
+    document.getElementById('success-copy').textContent = 'Your trial is being activated. Premium access updates shortly.';
+    document.getElementById('continue-link').textContent = 'Continue';
     displayOrganizationInfo(data);
 }
 
-async function startStripeTrial() {
+function normalizeOrgData(data) {
+    return {
+        ...data,
+        organization: data.organization || data.org,
+        org: data.org || data.organization,
+    };
+}
+
+async function startTrial() {
     const token = localStorage.getItem('access_token');
     const button = document.getElementById('start-trial-btn');
     const spinner = document.getElementById('start-trial-spinner');
@@ -209,7 +223,7 @@ async function startStripeTrial() {
 
     button.disabled = true;
     spinner.classList.remove('d-none');
-    text.textContent = 'Opening Stripe...';
+    text.textContent = 'Opening checkout...';
     error.classList.add('d-none');
 
     try {
@@ -229,7 +243,7 @@ async function startStripeTrial() {
         error.classList.remove('d-none');
         button.disabled = false;
         spinner.classList.add('d-none');
-        text.textContent = 'Start Trial with Stripe';
+        text.textContent = 'Start Trial';
     }
 }
 

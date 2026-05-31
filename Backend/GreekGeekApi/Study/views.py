@@ -11,7 +11,7 @@ from rest_framework.authtoken.models import Token
 
 from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission, IsAdminUser
 
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import User, Org, OrgSettings, Session, Location, PeriodSetting, PeriodInstance, NotificationToken, Group, EmailVerificationToken
 
@@ -108,8 +108,17 @@ def sync_org_subscription(
         org.save(update_fields=update_fields)
 
 
-class VerifiedEmailTokenObtainPairView(TokenObtainPairView):
+class PublicEndpointMixin:
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+
+
+class VerifiedEmailTokenObtainPairView(PublicEndpointMixin, TokenObtainPairView):
     serializer_class = VerifiedEmailTokenObtainPairSerializer
+
+
+class PublicTokenRefreshView(PublicEndpointMixin, TokenRefreshView):
+    pass
 
 def distance_meters(lat1, lon1, lat2, lon2):
     earth_radius_meters = 6371000
@@ -501,8 +510,7 @@ class IsSuperUser(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_superuser)
 
-class Signup(CreateAPIView):
-    permission_classes = (AllowAny,)
+class Signup(PublicEndpointMixin, CreateAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
 
@@ -516,8 +524,7 @@ class OrgDetail(RetrieveUpdateDestroyAPIView):
     serializer_class = UpdateOrgSerializer
     queryset = Org.objects.all()
 
-class GetOrgByCode(RetrieveAPIView):
-    permission_classes = (AllowAny,)
+class GetOrgByCode(PublicEndpointMixin, RetrieveAPIView):
     serializer_class = OrgSerializer
     queryset = Org.objects.all()
 
@@ -817,8 +824,7 @@ class DeactivateOrgPeriods(APIView):
             "detail": "Successfully deactivated all periods for organization."
         }, status=status.HTTP_200_OK)
 
-class ContactFormView(APIView):
-    permission_classes = (AllowAny,)
+class ContactFormView(PublicEndpointMixin, APIView):
 
     def post(self, request, format=None):
         name = (request.data.get('name') or '').strip()
@@ -1247,12 +1253,11 @@ class GroupManagementView(APIView):
             status=status.HTTP_200_OK
         )
 
-class OrgOwnerSignupView(CreateAPIView):
+class OrgOwnerSignupView(PublicEndpointMixin, CreateAPIView):
     """
     View for creating a new organization and its owner user account.
     This is intended for website signup where someone wants to create a new organization.
     """
-    permission_classes = (AllowAny,)
     serializer_class = OrgOwnerSignupSerializer
     
     def create(self, request, *args, **kwargs):
@@ -1280,12 +1285,10 @@ class OrgOwnerSignupView(CreateAPIView):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class EmailVerificationConfirmView(APIView):
+class EmailVerificationConfirmView(PublicEndpointMixin, APIView):
     """
     API view to confirm a newly registered admin email address.
     """
-    permission_classes = (AllowAny,)
-
     def post(self, request, format=None):
         token = request.data.get('token')
         if not token:
@@ -1454,12 +1457,10 @@ class StripeWebhookView(APIView):
         return Response({"received": True}, status=status.HTTP_200_OK)
 
 
-class EmailVerificationResendView(APIView):
+class EmailVerificationResendView(PublicEndpointMixin, APIView):
     """
     API view to resend verification for admins blocked at login.
     """
-    permission_classes = (AllowAny,)
-
     def post(self, request, format=None):
         email = request.data.get('email')
         password = request.data.get('password')
@@ -1498,12 +1499,10 @@ class EmailVerificationResendView(APIView):
             response_data['verification_url'] = f"{settings.FRONTEND_URL}/verify-email/{verification.token}/"
         return Response(response_data, status=status.HTTP_200_OK)
 
-class PasswordResetRequestView(APIView):
+class PasswordResetRequestView(PublicEndpointMixin, APIView):
     """
     API view to request a password reset via email
     """
-    permission_classes = (AllowAny,)
-    
     def post(self, request, format=None):
         email = request.data.get('email')
         
@@ -1573,12 +1572,10 @@ class PasswordResetRequestView(APIView):
             )
 
 
-class PasswordResetConfirmView(APIView):
+class PasswordResetConfirmView(PublicEndpointMixin, APIView):
     """
     API view to confirm password reset with token and set new password
     """
-    permission_classes = (AllowAny,)
-    
     def post(self, request, format=None):
         token = request.data.get('token')
         new_password = request.data.get('new_password')
@@ -1657,12 +1654,10 @@ class PasswordResetConfirmView(APIView):
             )
 
 
-class PasswordResetTokenValidationView(APIView):
+class PasswordResetTokenValidationView(PublicEndpointMixin, APIView):
     """
     API view to validate a password reset token (for frontend to check if token is valid)
     """
-    permission_classes = (AllowAny,)
-    
     def get(self, request, token, format=None):
         try:
             from .models import PasswordResetToken

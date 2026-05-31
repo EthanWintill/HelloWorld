@@ -8,6 +8,7 @@ from django.views.generic import TemplateView
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import EmailVerificationToken
 
@@ -311,9 +312,12 @@ def verify_email_page(request, token):
             user.save(update_fields=['email_verified'])
             verification.is_used = True
             verification.save(update_fields=['is_used'])
+            refresh = RefreshToken.for_user(user)
 
             context['verified'] = True
-            context['message'] = 'Your email is verified. Sign in to start your Stripe-backed one-month trial.'
+            context['message'] = 'Your email is verified. Taking you to your trial setup.'
+            context['access_token'] = str(refresh.access_token)
+            context['refresh_token'] = str(refresh)
     except EmailVerificationToken.DoesNotExist:
         pass
 

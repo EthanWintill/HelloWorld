@@ -1,9 +1,6 @@
 from django.urls import include, path
 from rest_framework import routers
 
-from rest_framework_simplejwt.views import TokenRefreshView
-
-
 from Study import views, admin, web_views
 
 
@@ -36,7 +33,7 @@ urlpatterns = [
     path('api/signup/', views.Signup.as_view(), name='signup'),
     path('api/org-owner-signup/', views.OrgOwnerSignupView.as_view(), name='org-owner-signup'),
     path('api/token/', views.VerifiedEmailTokenObtainPairView.as_view()),
-    path('api/token/refresh/', TokenRefreshView.as_view()),
+    path('api/token/refresh/', views.PublicTokenRefreshView.as_view()),
     path('api/user/<int:pk>/', views.UserDetail.as_view(), name='user-detail'),
     path('api/profile-picture/', views.ProfilePictureUploadView.as_view(), name='profile-picture-upload'),
     path('api/user/<int:user_id>/reset-password/', views.AdminPasswordResetView.as_view(), name='admin-password-reset'),

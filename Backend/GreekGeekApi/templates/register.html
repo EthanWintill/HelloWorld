@@ -14,7 +14,7 @@
                     </div>
                     <div class="trial-summary mb-4">
                         <strong>$149.99/year per organization after the first month.</strong>
-                        <span>Payment details are collected through Stripe when you start the trial.</span>
+                        <span>Start your trial after creating your account.</span>
                     </div>
                     
                     <div id="error-container">
@@ -106,12 +106,13 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Redirect if already logged in
-    const token = localStorage.getItem('access_token');
-    if (token) {
+    // Redirect only for a valid stored session. Stale tokens should behave like logged-out state.
+    if (isAuthenticated()) {
         window.location.href = '/';
         return;
     }
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     
     const form = document.getElementById('register-form');
     const errorContainer = document.getElementById('error-container');
@@ -281,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <strong>Check your email.</strong> Your organization and admin account have been created.<br>
                     <strong>Organization:</strong> ${result.organization.name}<br>
                     <strong>Registration Code:</strong> <code>${result.organization.reg_code}</code><br>
-                    Verify ${result.user.email}, then sign in. You can start your Stripe-backed one-month trial after sign-in.${debugLink}
+                    Verify ${result.user.email}, then start your one-month trial.${debugLink}
                 `;
                 successMessage.classList.remove('d-none');
                 form.classList.add('d-none');

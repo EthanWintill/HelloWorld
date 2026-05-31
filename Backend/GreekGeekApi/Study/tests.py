@@ -1014,6 +1014,48 @@ class AdminEmailVerificationTestCase(TestCase):
         self.signup_url = reverse('org-owner-signup')
 
     @patch('Study.email_service.EmailService.send_email_verification_email', return_value=True)
+    def test_org_owner_signup_ignores_invalid_bearer_token(self, mock_send):
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer stale-token')
+        response = self.client.post(self.signup_url, {
+            'first_name': 'Ada',
+            'last_name': 'Lovelace',
+            'email': 'ada@example.com',
+            'password': 'password123',
+            'phone_number': '',
+            'org_name': 'Alpha Beta',
+            'school': 'Test University',
+            'reg_code': 'AB123',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(email='ada@example.com').exists())
+
+    def test_sign_in_ignores_invalid_bearer_token(self):
+        org = Org.objects.create(
+            name="Test Organization",
+            reg_code="TEST123",
+            school="Test School",
+        )
+        User.objects.create_user(
+            email="admin@example.com",
+            password="password123",
+            first_name="Admin",
+            last_name="User",
+            is_staff=True,
+            email_verified=True,
+            org=org,
+        )
+
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer stale-token')
+        response = self.client.post('/api/token/', {
+            'email': 'admin@example.com',
+            'password': 'password123',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+
+    @patch('Study.email_service.EmailService.send_email_verification_email', return_value=True)
     def test_org_owner_signup_requires_email_verification_and_non_premium_org(self, mock_send):
         response = self.client.post(self.signup_url, {
             'first_name': 'Ada',
@@ -1075,6 +1117,34 @@ class AdminEmailVerificationTestCase(TestCase):
         }, format='json')
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
         self.assertIn('access', login_response.data)
+
+    @patch('Study.email_service.EmailService.send_email_verification_email', return_value=True)
+    def test_web_email_verification_auto_signs_in_and_prompts_trial(self, mock_send):
+        signup_response = self.client.post(self.signup_url, {
+            'first_name': 'Katherine',
+            'last_name': 'Johnson',
+            'email': 'katherine@example.com',
+            'password': 'password123',
+            'phone_number': '',
+            'org_name': 'Kappa Lambda',
+            'school': 'Test University',
+            'reg_code': 'KL123',
+        }, format='json')
+        self.assertEqual(signup_response.status_code, status.HTTP_201_CREATED)
+
+        token = EmailVerificationToken.objects.get(user__email='katherine@example.com')
+        response = self.client.get(reverse('verify-email-page', args=[token.token]))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, "localStorage.setItem('access_token'")
+        self.assertContains(response, "localStorage.setItem('refresh_token'")
+        self.assertContains(response, "window.location.href = '/success/?start_trial=1'")
+
+        user = User.objects.select_related('org').get(email='katherine@example.com')
+        self.assertTrue(user.email_verified)
+        self.assertIsNone(user.org.trial_started_at)
+        self.assertIsNone(user.org.trial_ends_at)
+        self.assertFalse(user.org.is_premium)
 
 
 class ContactPageTestCase(TestCase):
