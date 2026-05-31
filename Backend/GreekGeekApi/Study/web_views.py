@@ -264,6 +264,10 @@ class RegisterPageView(TemplateView):
     """Register page view"""
     template_name = 'register.html'
 
+class DashboardPageView(TemplateView):
+    """Organization admin dashboard view"""
+    template_name = 'dashboard.html'
+
 def landing_page(request):
     """Landing page function-based view"""
     return render(request, 'landing.html')
@@ -278,7 +282,13 @@ def login_page(request):
 
 def register_page(request):
     """Register page function-based view"""
-    return render(request, 'register.html')
+    return render(request, 'register.html', {
+        'fast_test_registration_enabled': settings.FAST_TEST_REGISTRATION_ENABLED,
+    })
+
+def dashboard_page(request):
+    """Organization admin dashboard function-based view"""
+    return render(request, 'dashboard.html')
 
 def success_page(request):
     """Success page function-based view"""

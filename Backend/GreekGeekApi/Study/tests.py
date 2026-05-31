@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from .models import Org, OrgSettings, User, Group, Location, Session, EmailVerificationToken
 from rest_framework import status
 from rest_framework.test import APIClient
@@ -226,6 +226,59 @@ class UserDashboardTestCase(TestCase):
             self.assertIn('start_time', session)
             self.assertIn('hours', session)
             self.assertIn('location', session)
+
+
+class WebDashboardPageTestCase(TestCase):
+    def test_dashboard_page_renders(self):
+        response = self.client.get(reverse('dashboard-page'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, 'Organization Settings')
+        self.assertContains(response, 'Start Free Trial')
+
+
+class ModifyOrgDetailsTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.org = Org.objects.create(
+            name="Original Chapter",
+            reg_code="ORIGINAL",
+            school="Original University",
+            is_premium=False,
+        )
+        self.admin_user = User.objects.create_user(
+            email="admin@example.com",
+            password="password123",
+            first_name="Admin",
+            last_name="User",
+            org=self.org,
+            is_staff=True,
+        )
+        self.client.force_authenticate(user=self.admin_user)
+
+    def test_admin_can_update_org_dashboard_fields(self):
+        response = self.client.patch(reverse('modify-my-org'), {
+            'name': 'Updated Chapter',
+            'school': 'Updated University',
+            'reg_code': 'UPDATED',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.org.refresh_from_db()
+        self.assertEqual(self.org.name, 'Updated Chapter')
+        self.assertEqual(self.org.school, 'Updated University')
+        self.assertEqual(self.org.reg_code, 'UPDATED')
+
+    def test_admin_cannot_update_billing_state_through_org_settings(self):
+        response = self.client.patch(reverse('modify-my-org'), {
+            'is_premium': True,
+            'stripe_subscription_status': 'active',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.org.refresh_from_db()
+        self.assertFalse(self.org.is_premium)
+        self.assertEqual(self.org.stripe_subscription_status, '')
 
 class ClockInClockOutTestCase(TestCase):
     def setUp(self):
@@ -1145,6 +1198,41 @@ class AdminEmailVerificationTestCase(TestCase):
         self.assertIsNone(user.org.trial_started_at)
         self.assertIsNone(user.org.trial_ends_at)
         self.assertFalse(user.org.is_premium)
+
+    def test_success_page_has_working_start_free_trial_button(self):
+        response = self.client.get(reverse('success-page'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, 'Start Free Trial')
+        self.assertContains(response, 'onclick="startTrial()"')
+        self.assertContains(response, 'user: data.user || data')
+
+    @override_settings(FAST_TEST_REGISTRATION_ENABLED=False)
+    def test_fast_test_registration_is_hidden_and_disabled_by_default(self):
+        page_response = self.client.get(reverse('register-page'))
+        api_response = self.client.post(reverse('test-fast-org-signup'), {}, format='json')
+
+        self.assertEqual(page_response.status_code, status.HTTP_200_OK)
+        self.assertNotContains(page_response, 'Fast test mode is enabled.')
+        self.assertEqual(api_response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @override_settings(FAST_TEST_REGISTRATION_ENABLED=True)
+    def test_fast_test_registration_creates_verified_admin_and_org(self):
+        page_response = self.client.get(reverse('register-page'))
+        api_response = self.client.post(reverse('test-fast-org-signup'), {}, format='json')
+
+        self.assertEqual(page_response.status_code, status.HTTP_200_OK)
+        self.assertContains(page_response, 'Create Test Organization')
+        self.assertEqual(api_response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('access', api_response.data)
+        self.assertIn('refresh', api_response.data)
+
+        user = User.objects.get(email=api_response.data['user']['email'])
+        org = Org.objects.get(id=api_response.data['organization']['id'])
+        self.assertTrue(user.email_verified)
+        self.assertTrue(user.is_staff)
+        self.assertEqual(user.org, org)
+        self.assertFalse(org.is_premium)
 
 
 class ContactPageTestCase(TestCase):

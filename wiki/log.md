@@ -20,6 +20,14 @@ Fixed the post-registration billing prompt flow: valid email verification links 
 
 Made the `Start Free Trial` CTA visible in the success page HTML instead of depending on a narrow JavaScript state path, and added a `Start Free Trial` link to the logged-in navbar dropdown for non-premium admins.
 
+## [2026-05-30] test | Fast registration shortcut
+
+Added an env-gated `FAST_TEST_REGISTRATION_ENABLED` shortcut for temporary production/sandbox checkout testing. When enabled, the register page shows a warning-only test button that creates a random verified org admin, stores auth tokens, and redirects straight to the start-trial screen. The shortcut is hidden and returns 404 when disabled.
+
+## [2026-05-30] feature | Simple web admin dashboard
+
+Added `/dashboard/` as the lightweight web admin landing page for organization admins. It exposes org name, school, and registration-code edits, sends admins to the mobile app for the full study-hour workflow, and shows the Stripe Checkout free-trial CTA for non-premium orgs.
+
 ## [2026-05-30] seo | Product comparison pages
 
 Added a public `/compare/` hub and comparison pages for GreekGeek vs CampusStudy, GreekGeek vs MyGreekStudy, and CampusStudy vs MyGreekStudy. The pages target comparison-search intent with pricing, feature, and decision-guide copy grounded in public competitor claims.

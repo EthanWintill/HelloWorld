@@ -24,6 +24,19 @@
                     <div id="success-message" class="alert alert-success d-none" role="alert">
                         <!-- Success message will be displayed here -->
                     </div>
+
+                    {% if fast_test_registration_enabled %}
+                    <div class="alert alert-warning" role="status">
+                        <div class="d-flex flex-column gap-2">
+                            <strong>Fast test mode is enabled.</strong>
+                            <span>Create a random verified test organization and jump straight to the trial screen.</span>
+                            <button type="button" class="btn btn-warning" id="fast-test-register-btn">
+                                <span id="fast-test-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                <span id="fast-test-text">Create Test Organization</span>
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
                     
                     <form id="register-form">
                         <h5 class="mb-3 text-primary border-bottom pb-2">Personal Information</h5>
@@ -108,7 +121,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Redirect only for a valid stored session. Stale tokens should behave like logged-out state.
     if (isAuthenticated()) {
-        window.location.href = '/';
+        window.location.href = '/dashboard/';
         return;
     }
     localStorage.removeItem('access_token');
@@ -120,6 +133,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const registerBtn = document.getElementById('register-btn');
     const registerSpinner = document.getElementById('register-spinner');
     const registerText = document.getElementById('register-text');
+    const fastTestBtn = document.getElementById('fast-test-register-btn');
+    const fastTestSpinner = document.getElementById('fast-test-spinner');
+    const fastTestText = document.getElementById('fast-test-text');
     
     // Clear field errors on input
     form.addEventListener('input', function(e) {
@@ -196,6 +212,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 feedback.textContent = errorText;
             }
         }
+    }
+
+    if (fastTestBtn) {
+        fastTestBtn.addEventListener('click', async function() {
+            clearAllErrors();
+            fastTestBtn.disabled = true;
+            fastTestSpinner.classList.remove('d-none');
+            fastTestText.textContent = 'Creating test organization...';
+
+            try {
+                const response = await fetch('/api/test-fast-org-signup/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.detail || 'Unable to create test organization');
+                }
+
+                localStorage.setItem('access_token', result.access);
+                localStorage.setItem('refresh_token', result.refresh);
+                sessionStorage.setItem('new_org_data', JSON.stringify(result));
+                window.location.href = '/success/?start_trial=1';
+            } catch (error) {
+                displayErrors([error.message || 'Unable to create test organization']);
+                scrollToTop();
+                fastTestBtn.disabled = false;
+                fastTestSpinner.classList.add('d-none');
+                fastTestText.textContent = 'Create Test Organization';
+            }
+        });
     }
     
     form.addEventListener('submit', async function(e) {

@@ -35,6 +35,7 @@ Finish launch-critical product, backend, onboarding, and operational work so the
 - Valid email verification links now auto-sign in the admin and send them to the start-trial prompt; admins should not have to manually sign in after clicking a valid verification link.
 - Stripe Billing starter is implemented as backend-managed annual subscription Checkout for verified org admins. The app should not collect raw card fields; admins should be sent to Stripe-hosted Checkout through `/api/billing/checkout-session/`, Stripe should collect payment details, and Stripe webhooks should sync `Org.is_premium`.
 - The intended trial model is Stripe-managed: the admin starts a 30-day Stripe subscription trial after sign-in, the org is premium while Stripe status is `trialing` or `active`, and Stripe automatically charges the annual plan after the trial if the payment method remains valid.
+- A simple web admin dashboard now lives at `/dashboard/`. It lets organization admins edit org name, school, and registration code, points admins to the mobile app for the full workflow, and shows the Stripe Checkout free-trial CTA for non-premium orgs.
 - Stripe sandbox setup uses product `prod_UcC6g2cLgVZwOa`, annual price `price_1TcxhwFdUW1rAvnAxKr9UxvM`, and a test webhook endpoint pointed at `https://greekgeek.app/api/billing/stripe-webhook/`. Secrets stay in ignored env files or Stripe Dashboard only.
 
 ## Open Questions
@@ -42,4 +43,3 @@ Finish launch-critical product, backend, onboarding, and operational work so the
 - What is the final GreekGeek App Store product URL for the centralized badge link?
 - Which customer segment is the first paid target?
 - What is the next concrete milestone?
-- What final billing UI should expose the Stripe Checkout handoff to admins: post-trial banner, admin organization screen, or both?

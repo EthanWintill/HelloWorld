@@ -197,9 +197,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 successMessage.textContent = 'Subscription successful! Welcome to GreekGeek. Redirecting to your dashboard...';
                 successMessage.classList.remove('d-none');
                 
-                // Redirect to home page after a delay
+                // Redirect to dashboard after a delay
                 setTimeout(() => {
-                    window.location.href = '/';
+                    window.location.href = '/dashboard/';
                 }, 3000);
             } else {
                 // Show error message
@@ -248,4 +248,4 @@ async function loadUserEmail() {
     }
 }
 </script>
-{% endblock %} 
+{% endblock %}

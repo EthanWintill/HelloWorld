@@ -11,6 +11,7 @@ from rest_framework.authtoken.models import Token
 
 from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission, IsAdminUser
 
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .models import User, Org, OrgSettings, Session, Location, PeriodSetting, PeriodInstance, NotificationToken, Group, EmailVerificationToken
@@ -1284,6 +1285,47 @@ class OrgOwnerSignupView(PublicEndpointMixin, CreateAPIView):
             return Response(response_data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FastTestOrgSignupView(PublicEndpointMixin, APIView):
+    """
+    Temporary test-only shortcut for creating a verified org admin.
+    """
+    def post(self, request, format=None):
+        if not settings.FAST_TEST_REGISTRATION_ENABLED:
+            raise Http404
+
+        suffix = uuid.uuid4().hex[:8]
+        with transaction.atomic():
+            org = Org.objects.create(
+                name=f'Test Chapter {suffix}',
+                school='Test University',
+                reg_code=f'TEST{suffix.upper()}',
+                study_req=2.0,
+                study_goal=4.0,
+                is_premium=False,
+            )
+            user = User.objects.create_user(
+                email=f'test-admin-{suffix}@example.com',
+                password=secrets.token_urlsafe(18),
+                first_name='Test',
+                last_name='Admin',
+                org=org,
+                is_staff=True,
+                phone_number='',
+            )
+            user.email_verified = True
+            user.save(update_fields=['email_verified'])
+
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'detail': 'Test organization and verified admin created.',
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': UserSerializer(user).data,
+            'organization': OrgSerializer(org).data,
+        }, status=status.HTTP_201_CREATED)
+
 
 class EmailVerificationConfirmView(PublicEndpointMixin, APIView):
     """

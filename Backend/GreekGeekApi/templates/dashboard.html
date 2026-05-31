@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - GreekGeek{% endblock %}
+{% block meta_description %}Manage your GreekGeek organization details, registration code, mobile app access, and free trial.{% endblock %}
+{% block canonical_url %}https://greekgeek.app/dashboard/{% endblock %}
+{% block og_title %}GreekGeek Dashboard{% endblock %}
+{% block og_description %}Manage your GreekGeek organization details and app access.{% endblock %}
+{% block og_url %}https://greekgeek.app/dashboard/{% endblock %}
+
+{% block content %}
+<section class="dashboard-page">
+    <div class="container">
+        <div id="dashboard-loading" class="dashboard-loading" role="status">
+            <span class="spinner-border text-primary" aria-hidden="true"></span>
+            <span>Loading dashboard...</span>
+        </div>
+
+        <div id="dashboard-alert" class="dashboard-alert d-none" role="alert"></div>
+
+        <div id="dashboard-content" class="d-none">
+            <div class="dashboard-header">
+                <div>
+                    <p class="eyebrow mb-2">Organization admin</p>
+                    <h1>Dashboard</h1>
+                    <p id="dashboard-subtitle">Manage the basics for your organization.</p>
+                </div>
+                <div class="dashboard-status">
+                    <span id="billing-status-label">Loading</span>
+                    <strong id="billing-status-value">Checking account</strong>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <section class="dashboard-panel dashboard-panel-main" aria-labelledby="organization-settings-heading">
+                    <div class="dashboard-panel-heading">
+                        <div>
+                            <h2 id="organization-settings-heading">Organization Settings</h2>
+                            <p>Update the organization details members use to join.</p>
+                        </div>
+                    </div>
+
+                    <form id="organization-form" class="dashboard-form">
+                        <div class="form-grid">
+                            <div class="form-field">
+                                <label for="org-name">Organization Name</label>
+                                <input type="text" id="org-name" name="name" autocomplete="organization" required>
+                            </div>
+                            <div class="form-field">
+                                <label for="org-school">School</label>
+                                <input type="text" id="org-school" name="school" autocomplete="organization" required>
+                            </div>
+                        </div>
+                        <div class="form-field">
+                            <label for="org-reg-code">Registration Code</label>
+                            <div class="registration-code-row">
+                                <input type="text" id="org-reg-code" name="reg_code" required>
+                                <button class="btn btn-outline-dark" type="button" id="copy-code-btn">
+                                    <i class="fas fa-copy me-2" aria-hidden="true"></i>Copy
+                                </button>
+                            </div>
+                            <p class="dashboard-help-text">Members enter this code in the mobile app to join your organization.</p>
+                        </div>
+
+                        <div id="save-message" class="dashboard-inline-message d-none" role="status"></div>
+                        <button class="btn btn-primary" type="submit" id="save-org-btn">
+                            <span id="save-org-spinner" class="spinner-border spinner-border-sm d-none" aria-hidden="true"></span>
+                            <span id="save-org-text">Save Changes</span>
+                        </button>
+                    </form>
+                </section>
+
+                <aside class="dashboard-side" aria-label="Dashboard actions">
+                    <section class="dashboard-panel" id="billing-panel" aria-labelledby="billing-heading">
+                        <div class="dashboard-panel-heading">
+                            <div>
+                                <h2 id="billing-heading">Free Trial</h2>
+                                <p id="billing-copy">Checking your subscription status.</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary w-100 d-none" type="button" id="start-trial-btn">
+                            <span id="start-trial-spinner" class="spinner-border spinner-border-sm d-none" aria-hidden="true"></span>
+                            <span id="start-trial-text">Start Free Trial</span>
+                        </button>
+                        <div id="billing-message" class="dashboard-inline-message d-none" role="status"></div>
+                    </section>
+
+                    <section class="dashboard-panel" aria-labelledby="app-heading">
+                        <div class="dashboard-panel-heading">
+                            <div>
+                                <h2 id="app-heading">Get the App</h2>
+                                <p>The real action happens in the app.</p>
+                            </div>
+                        </div>
+                        <p class="dashboard-help-text">Use the mobile app for study periods, locations, members, reports, and clock-ins.</p>
+                        <div class="dashboard-app-store">
+                            {% include 'partials/app_store_badge.html' with track='dashboard_app_store_clicked' width=160 height=53 %}
+                        </div>
+                    </section>
+                </aside>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loading = document.getElementById('dashboard-loading');
+    const content = document.getElementById('dashboard-content');
+    const alertBox = document.getElementById('dashboard-alert');
+    const subtitle = document.getElementById('dashboard-subtitle');
+    const form = document.getElementById('organization-form');
+    const nameInput = document.getElementById('org-name');
+    const schoolInput = document.getElementById('org-school');
+    const regCodeInput = document.getElementById('org-reg-code');
+    const copyCodeBtn = document.getElementById('copy-code-btn');
+    const saveBtn = document.getElementById('save-org-btn');
+    const saveSpinner = document.getElementById('save-org-spinner');
+    const saveText = document.getElementById('save-org-text');
+    const saveMessage = document.getElementById('save-message');
+    const billingCopy = document.getElementById('billing-copy');
+    const billingStatusLabel = document.getElementById('billing-status-label');
+    const billingStatusValue = document.getElementById('billing-status-value');
+    const billingMessage = document.getElementById('billing-message');
+    const startTrialBtn = document.getElementById('start-trial-btn');
+    const startTrialSpinner = document.getElementById('start-trial-spinner');
+    const startTrialText = document.getElementById('start-trial-text');
+    let currentOrg = null;
+
+    if (!isAuthenticated()) {
+        window.location.href = '/login/';
+        return;
+    }
+
+    form.addEventListener('submit', saveOrganization);
+    copyCodeBtn.addEventListener('click', copyRegistrationCode);
+    startTrialBtn.addEventListener('click', startTrial);
+
+    loadDashboard();
+
+    async function loadDashboard() {
+        try {
+            const response = await apiRequest('/api/dashboard/');
+            if (!response.ok) {
+                throw new Error(await getResponseError(response, 'Unable to load dashboard.'));
+            }
+
+            const data = await response.json();
+            if (!data.is_staff || !data.org) {
+                showAlert('This dashboard is only available to organization admins.', 'danger');
+                loading.classList.add('d-none');
+                return;
+            }
+
+            currentOrg = data.org;
+            renderDashboard(data);
+            showCheckoutMessage();
+            loading.classList.add('d-none');
+            content.classList.remove('d-none');
+        } catch (error) {
+            loading.classList.add('d-none');
+            showAlert(error.message || 'Unable to load dashboard.', 'danger');
+        }
+    }
+
+    function renderDashboard(data) {
+        currentOrg = data.org;
+        nameInput.value = currentOrg.name || '';
+        schoolInput.value = currentOrg.school || '';
+        regCodeInput.value = currentOrg.reg_code || '';
+        subtitle.textContent = `${currentOrg.name || 'Your organization'} settings and app access.`;
+
+        const status = currentOrg.stripe_subscription_status || '';
+        const hasPremiumAccess = currentOrg.is_premium || ['active', 'trialing'].includes(status);
+
+        if (status === 'trialing') {
+            billingStatusLabel.textContent = 'Trial';
+            billingStatusValue.textContent = 'Active';
+            billingCopy.textContent = 'Your organization trial is active. Keep managing study-hour workflows in the app.';
+            startTrialBtn.classList.add('d-none');
+            return;
+        }
+
+        if (status === 'active' || hasPremiumAccess) {
+            billingStatusLabel.textContent = 'Subscription';
+            billingStatusValue.textContent = 'Active';
+            billingCopy.textContent = 'Your organization has premium access. Keep managing study-hour workflows in the app.';
+            startTrialBtn.classList.add('d-none');
+            return;
+        }
+
+        billingStatusLabel.textContent = 'Trial';
+        billingStatusValue.textContent = 'Not started';
+        billingCopy.textContent = 'Start your one-month free trial to unlock premium access. GreekGeek is $149.99 per organization per year after the trial.';
+        startTrialBtn.classList.remove('d-none');
+    }
+
+    async function saveOrganization(event) {
+        event.preventDefault();
+
+        const payload = {
+            name: nameInput.value.trim(),
+            school: schoolInput.value.trim(),
+            reg_code: regCodeInput.value.trim()
+        };
+
+        if (!payload.name || !payload.school || !payload.reg_code) {
+            showInlineMessage(saveMessage, 'Organization name, school, and registration code are required.', 'danger');
+            return;
+        }
+
+        setSaving(true);
+        hideInlineMessage(saveMessage);
+
+        try {
+            const response = await apiRequest('/api/my-org/', {
+                method: 'PATCH',
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(await getResponseError(response, 'Unable to save organization settings.'));
+            }
+
+            currentOrg = await response.json();
+            renderDashboard({ org: currentOrg });
+            showInlineMessage(saveMessage, 'Organization settings saved.', 'success');
+        } catch (error) {
+            showInlineMessage(saveMessage, error.message || 'Unable to save organization settings.', 'danger');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function startTrial() {
+        startTrialBtn.disabled = true;
+        startTrialSpinner.classList.remove('d-none');
+        startTrialText.textContent = 'Opening checkout...';
+        hideInlineMessage(billingMessage);
+
+        try {
+            const response = await apiRequest('/api/billing/checkout-session/', {
+                method: 'POST',
+                body: JSON.stringify({})
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.detail || 'Unable to start trial.');
+            }
+            window.location.href = result.checkout_url;
+        } catch (error) {
+            showInlineMessage(billingMessage, error.message || 'Unable to start trial.', 'danger');
+            startTrialBtn.disabled = false;
+            startTrialSpinner.classList.add('d-none');
+            startTrialText.textContent = 'Start Free Trial';
+        }
+    }
+
+    async function copyRegistrationCode() {
+        const code = regCodeInput.value.trim();
+        if (!code) return;
+
+        try {
+            await navigator.clipboard.writeText(code);
+            copyCodeBtn.innerHTML = '<i class="fas fa-check me-2" aria-hidden="true"></i>Copied';
+        } catch (error) {
+            regCodeInput.select();
+            document.execCommand('copy');
+            copyCodeBtn.innerHTML = '<i class="fas fa-check me-2" aria-hidden="true"></i>Copied';
+        }
+
+        window.setTimeout(() => {
+            copyCodeBtn.innerHTML = '<i class="fas fa-copy me-2" aria-hidden="true"></i>Copy';
+        }, 1800);
+    }
+
+    function setSaving(isSaving) {
+        saveBtn.disabled = isSaving;
+        saveSpinner.classList.toggle('d-none', !isSaving);
+        saveText.textContent = isSaving ? 'Saving...' : 'Save Changes';
+    }
+
+    function showCheckoutMessage() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('stripe_checkout') === 'success') {
+            showAlert('Stripe checkout completed. Premium access may take a moment to update.', 'success');
+        }
+        if (params.get('stripe_checkout') === 'cancelled') {
+            showAlert('Stripe checkout was cancelled. You can start the trial when you are ready.', 'info');
+        }
+    }
+
+    async function getResponseError(response, fallback) {
+        try {
+            const data = await response.json();
+            if (data.detail) return data.detail;
+            if (data.errors && Array.isArray(data.errors)) {
+                return data.errors.map((error) => error.detail).join(' ');
+            }
+            const fieldErrors = Object.entries(data).flatMap(([field, value]) => {
+                if (Array.isArray(value)) return value.map((item) => `${field}: ${item}`);
+                if (typeof value === 'string') return [`${field}: ${value}`];
+                return [];
+            });
+            if (fieldErrors.length) return fieldErrors.join(' ');
+        } catch (error) {
+            return fallback;
+        }
+        return fallback;
+    }
+
+    function showAlert(message, type) {
+        alertBox.className = `dashboard-alert alert alert-${type}`;
+        alertBox.textContent = message;
+        alertBox.classList.remove('d-none');
+    }
+
+    function showInlineMessage(element, message, type) {
+        element.className = `dashboard-inline-message dashboard-inline-message-${type}`;
+        element.textContent = message;
+        element.classList.remove('d-none');
+    }
+
+    function hideInlineMessage(element) {
+        element.classList.add('d-none');
+        element.textContent = '';
+    }
+});
+</script>
+{% endblock %}

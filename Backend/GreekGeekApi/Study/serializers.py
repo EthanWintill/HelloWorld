@@ -91,6 +91,17 @@ class UpdateOrgSerializer(OrgSerializer):
     study_req = serializers.FloatField(required=False)
     study_goal = serializers.FloatField(required=False)
 
+    class Meta(OrgSerializer.Meta):
+        read_only_fields = (
+            'id',
+            'is_premium',
+            'trial_started_at',
+            'trial_ends_at',
+            'stripe_customer_id',
+            'stripe_subscription_id',
+            'stripe_subscription_status',
+        )
+
 class GroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = Group
