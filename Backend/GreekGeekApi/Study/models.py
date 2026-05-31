@@ -14,6 +14,9 @@ class Org(models.Model):
     is_premium = models.BooleanField(default=False)
     trial_started_at = models.DateTimeField(blank=True, null=True)
     trial_ends_at = models.DateTimeField(blank=True, null=True)
+    stripe_customer_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
+    stripe_subscription_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
+    stripe_subscription_status = models.CharField(max_length=64, blank=True)
 
     class Meta:
         ordering = ['id']

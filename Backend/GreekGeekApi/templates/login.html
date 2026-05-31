@@ -51,12 +51,13 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Redirect if already logged in
-    const token = localStorage.getItem('access_token');
-    if (token) {
+    // Redirect only for a valid stored session. Stale tokens should behave like logged-out state.
+    if (isAuthenticated()) {
         window.location.href = '/';
         return;
     }
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     
     const form = document.getElementById('login-form');
     const errorMessage = document.getElementById('error-message');
@@ -134,6 +135,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             return;
                         }
                         
+                        if (!userData.org.is_premium && !['active', 'trialing'].includes(userData.org.stripe_subscription_status || '')) {
+                            window.location.href = '/success/?start_trial=1';
+                            return;
+                        }
+
                         // Admin verification successful - redirect to dashboard
                         window.location.href = '/';
                     } else {

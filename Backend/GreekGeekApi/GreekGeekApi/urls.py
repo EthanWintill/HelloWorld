@@ -1,9 +1,6 @@
 from django.urls import include, path
 from rest_framework import routers
 
-from rest_framework_simplejwt.views import TokenRefreshView
-
-
 from Study import views, admin, web_views
 
 
@@ -36,7 +33,7 @@ urlpatterns = [
     path('api/signup/', views.Signup.as_view(), name='signup'),
     path('api/org-owner-signup/', views.OrgOwnerSignupView.as_view(), name='org-owner-signup'),
     path('api/token/', views.VerifiedEmailTokenObtainPairView.as_view()),
-    path('api/token/refresh/', TokenRefreshView.as_view()),
+    path('api/token/refresh/', views.PublicTokenRefreshView.as_view()),
     path('api/user/<int:pk>/', views.UserDetail.as_view(), name='user-detail'),
     path('api/profile-picture/', views.ProfilePictureUploadView.as_view(), name='profile-picture-upload'),
     path('api/user/<int:user_id>/reset-password/', views.AdminPasswordResetView.as_view(), name='admin-password-reset'),
@@ -62,6 +59,8 @@ urlpatterns = [
     path('api/password-reset/validate/<str:token>/', views.PasswordResetTokenValidationView.as_view(), name='password-reset-validate'),
     path('api/email-verification/confirm/', views.EmailVerificationConfirmView.as_view(), name='email-verification-confirm'),
     path('api/email-verification/resend/', views.EmailVerificationResendView.as_view(), name='email-verification-resend'),
+    path('api/billing/checkout-session/', views.BillingCheckoutSessionView.as_view(), name='billing-checkout-session'),
+    path('api/billing/stripe-webhook/', views.StripeWebhookView.as_view(), name='stripe-webhook'),
     
     # Period-related URLs
     path('api/period-settings/', views.PeriodSettingViewSet.as_view({'get': 'list', 'post': 'create'}), name='period-settings'),

@@ -1,5 +1,21 @@
 # HelloWorld Log
 
+## [2026-05-30] feature | Stripe Billing starter
+
+Added a backend Stripe Billing starter for the `$149.99/year` organization subscription: Checkout Session creation for org admins, Stripe webhook signature verification, org-level Stripe customer/subscription fields, premium-state sync, environment placeholders, and focused billing tests. The current app trial remains no-card signup; paid checkout is a separate admin handoff to Stripe-hosted Checkout.
+
+## [2026-05-30] config | Stripe sandbox credentials
+
+Updated the Stripe sandbox env to use the Dashboard-created annual price `price_1TcxhwFdUW1rAvnAxKr9UxvM` under product `prod_UcC6g2cLgVZwOa`, created a sandbox webhook endpoint for `https://greekgeek.app/api/billing/stripe-webhook/`, and populated ignored `Backend/.env` with the sandbox Stripe keys, price ID, redirect URLs, and webhook signing secret.
+
+## [2026-05-30] change | Stripe-managed trial model
+
+Changed the billing flow so email verification does not start the internal trial. Verified admins are prompted after sign-in to start a Stripe Checkout subscription with a 30-day trial and payment method collection; Stripe webhook subscription events now control premium access and trial timestamps.
+
+## [2026-05-30] fix | Trial prompt onboarding
+
+Fixed the post-registration billing prompt flow: valid email verification links now auto-sign in admins and redirect to the trial prompt, non-premium admins see a start-trial action, the misleading dashboard button was replaced with a skip/continue action, and visible copy no longer exposes unnecessary Stripe implementation details.
+
 ## [2026-05-30] seo | Product comparison pages
 
 Added a public `/compare/` hub and comparison pages for GreekGeek vs CampusStudy, GreekGeek vs MyGreekStudy, and CampusStudy vs MyGreekStudy. The pages target comparison-search intent with pricing, feature, and decision-guide copy grounded in public competitor claims.
@@ -75,3 +91,7 @@ Documented the launch pricing package: `$149.99` per year per organization with 
 ## [2026-05-30] implementation | Landing page remediation pass
 
 Implemented the first landing-page remediation pass: retained App Store badges as live download CTAs with a centralized placeholder href for the final store URL, replaced misleading member-code CTAs with App Store/chapter-code copy, aligned the organization funnel around a one-month free trial and `$149.99/year` pricing, added trust/support/privacy proof, added SEO/social/favicons, switched landing screenshots to optimized WebP assets, and captured verification screenshots under `landing-page-remediation-assets-2026-05-30/`.
+
+## [2026-05-31] fix | Stale auth tokens on public auth routes
+
+Changed public signup, sign-in, email verification, password reset, chapter-code lookup, and contact API endpoints to skip JWT authentication parsing so stale bearer tokens are treated as anonymous state. Updated the web login and register pages to clear invalid stored browser tokens instead of redirecting away from the forms.
