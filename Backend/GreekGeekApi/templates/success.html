@@ -36,77 +36,42 @@
                                     <span id="start-trial-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                                     <span id="start-trial-text">Start Free Trial</span>
                                 </button>
-                                <a href="/dashboard/" class="btn btn-outline-secondary">Skip for Now</a>
+                                <a href="/dashboard/" class="btn btn-outline-secondary">Dashboard</a>
                             </div>
                             <div id="billing-error" class="text-danger d-none"></div>
                         </div>
                     </div>
-                    
-                    <div class="row mt-4">
-                        <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-users text-primary mb-2" style="font-size: 2rem;"></i>
-                                    <h6 class="card-title">Invite Members</h6>
-                                    <p class="card-text small">Share your registration code with organization members</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-cog text-primary mb-2" style="font-size: 2rem;"></i>
-                                    <h6 class="card-title">Setup Complete</h6>
-                                    <p class="card-text small">Your admin account is ready to manage your organization</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="text-center">
-                        <a href="/dashboard/" class="btn btn-outline-secondary btn-lg" id="continue-link">
-                            Continue Without Trial
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title text-center mb-3">
-                        <i class="fas fa-info-circle text-info me-2"></i>Next Steps
-                    </h5>
-                    <div class="row">
-                        <div class="col-12 mb-3">
-                            <div class="d-flex align-items-start">
-                                <div class="badge bg-primary rounded-circle me-3 mt-1" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">1</div>
-                                <div>
-                                    <strong>Add Study Locations</strong>
-                                    <p class="mb-0 text-muted">Set up study locations where members can check in</p>
+                    <div class="mt-4 pt-3 border-top">
+                        <h5 class="card-title text-center mb-3">
+                            <i class="fas fa-info-circle text-info me-2"></i>Next Steps
+                        </h5>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <div class="d-flex align-items-start">
+                                    <div class="badge bg-primary rounded-circle me-3 mt-1" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">1</div>
+                                    <div>
+                                        <strong>Add Study Locations</strong>
+                                        <p class="mb-0 text-muted">Set up study locations where members can check in</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12 mb-3">
-                            <div class="d-flex align-items-start">
-                                <div class="badge bg-primary rounded-circle me-3 mt-1" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">2</div>
-                                <div>
-                                    <strong>Invite Members</strong>
-                                    <p class="mb-0 text-muted">Share your registration code with organization members</p>
+                            <div class="col-12 mb-3">
+                                <div class="d-flex align-items-start">
+                                    <div class="badge bg-primary rounded-circle me-3 mt-1" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">2</div>
+                                    <div>
+                                        <strong>Invite Members</strong>
+                                        <p class="mb-0 text-muted">Share your registration code with organization members</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12 mb-3">
-                            <div class="d-flex align-items-start">
-                                <div class="badge bg-primary rounded-circle me-3 mt-1" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">3</div>
-                                <div>
-                                    <strong>Set Study Requirements</strong>
-                                    <p class="mb-0 text-muted">Configure study hours and periods for your organization</p>
+                            <div class="col-12 mb-0">
+                                <div class="d-flex align-items-start">
+                                    <div class="badge bg-primary rounded-circle me-3 mt-1" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">3</div>
+                                    <div>
+                                        <strong>Set Study Requirements</strong>
+                                        <p class="mb-0 text-muted">Configure study hours and periods for your organization</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -193,8 +158,6 @@ async function showTrialPrompt(existingData = null) {
     document.getElementById('success-copy').textContent = 'Your organization is created but not premium yet. Start the trial to unlock premium access.';
     displayOrganizationInfo(data);
     document.getElementById('billing-action').classList.remove('d-none');
-    document.getElementById('continue-link').classList.remove('btn-primary');
-    document.getElementById('continue-link').classList.add('btn-outline-secondary');
     document.getElementById('start-trial-btn').onclick = startTrial;
 }
 
@@ -203,7 +166,6 @@ async function showBillingSuccess() {
     const data = normalizeOrgData(await fetchDashboard());
     document.getElementById('success-heading').textContent = 'Trial Started';
     document.getElementById('success-copy').textContent = 'Your trial is active. Your organization now has premium access.';
-    document.getElementById('continue-link').textContent = 'Continue';
     displayOrganizationInfo(data);
 }
 

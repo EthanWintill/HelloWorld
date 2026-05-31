@@ -341,6 +341,10 @@ def terms_page(request):
     """Terms of service page."""
     return render(request, 'terms.html')
 
+def cookies_page(request):
+    """Cookie policy page."""
+    return render(request, 'cookies.html')
+
 def contact_page(request):
     """Public contact form."""
     context = {
