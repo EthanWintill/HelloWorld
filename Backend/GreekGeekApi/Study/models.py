@@ -11,6 +11,9 @@ class Org(models.Model):
     school = models.CharField(max_length=255)
     study_req = models.FloatField(default=2)
     study_goal = models.FloatField(default=4)
+    is_premium = models.BooleanField(default=False)
+    trial_started_at = models.DateTimeField(blank=True, null=True)
+    trial_ends_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         ordering = ['id']
@@ -142,6 +145,7 @@ class User(AbstractBaseUser):
     live = models.BooleanField(default=False)
     last_location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True, blank=True, related_name="users")
     profile_picture_key = models.CharField(max_length=512, blank=True, null=True)
+    email_verified = models.BooleanField(default=True)
 
     # Notification settings
     notify_org_starts_studying = models.BooleanField(default=True, help_text="Notify when someone in the same org starts studying.")
@@ -246,3 +250,19 @@ class PasswordResetToken(models.Model):
 
     def __str__(self):
         return f"Password reset for {self.user.email} - {self.token[:10]}..."
+
+class EmailVerificationToken(models.Model):
+    """
+    Stores email verification tokens for newly registered organization admins.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_verification_tokens')
+    token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    def is_expired(self):
+        return now() > self.expires_at
+
+    def __str__(self):
+        return f"Email verification for {self.user.email} - {self.token[:10]}..."

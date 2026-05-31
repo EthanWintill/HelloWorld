@@ -31,6 +31,7 @@ Finish launch-critical product, backend, onboarding, and operational work so the
 - Public contact form is live under `/contact/`, linked from the footer, landing support section, and support pages, and sends to `CONTACT_TO_EMAIL` through the existing ZeptoMail-backed email service.
 - Landing CTAs are focused on starting a free organization trial first and downloading the mobile app second; member-code CTA buttons were removed, and App Store badge links are controlled by `APP_STORE_URL`.
 - Product comparison pages are live under `/compare/`, covering GreekGeek vs CampusStudy, GreekGeek vs MyGreekStudy, and CampusStudy vs MyGreekStudy with a GreekGeek alternative angle.
+- New organization admin signup now requires email verification before sign-in. New orgs are created as non-premium, and the one-month trial timestamps start after verification.
 
 ## Open Questions
 

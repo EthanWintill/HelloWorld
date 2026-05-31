@@ -279,6 +279,57 @@ class EmailService:
             logger.exception(f"Failed to send password reset confirmation email to {user_email}")
             return False
 
+    def send_email_verification_email(self, user_email, verification_token, user_name=None):
+        """Send the organization admin email verification link."""
+        try:
+            verification_link = f"{settings.FRONTEND_URL}/verify-email/{verification_token}/"
+            subject = "Verify Your GreekGeek Email"
+
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Verify Your Email</title>
+            </head>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="text-align: center; padding: 20px 0; border-bottom: 2px solid #0d6efd; margin-bottom: 30px;">
+                    <div style="font-size: 28px; font-weight: bold; color: #0d6efd;">GreekGeek</div>
+                </div>
+                <h2>Verify your email</h2>
+                <p>Hello{f', {escape(user_name)}' if user_name else ''}!</p>
+                <p>Confirm this email address to finish setting up your GreekGeek admin account and start your organization trial.</p>
+                <p style="text-align: center;">
+                    <a href="{verification_link}" style="display: inline-block; padding: 12px 30px; background-color: #0d6efd; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Verify Email</a>
+                </p>
+                <p>If the button does not work, copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; background-color: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace;">{verification_link}</p>
+                <p>This link expires in 24 hours. If you did not create a GreekGeek organization, you can ignore this email.</p>
+            </body>
+            </html>
+            """
+
+            plain_text_content = f"""
+            Verify your GreekGeek email
+
+            Hello{f', {user_name}' if user_name else ''}!
+
+            Confirm this email address to finish setting up your GreekGeek admin account and start your organization trial:
+
+            {verification_link}
+
+            This link expires in 24 hours. If you did not create a GreekGeek organization, you can ignore this email.
+            """
+
+            self._send(user_email, subject, html_content, plain_text_content)
+            logger.info("Email verification sent to %s.", user_email)
+            return True
+
+        except Exception:
+            logger.exception("Failed to send email verification to %s", user_email)
+            return False
+
     def send_contact_email(self, name, reply_to_email, topic, message, organization=''):
         """Send a public contact form submission to GreekGeek support."""
         try:

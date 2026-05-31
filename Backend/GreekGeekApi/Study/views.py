@@ -1,6 +1,6 @@
 from rest_framework import permissions, viewsets, status, exceptions
 
-from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, OrgSettingsSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer, NotificationTokenSerializer, GroupSerializer, CreateGroupSerializer, UpdateGroupSerializer, OrgOwnerSignupSerializer
+from .serializers import UserSerializer, UpdateUserSerializer, OrgSerializer, OrgSettingsSerializer, UpdateOrgSerializer, LocationSerializer, UpdateLocationSerializer, UserDashboardSerializer, StaffStatusSerializer, PeriodSettingSerializer, PeriodInstanceSerializer, SessionSerializer, NotificationTokenSerializer, GroupSerializer, CreateGroupSerializer, UpdateGroupSerializer, OrgOwnerSignupSerializer, VerifiedEmailTokenObtainPairSerializer
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 
@@ -13,22 +13,50 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import User, Org, OrgSettings, Session, Location, PeriodSetting, PeriodInstance, NotificationToken, Group
+from .models import User, Org, OrgSettings, Session, Location, PeriodSetting, PeriodInstance, NotificationToken, Group, EmailVerificationToken
 
 from django.http import Http404 
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
 from datetime import timedelta
 import json
 import requests
 import uuid
+import secrets
 from math import radians, sin, cos, sqrt, atan2
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from .utils import get_or_create_period_instance, send_notification_to_users, send_notification_to_org
+
+
+def create_email_verification_token(user):
+    EmailVerificationToken.objects.filter(user=user, is_used=False).update(is_used=True)
+    token = secrets.token_urlsafe(32)
+    return EmailVerificationToken.objects.create(
+        user=user,
+        token=token,
+        expires_at=timezone.now() + timedelta(hours=24),
+    )
+
+
+def send_admin_verification_email(user):
+    verification = create_email_verification_token(user)
+    from .email_service import EmailService
+    user_name = f"{user.first_name} {user.last_name}".strip() or None
+    email_sent = EmailService().send_email_verification_email(
+        user_email=user.email,
+        verification_token=verification.token,
+        user_name=user_name,
+    )
+    return verification, email_sent
+
+
+class VerifiedEmailTokenObtainPairView(TokenObtainPairView):
+    serializer_class = VerifiedEmailTokenObtainPairSerializer
 
 def distance_meters(lat1, lon1, lat2, lon2):
     earth_radius_meters = 6371000
@@ -1143,19 +1171,118 @@ class OrgOwnerSignupView(CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            result = serializer.save()
+            with transaction.atomic():
+                result = serializer.save()
+                verification, email_sent = send_admin_verification_email(result['user'])
             
             # Prepare response data
             user_data = UserSerializer(result['user']).data
             org_data = OrgSerializer(result['org']).data
             
-            return Response({
-                'detail': 'Organization and owner account created successfully',
+            response_data = {
+                'detail': 'Organization and owner account created successfully. Please verify your email before signing in.',
+                'email_verification_required': True,
+                'verification_email_sent': email_sent,
                 'user': user_data,
                 'organization': org_data
-            }, status=status.HTTP_201_CREATED)
+            }
+            if settings.DEBUG and not email_sent:
+                response_data['verification_url'] = f"{settings.FRONTEND_URL}/verify-email/{verification.token}/"
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class EmailVerificationConfirmView(APIView):
+    """
+    API view to confirm a newly registered admin email address.
+    """
+    permission_classes = (AllowAny,)
+
+    def post(self, request, format=None):
+        token = request.data.get('token')
+        if not token:
+            return Response(
+                {"detail": "Verification token is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            verification = EmailVerificationToken.objects.select_related('user', 'user__org').get(
+                token=token,
+                is_used=False,
+            )
+        except EmailVerificationToken.DoesNotExist:
+            return Response(
+                {"detail": "Invalid or expired verification token"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if verification.is_expired():
+            return Response(
+                {"detail": "Verification token has expired. Please request a new verification email."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = verification.user
+        user.email_verified = True
+        user.save(update_fields=['email_verified'])
+        verification.is_used = True
+        verification.save(update_fields=['is_used'])
+
+        if user.is_staff and user.org and user.org.trial_started_at is None:
+            user.org.trial_started_at = timezone.now()
+            user.org.trial_ends_at = user.org.trial_started_at + timedelta(days=30)
+            user.org.save(update_fields=['trial_started_at', 'trial_ends_at'])
+
+        return Response({
+            "detail": "Email verified successfully. You can now sign in.",
+            "email": user.email,
+        }, status=status.HTTP_200_OK)
+
+class EmailVerificationResendView(APIView):
+    """
+    API view to resend verification for admins blocked at login.
+    """
+    permission_classes = (AllowAny,)
+
+    def post(self, request, format=None):
+        email = request.data.get('email')
+        password = request.data.get('password')
+        if not email or not password:
+            return Response(
+                {"detail": "Email and password are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(email__iexact=email, is_staff=True)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "If this admin account exists and needs verification, a new email has been sent."},
+                status=status.HTTP_200_OK
+            )
+
+        if not user.check_password(password):
+            return Response(
+                {"detail": "If this admin account exists and needs verification, a new email has been sent."},
+                status=status.HTTP_200_OK
+            )
+
+        if user.email_verified:
+            return Response(
+                {"detail": "This email is already verified. You can sign in."},
+                status=status.HTTP_200_OK
+            )
+
+        verification, email_sent = send_admin_verification_email(user)
+        response_data = {
+            "detail": "Verification email sent. Please check your inbox.",
+            "verification_email_sent": email_sent,
+        }
+        if settings.DEBUG and not email_sent:
+            response_data['verification_url'] = f"{settings.FRONTEND_URL}/verify-email/{verification.token}/"
+        return Response(response_data, status=status.HTTP_200_OK)
 
 class PasswordResetRequestView(APIView):
     """

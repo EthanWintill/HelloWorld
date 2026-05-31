@@ -8,6 +8,14 @@ Added a public `/compare/` hub and comparison pages for GreekGeek vs CampusStudy
 
 Removed dead member-code/member-access CTAs from the landing page, made the free trial CTA the primary path, kept app download as the secondary path, and centralized App Store badge destinations behind `APP_STORE_URL` instead of scrolling to a member-access section.
 
+## [2026-05-31] fix | Production landing screenshot static assets
+
+Fixed the reason landing screenshots were missing from production: the broad `screenshots/` ignore rule excluded `Backend/GreekGeekApi/static/screenshots/landing/`, so deploy pulled templates that referenced WebP assets that were never tracked. Unignored the Django static screenshot directory and added a deploy-time `collectstatic` check for the required WebP files.
+
+## [2026-05-30] feature | Admin email verification gate
+
+Added email verification for new organization admin signup. New org-owner accounts are blocked from JWT sign-in until verification, unverified admins can resend the verification email from login, and org trial timestamps now start after verification while `is_premium` remains false.
+
 ## [2026-05-30] feature | Public contact form
 
 Added a `/contact/` page with backend validation and ZeptoMail-backed support email delivery. Replaced footer/homepage/support-page contact links with the new contact form and configured recipient routing through `CONTACT_TO_EMAIL`.

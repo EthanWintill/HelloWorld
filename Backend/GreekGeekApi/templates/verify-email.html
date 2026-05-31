@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify Email - GreekGeek{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-5">
+            <div class="card shadow">
+                <div class="card-body p-4 text-center">
+                    {% if verified %}
+                        <div class="display-4 text-success mb-3">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <h2 class="card-title">Email Verified</h2>
+                        <p class="text-muted">{{ message }}</p>
+                        <a class="btn btn-primary" href="/login/">Sign In</a>
+                    {% else %}
+                        <div class="display-4 text-danger mb-3">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <h2 class="card-title">Verification Needed</h2>
+                        <p class="text-muted">{{ message }}</p>
+                        <a class="btn btn-primary" href="/login/">Back to Sign In</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

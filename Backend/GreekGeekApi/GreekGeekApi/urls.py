@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework import routers
 
-from rest_framework_simplejwt.views import TokenRefreshView, TokenObtainPairView
+from rest_framework_simplejwt.views import TokenRefreshView
 
 
 from Study import views, admin, web_views
@@ -22,6 +22,7 @@ urlpatterns = [
     path('success/', web_views.success_page, name='success-page'),
     path('forgot-password/', web_views.forgot_password_page, name='forgot-password-page'),
     path('reset-password/<str:token>/', web_views.reset_password_page, name='reset-password-page'),
+    path('verify-email/<str:token>/', web_views.verify_email_page, name='verify-email-page'),
     path('privacy/', web_views.privacy_page, name='privacy-page'),
     path('terms/', web_views.terms_page, name='terms-page'),
     path('contact/', web_views.contact_page, name='contact-page'),
@@ -34,7 +35,7 @@ urlpatterns = [
     path('admin/', admin.admin.site.urls),
     path('api/signup/', views.Signup.as_view(), name='signup'),
     path('api/org-owner-signup/', views.OrgOwnerSignupView.as_view(), name='org-owner-signup'),
-    path('api/token/', TokenObtainPairView.as_view()),
+    path('api/token/', views.VerifiedEmailTokenObtainPairView.as_view()),
     path('api/token/refresh/', TokenRefreshView.as_view()),
     path('api/user/<int:pk>/', views.UserDetail.as_view(), name='user-detail'),
     path('api/profile-picture/', views.ProfilePictureUploadView.as_view(), name='profile-picture-upload'),
@@ -59,6 +60,8 @@ urlpatterns = [
     path('api/password-reset/request/', views.PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('api/password-reset/confirm/', views.PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     path('api/password-reset/validate/<str:token>/', views.PasswordResetTokenValidationView.as_view(), name='password-reset-validate'),
+    path('api/email-verification/confirm/', views.EmailVerificationConfirmView.as_view(), name='email-verification-confirm'),
+    path('api/email-verification/resend/', views.EmailVerificationResendView.as_view(), name='email-verification-resend'),
     
     # Period-related URLs
     path('api/period-settings/', views.PeriodSettingViewSet.as_view({'get': 'list', 'post': 'create'}), name='period-settings'),
