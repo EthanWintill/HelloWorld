@@ -188,8 +188,7 @@ const Reports = () => {
   }, [data, isDashboardLoading, handleUnauthorized])
   
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString()
+    return new Date(dateString).toLocaleDateString(undefined, { timeZone: 'UTC' })
   }
 
   const csvEscape = (value: string | number | null | undefined) => {

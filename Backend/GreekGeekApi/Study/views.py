@@ -184,11 +184,9 @@ class PeriodSettingViewSet(viewsets.ModelViewSet):
         return PeriodSetting.objects.filter(org=self.request.user.org)
 
     def perform_create(self, serializer):
-        PeriodSetting.objects.filter(org=self.request.user.org, is_active=True).update(is_active=False)
-        PeriodInstance.objects.filter(
-            period_setting__org=self.request.user.org,
-            is_active=True
-        ).update(is_active=False)
+        # Delete all old period settings for this org (cascades to their instances).
+        # Session.period_instance is SET_NULL so study sessions are preserved.
+        PeriodSetting.objects.filter(org=self.request.user.org).delete()
 
         period_setting = serializer.save(org=self.request.user.org, is_active=True)
 
@@ -752,13 +750,7 @@ class DeactivateOrgPeriods(APIView):
         if not org:
             raise exceptions.ValidationError(detail="Must be apart of an org to manage periods")
 
-        # Deactivate all period settings for this org
-        PeriodSetting.objects.filter(org=org).update(is_active=False)
-        
-        # Deactivate all period instances associated with this org
-        PeriodInstance.objects.filter(
-            period_setting__org=org
-        ).update(is_active=False)
+        PeriodSetting.objects.filter(org=org).delete()
 
         return Response({
             "detail": "Successfully deactivated all periods for organization."

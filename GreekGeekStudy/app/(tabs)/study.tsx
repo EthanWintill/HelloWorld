@@ -659,14 +659,10 @@ const Study = () => {
     const hoursRemaining = Math.max(0, timeDifference / (1000 * 60 * 60));
     
     // For days calculation, we want to know how many calendar days are left
-    // Reset both dates to start of day for accurate day comparison
-    const endDateStartOfDay = new Date(endDate);
-    endDateStartOfDay.setHours(0, 0, 0, 0);
-    
-    const nowStartOfDay = new Date(now);
-    nowStartOfDay.setHours(0, 0, 0, 0);
-    
-    const daysDifference = (endDateStartOfDay.getTime() - nowStartOfDay.getTime()) / (1000 * 60 * 60 * 24);
+    // Use UTC calendar dates so the day count is timezone-independent
+    const endUTC = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate())
+    const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    const daysDifference = (endUTC - nowUTC) / (1000 * 60 * 60 * 24);
     const daysRemaining = Math.max(0, Math.ceil(daysDifference));
 
     // Show days only if we have more than 24 hours remaining OR if it's due today/tomorrow

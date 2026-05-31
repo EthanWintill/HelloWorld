@@ -96,6 +96,7 @@ const History = () => {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'UTC',
     })
   }
 
@@ -147,8 +148,8 @@ const History = () => {
   const getPeriodLabel = () => {
     const activePeriod = getActivePeriodInstance()
     if (activePeriod?.start_date && activePeriod?.end_date) {
-      const start = new Date(activePeriod.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-      const end = new Date(activePeriod.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      const start = new Date(activePeriod.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+      const end = new Date(activePeriod.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
       return `${start} - ${end}`
     }
 
@@ -172,15 +173,10 @@ const History = () => {
     const timeDifference = endDate.getTime() - now.getTime();
     const hoursRemaining = Math.max(0, timeDifference / (1000 * 60 * 60));
     
-    // For days calculation, we want to know how many calendar days are left
-    // Reset both dates to start of day for accurate day comparison
-    const endDateStartOfDay = new Date(endDate);
-    endDateStartOfDay.setHours(0, 0, 0, 0);
-    
-    const nowStartOfDay = new Date(now);
-    nowStartOfDay.setHours(0, 0, 0, 0);
-    
-    const daysDifference = (endDateStartOfDay.getTime() - nowStartOfDay.getTime()) / (1000 * 60 * 60 * 24);
+    // Use UTC calendar dates so the day count is timezone-independent
+    const endUTC = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate())
+    const nowUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    const daysDifference = (endUTC - nowUTC) / (1000 * 60 * 60 * 24);
     const daysRemaining = Math.max(0, Math.ceil(daysDifference));
 
     // Show days only if we have more than 24 hours remaining OR if it's due today/tomorrow
@@ -478,7 +474,7 @@ const History = () => {
               <View className="flex-row flex-wrap gap-2">
                 {data.org_period_instances.map((instance: PeriodInstance) => {
                   const selected = pendingPeriodId === instance.id
-                  const label = `${new Date(instance.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${new Date(instance.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                  const label = `${new Date(instance.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })} – ${new Date(instance.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })}`
                   return (
                     <TouchableOpacity
                       key={instance.id}
