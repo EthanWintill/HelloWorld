@@ -182,6 +182,13 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
+try:
+    STATIC_ASSET_VERSION = os.getenv(
+        'STATIC_ASSET_VERSION',
+        str(int((BASE_DIR / 'static' / 'css' / 'main.css').stat().st_mtime))
+    )
+except FileNotFoundError:
+    STATIC_ASSET_VERSION = os.getenv('STATIC_ASSET_VERSION', '1')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
