@@ -21,3 +21,5 @@ screenshots/
 !Backend/GreekGeekApi/static/screenshots/**
 
 GreekGeekStudy/constants/api.js
+
+GreekGeekStudy/constants/Workstation.code-workspace
