@@ -62,6 +62,8 @@ urlpatterns = [
     path('api/email-verification/confirm/', views.EmailVerificationConfirmView.as_view(), name='email-verification-confirm'),
     path('api/email-verification/resend/', views.EmailVerificationResendView.as_view(), name='email-verification-resend'),
     path('api/billing/checkout-session/', views.BillingCheckoutSessionView.as_view(), name='billing-checkout-session'),
+    path('api/billing/sync-checkout-session/', views.BillingCheckoutSessionSyncView.as_view(), name='billing-sync-checkout-session'),
+    path('api/billing/sync-subscription/', views.BillingSubscriptionSyncView.as_view(), name='billing-sync-subscription'),
     path('api/billing/stripe-webhook/', views.StripeWebhookView.as_view(), name='stripe-webhook'),
     
     # Period-related URLs

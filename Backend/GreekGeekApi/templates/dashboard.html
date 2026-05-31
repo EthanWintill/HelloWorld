@@ -141,6 +141,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadDashboard() {
         try {
+            await syncCheckoutSessionFromUrl();
             const response = await apiRequest('/api/dashboard/');
             if (!response.ok) {
                 throw new Error(await getResponseError(response, 'Unable to load dashboard.'));
@@ -281,10 +282,29 @@ document.addEventListener('DOMContentLoaded', function() {
         saveText.textContent = isSaving ? 'Saving...' : 'Save Changes';
     }
 
+    async function syncCheckoutSessionFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get('session_id');
+        if (params.get('stripe_checkout') !== 'success' || !sessionId) return;
+
+        try {
+            const response = await apiRequest('/api/billing/sync-checkout-session/', {
+                method: 'POST',
+                body: JSON.stringify({ session_id: sessionId })
+            });
+            if (!response.ok) {
+                throw new Error(await getResponseError(response, 'Unable to sync checkout session.'));
+            }
+            window.history.replaceState(null, '', '/dashboard/?stripe_checkout=success');
+        } catch (error) {
+            showAlert(error.message || 'Checkout completed, but account sync failed.', 'warning');
+        }
+    }
+
     function showCheckoutMessage() {
         const params = new URLSearchParams(window.location.search);
         if (params.get('stripe_checkout') === 'success') {
-            showAlert('Stripe checkout completed. Premium access may take a moment to update.', 'success');
+            showAlert('Trial started. Your organization now has premium access.', 'success');
         }
         if (params.get('stripe_checkout') === 'cancelled') {
             showAlert('Stripe checkout was cancelled. You can start the trial when you are ready.', 'info');

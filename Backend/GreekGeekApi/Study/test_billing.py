@@ -51,6 +51,100 @@ class BillingCheckoutSessionTests(TestCase):
         self.assertEqual(session_args['metadata']['org_id'], str(self.org.id))
         self.assertNotIn('payment_method_types', session_args)
 
+    @override_settings(STRIPE_API_KEY='rk_test_123')
+    @patch('Study.views.stripe.checkout.Session.retrieve')
+    def test_admin_can_sync_completed_checkout_session(self, mock_retrieve):
+        trial_start = 1780189000
+        trial_end = 1782781000
+        mock_retrieve.return_value = {
+            'id': 'cs_test_123',
+            'client_reference_id': str(self.org.id),
+            'customer': 'cus_123',
+            'metadata': {'org_id': str(self.org.id)},
+            'subscription': {
+                'id': 'sub_123',
+                'customer': 'cus_123',
+                'status': 'trialing',
+                'trial_start': trial_start,
+                'trial_end': trial_end,
+            },
+        }
+
+        response = self.client.post(reverse('billing-sync-checkout-session'), {
+            'session_id': 'cs_test_123',
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.org.refresh_from_db()
+        self.assertTrue(self.org.is_premium)
+        self.assertEqual(self.org.stripe_customer_id, 'cus_123')
+        self.assertEqual(self.org.stripe_subscription_id, 'sub_123')
+        self.assertEqual(self.org.stripe_subscription_status, 'trialing')
+        mock_retrieve.assert_called_once_with('cs_test_123', expand=['subscription'])
+
+    @override_settings(STRIPE_API_KEY='rk_test_123')
+    @patch('Study.views.stripe.Subscription.retrieve')
+    def test_admin_can_refresh_subscription_status_from_stored_subscription_id(self, mock_retrieve):
+        self.org.stripe_customer_id = 'cus_123'
+        self.org.stripe_subscription_id = 'sub_123'
+        self.org.stripe_subscription_status = 'trialing'
+        self.org.is_premium = True
+        self.org.save(update_fields=[
+            'stripe_customer_id',
+            'stripe_subscription_id',
+            'stripe_subscription_status',
+            'is_premium',
+        ])
+        mock_retrieve.return_value = {
+            'id': 'sub_123',
+            'customer': 'cus_123',
+            'status': 'canceled',
+            'trial_start': None,
+            'trial_end': None,
+        }
+
+        response = self.client.post(reverse('billing-sync-subscription'), {}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.org.refresh_from_db()
+        self.assertFalse(self.org.is_premium)
+        self.assertEqual(self.org.stripe_subscription_status, 'canceled')
+        self.assertEqual(response.data['billing']['stripe_subscription_status'], 'canceled')
+        mock_retrieve.assert_called_once_with('sub_123')
+
+    @override_settings(STRIPE_API_KEY='rk_test_123')
+    @patch('Study.views.stripe.Subscription.list')
+    def test_admin_can_refresh_subscription_status_from_stored_customer_id(self, mock_list):
+        self.org.stripe_customer_id = 'cus_123'
+        self.org.save(update_fields=['stripe_customer_id'])
+        mock_list.return_value = {
+            'data': [
+                {
+                    'id': 'sub_123',
+                    'customer': 'cus_123',
+                    'status': 'trialing',
+                    'trial_start': 1780189000,
+                    'trial_end': 1782781000,
+                }
+            ]
+        }
+
+        response = self.client.post(reverse('billing-sync-subscription'), {}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.org.refresh_from_db()
+        self.assertTrue(self.org.is_premium)
+        self.assertEqual(self.org.stripe_subscription_id, 'sub_123')
+        self.assertEqual(self.org.stripe_subscription_status, 'trialing')
+        mock_list.assert_called_once_with(customer='cus_123', status='all', limit=1)
+
+    def test_admin_subscription_sync_without_billing_ids_returns_current_state(self):
+        response = self.client.post(reverse('billing-sync-subscription'), {}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data['billing']['is_premium'])
+        self.assertIsNone(response.data['billing']['stripe_customer_id'])
+
 
 class StripeWebhookTests(TestCase):
     @override_settings(

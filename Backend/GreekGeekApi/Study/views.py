@@ -70,6 +70,14 @@ def stripe_timestamp_to_datetime(value):
     return datetime.fromtimestamp(value, tz=datetime_timezone.utc)
 
 
+def stripe_get(obj, key, default=None):
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 def sync_org_subscription(
     org,
     subscription_id=None,
@@ -107,6 +115,31 @@ def sync_org_subscription(
 
     if update_fields:
         org.save(update_fields=update_fields)
+
+
+def sync_org_from_stripe_subscription(org, subscription, customer_id=None):
+    sync_org_subscription(
+        org,
+        subscription_id=stripe_get(subscription, 'id'),
+        customer_id=customer_id or stripe_get(subscription, 'customer'),
+        status_value=stripe_get(subscription, 'status', ''),
+        trial_started_at=stripe_timestamp_to_datetime(stripe_get(subscription, 'trial_start')),
+        trial_ends_at=stripe_timestamp_to_datetime(stripe_get(subscription, 'trial_end')),
+    )
+
+
+def billing_response(org):
+    return {
+        'organization': OrgSerializer(org).data,
+        'billing': {
+            'is_premium': org.is_premium,
+            'stripe_customer_id': org.stripe_customer_id,
+            'stripe_subscription_id': org.stripe_subscription_id,
+            'stripe_subscription_status': org.stripe_subscription_status,
+            'trial_started_at': org.trial_started_at,
+            'trial_ends_at': org.trial_ends_at,
+        },
+    }
 
 
 class PublicEndpointMixin:
@@ -1417,6 +1450,82 @@ class BillingCheckoutSessionView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
+class BillingCheckoutSessionSyncView(APIView):
+    """
+    Syncs the org subscription from a completed Stripe Checkout Session.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, format=None):
+        user = request.user
+        if not user.is_staff or not user.org:
+            raise exceptions.PermissionDenied(detail="Only organization admins can manage billing")
+
+        session_id = request.data.get('session_id')
+        if not session_id:
+            raise exceptions.ValidationError(detail="Checkout session ID is required")
+
+        configure_stripe()
+        checkout_session = stripe.checkout.Session.retrieve(
+            session_id,
+            expand=['subscription'],
+        )
+
+        org_id = (
+            stripe_get(stripe_get(checkout_session, 'metadata', {}), 'org_id')
+            or stripe_get(checkout_session, 'client_reference_id')
+        )
+        if str(user.org.id) != str(org_id):
+            raise exceptions.PermissionDenied(detail="Checkout session does not belong to your organization")
+
+        subscription = stripe_get(checkout_session, 'subscription')
+        if not subscription or isinstance(subscription, str):
+            raise exceptions.ValidationError(detail="Checkout session does not include a subscription yet")
+
+        sync_org_from_stripe_subscription(
+            user.org,
+            subscription,
+            customer_id=stripe_get(checkout_session, 'customer'),
+        )
+        return Response(billing_response(user.org), status=status.HTTP_200_OK)
+
+
+class BillingSubscriptionSyncView(APIView):
+    """
+    Refreshes the org billing state from Stripe using stored billing IDs.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, format=None):
+        user = request.user
+        if not user.is_staff or not user.org:
+            raise exceptions.PermissionDenied(detail="Only organization admins can manage billing")
+
+        org = user.org
+        if not org.stripe_subscription_id and not org.stripe_customer_id:
+            return Response(billing_response(org), status=status.HTTP_200_OK)
+
+        configure_stripe()
+        subscription = None
+
+        if org.stripe_subscription_id:
+            subscription = stripe.Subscription.retrieve(org.stripe_subscription_id)
+        elif org.stripe_customer_id:
+            subscriptions = stripe.Subscription.list(
+                customer=org.stripe_customer_id,
+                status='all',
+                limit=1,
+            )
+            subscription_data = stripe_get(subscriptions, 'data', [])
+            if subscription_data:
+                subscription = subscription_data[0]
+
+        if subscription:
+            sync_org_from_stripe_subscription(org, subscription)
+
+        return Response(billing_response(org), status=status.HTTP_200_OK)
+
+
 class StripeWebhookView(APIView):
     """
     Receives Stripe billing events and keeps organization premium state in sync.
@@ -1456,12 +1565,27 @@ class StripeWebhookView(APIView):
                     org = None
 
                 if org:
-                    sync_org_subscription(
-                        org,
-                        subscription_id=event_object.get('subscription'),
-                        customer_id=event_object.get('customer'),
-                        status_value='trialing',
-                    )
+                    subscription_id = event_object.get('subscription')
+                    subscription = None
+                    if subscription_id:
+                        try:
+                            subscription = stripe.Subscription.retrieve(subscription_id)
+                        except Exception:
+                            subscription = None
+
+                    if subscription:
+                        sync_org_from_stripe_subscription(
+                            org,
+                            subscription,
+                            customer_id=event_object.get('customer'),
+                        )
+                    else:
+                        sync_org_subscription(
+                            org,
+                            subscription_id=subscription_id,
+                            customer_id=event_object.get('customer'),
+                            status_value='trialing',
+                        )
 
         elif event_type in {
             'customer.subscription.created',

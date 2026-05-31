@@ -24,6 +24,14 @@ Made the `Start Free Trial` CTA visible in the success page HTML instead of depe
 
 Added an env-gated `FAST_TEST_REGISTRATION_ENABLED` shortcut for temporary production/sandbox checkout testing. When enabled, the register page shows a warning-only test button that creates a random verified org admin, stores auth tokens, and redirects straight to the start-trial screen. The shortcut is hidden and returns 404 when disabled.
 
+## [2026-05-30] fix | Checkout return sync
+
+Added an authenticated checkout-session sync endpoint and wired the dashboard/success return pages to call it when Stripe redirects back with a `session_id`. This lets GreekGeek mark the org premium/trialing immediately after Checkout, instead of relying only on asynchronous webhook delivery.
+
+## [2026-05-30] feature | Reusable billing status sync
+
+Added `POST /api/billing/sync-subscription/` so an authenticated org admin can refresh the org's billing state from Stripe at any time using the stored Stripe subscription ID, or the stored customer ID as a fallback.
+
 ## [2026-05-30] feature | Simple web admin dashboard
 
 Added `/dashboard/` as the lightweight web admin landing page for organization admins. It exposes org name, school, and registration-code edits, sends admins to the mobile app for the full study-hour workflow, and shows the Stripe Checkout free-trial CTA for non-premium orgs.

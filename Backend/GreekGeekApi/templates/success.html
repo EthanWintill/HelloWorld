@@ -199,11 +199,29 @@ async function showTrialPrompt(existingData = null) {
 }
 
 async function showBillingSuccess() {
+    await syncCheckoutSessionFromUrl();
     const data = normalizeOrgData(await fetchDashboard());
     document.getElementById('success-heading').textContent = 'Trial Started';
-    document.getElementById('success-copy').textContent = 'Your trial is being activated. Premium access updates shortly.';
+    document.getElementById('success-copy').textContent = 'Your trial is active. Your organization now has premium access.';
     document.getElementById('continue-link').textContent = 'Continue';
     displayOrganizationInfo(data);
+}
+
+async function syncCheckoutSessionFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session_id');
+    if (!sessionId) return;
+
+    const token = localStorage.getItem('access_token');
+    const response = await fetch('/api/billing/sync-checkout-session/', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ session_id: sessionId })
+    });
+    if (!response.ok) throw new Error('Unable to sync checkout session');
 }
 
 function normalizeOrgData(data) {
