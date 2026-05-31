@@ -137,12 +137,20 @@ function updateNavbar() {
         // Fetch user info from API to display name
         fetchUserInfo().then(userData => {
             const displayName = userData ? `${userData.first_name} ${userData.last_name}` : 'User';
+            const needsTrial = userData?.org && !userData.org.is_premium && !['active', 'trialing'].includes(userData.org.stripe_subscription_status || '');
+            const trialLink = needsTrial ? `
+                        <li><a class="dropdown-item" href="/success/?start_trial=1">
+                            <i class="fas fa-credit-card me-2"></i>Start Free Trial
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+            ` : '';
             navbarAuth.innerHTML = `
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-user me-1"></i>${displayName}
                     </a>
                     <ul class="dropdown-menu">
+                        ${trialLink}
                         <li><a class="dropdown-item" href="/">
                             <i class="fas fa-home me-2"></i>Home
                         </a></li>
