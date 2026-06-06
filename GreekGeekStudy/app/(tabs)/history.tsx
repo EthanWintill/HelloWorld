@@ -149,7 +149,7 @@ const History = () => {
   const getPeriodLabel = () => {
     const activePeriod = getActivePeriodInstance()
     if (activePeriod?.start_date && activePeriod?.end_date) {
-      const start = new Date(activePeriod.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: orgTz })
+      const start = new Date(activePeriod.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
       const end = new Date(activePeriod.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: orgTz })
       return `${start} - ${end}`
     }
@@ -475,7 +475,7 @@ const History = () => {
               <View className="flex-row flex-wrap gap-2">
                 {data.org_period_instances.map((instance: PeriodInstance) => {
                   const selected = pendingPeriodId === instance.id
-                  const label = `${new Date(instance.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: orgTz })} – ${new Date(instance.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: orgTz })}`
+                  const label = `${new Date(instance.start_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })} – ${new Date(instance.end_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: orgTz })}`
                   return (
                     <TouchableOpacity
                       key={instance.id}

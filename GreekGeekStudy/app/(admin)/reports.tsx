@@ -188,8 +188,8 @@ const Reports = () => {
     initFetch()
   }, [data, isDashboardLoading, handleUnauthorized])
   
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, { timeZone: orgTz })
+  const formatDate = (dateString: string, tz: string = orgTz) => {
+    return new Date(dateString).toLocaleDateString(undefined, { timeZone: tz })
   }
 
   const csvEscape = (value: string | number | null | undefined) => {
@@ -209,7 +209,7 @@ const Reports = () => {
 
     try {
       const periodLabel = hasPeriodsData && selectedPeriod
-        ? `${formatDate(selectedPeriod.start_date)} - ${formatDate(selectedPeriod.end_date)}`
+        ? `${formatDate(selectedPeriod.start_date, 'UTC')} - ${formatDate(selectedPeriod.end_date)}`
         : 'Lifetime'
 
       let rows: (string | number | null | undefined)[][] = []
@@ -518,7 +518,7 @@ const Reports = () => {
                     onPress={() => setSelectedPeriodId(period.id)}
                   >
                     <Text className={selectedPeriodId === period.id ? 'text-white' : 'text-gg-muted'}>
-                      {`${formatDate(period.start_date)} - ${formatDate(period.end_date)}`}
+                      {`${formatDate(period.start_date, 'UTC')} - ${formatDate(period.end_date)}`}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -527,7 +527,7 @@ const Reports = () => {
               {selectedPeriod && (
                 <View className="bg-gg-bg border border-gg-outlineVariant p-3 rounded-lg">
                   <Text className="text-gg-muted font-pregular">
-                    {formatDate(selectedPeriod.start_date)} - {formatDate(selectedPeriod.end_date)}
+                    {formatDate(selectedPeriod.start_date, 'UTC')} - {formatDate(selectedPeriod.end_date)}
                   </Text>
                   <Text className="text-gg-muted font-pregular">
                     {selectedPeriod.period_setting?.required_hours || orgReport.active_period_setting?.required_hours} hours required

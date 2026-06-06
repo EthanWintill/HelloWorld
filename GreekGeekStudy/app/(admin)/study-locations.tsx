@@ -64,7 +64,9 @@ const StudyLocationsManagement = () => {
   const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
   const [geocodingError, setGeocodingError] = useState('');
   const [sliderWidth, setSliderWidth] = useState(1);
+  const [sliderPageX, setSliderPageX] = useState(0);
   const mapRef = useRef<MapView>(null);
+  const sliderRef = useRef<View>(null);
   const MIN_RADIUS = 25;
   const MAX_RADIUS = 500;
 
@@ -636,8 +638,9 @@ const StudyLocationsManagement = () => {
     }
   };
 
-  const updateRadiusFromSlider = (locationX: number) => {
-    const position = Math.min(sliderWidth, Math.max(0, locationX));
+  const updateRadiusFromSlider = (pageX: number) => {
+    const localX = pageX - sliderPageX;
+    const position = Math.min(sliderWidth, Math.max(0, localX));
     const percentage = position / sliderWidth;
     updateRadius(MIN_RADIUS + percentage * (MAX_RADIUS - MIN_RADIUS));
   };
@@ -902,12 +905,18 @@ const StudyLocationsManagement = () => {
                   <Text className="text-gg-muted text-xs">{MAX_RADIUS}m</Text>
                 </View>
                 <View
+                  ref={sliderRef}
                   className="h-10 justify-center"
-                  onLayout={(event) => setSliderWidth(event.nativeEvent.layout.width || 1)}
+                  onLayout={() => {
+                    sliderRef.current?.measure((_x, _y, width, _height, pageX) => {
+                      setSliderWidth(width || 1);
+                      setSliderPageX(pageX);
+                    });
+                  }}
                   onStartShouldSetResponder={() => true}
                   onMoveShouldSetResponder={() => true}
-                  onResponderGrant={(event) => updateRadiusFromSlider(event.nativeEvent.locationX)}
-                  onResponderMove={(event) => updateRadiusFromSlider(event.nativeEvent.locationX)}
+                  onResponderGrant={(event) => updateRadiusFromSlider(event.nativeEvent.pageX)}
+                  onResponderMove={(event) => updateRadiusFromSlider(event.nativeEvent.pageX)}
                 >
                   <View className="h-2 rounded-full bg-gg-outlineVariant overflow-hidden">
                     <View

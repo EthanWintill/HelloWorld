@@ -71,8 +71,8 @@ const StudyPeriodsManagement = () => {
   const [showStartDatePicker, setShowStartDatePicker] = useState(false)
   
   // Format date for display
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString(undefined, { timeZone: orgTz })
+  const formatDate = (dateString: string, tz: string = orgTz): string => {
+    return new Date(dateString).toLocaleDateString(undefined, { timeZone: tz })
   }
   
   // Get day of week name
@@ -281,7 +281,7 @@ const StudyPeriodsManagement = () => {
                     
                     <View className="mb-2">
                       <Text className="text-gg-muted font-pregular">Start Date</Text>
-                      <Text className="font-psemibold text-gg-text">{formatDate(activePeriodSetting.start_date)}</Text>
+                      <Text className="font-psemibold text-gg-text">{formatDate(activePeriodSetting.start_date, 'UTC')}</Text>
                     </View>
                     
                     {activePeriodSetting.period_type === 'weekly' && (
@@ -500,7 +500,7 @@ const StudyPeriodsManagement = () => {
                         <View>
                           <View className="flex-row items-center">
                             <Text className="font-psemibold text-gg-text">
-                              {formatDate(period.start_date)} - {formatDate(period.end_date)}
+                              {formatDate(period.start_date, 'UTC')} - {formatDate(period.end_date)}
                             </Text>
                             {period.is_active && (
                               <View className="bg-gg-surfaceLow px-2 py-1 rounded-full ml-2">
