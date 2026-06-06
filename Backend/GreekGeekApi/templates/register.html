@@ -103,7 +103,7 @@
                         
                         <div class="mb-3">
                             <label for="reg_code" class="form-label">Custom Registration Code <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="reg_code" name="reg_code" required placeholder="Create a unique code for your members">
+                            <input type="text" class="form-control" id="reg_code" name="reg_code" required placeholder="Create a unique code for your members" style="text-transform: uppercase" oninput="this.value=this.value.toUpperCase()">
                             <div class="form-text">This code will be used by your members to join your organization.</div>
                             <div class="invalid-feedback"></div>
                         </div>
@@ -319,7 +319,8 @@ document.addEventListener('DOMContentLoaded', function() {
             phone_number: formData.get('phone_number')?.trim() || '',
             org_name: formData.get('org_name').trim(),
             school: formData.get('school').trim(),
-            reg_code: formData.get('reg_code').trim()
+            reg_code: formData.get('reg_code').trim(),
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York'
         };
         
         try {

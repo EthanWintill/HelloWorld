@@ -3,6 +3,22 @@ from datetime import datetime, timedelta
 from django.db import transaction, models
 import math
 from django.utils import timezone
+from zoneinfo import ZoneInfo
+
+
+def period_end_of_day(due_midnight_utc, org_tz_str):
+    """Return 23:59:59.999999 on the due calendar date expressed in the org's timezone, as UTC.
+
+    This means the period ends at midnight local time for the org rather than midnight UTC.
+    Falls back to UTC if org_tz_str is empty or invalid.
+    """
+    try:
+        tz = ZoneInfo(org_tz_str or 'America/New_York')
+    except Exception:
+        tz = ZoneInfo('America/New_York')
+    d = due_midnight_utc.date()
+    end_local = datetime(d.year, d.month, d.day, 23, 59, 59, 999999, tzinfo=tz)
+    return end_local.astimezone(ZoneInfo('UTC'))
 import json
 import requests
 
@@ -86,18 +102,21 @@ def get_or_create_period_instance(user, session_time):
                 if not instance:
                     # Calculate the correct start date for this session time
                     start_date = calculate_period_start_date(period_setting, session_time)
-                    end_date = period_setting.get_next_due_date(from_date=start_date)
-                    
-                    if not end_date:
+                    due = period_setting.get_next_due_date(from_date=start_date)
+
+                    if not due:
                         raise ValueError("Could not calculate end date for period")
-                    
+
+                    org_tz = getattr(period_setting.org, 'timezone', 'UTC')
+                    end_date = period_end_of_day(due, org_tz)
+
                     # Deactivate only this org's active periods
                     PeriodInstance.objects.filter(
                         period_setting__org=user.org,
                         period_setting__is_active=True,
                         is_active=True
                     ).update(is_active=False)
-                    
+
                     instance = PeriodInstance.objects.create(
                         period_setting=period_setting,
                         start_date=start_date,

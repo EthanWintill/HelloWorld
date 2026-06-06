@@ -32,7 +32,7 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
-from .utils import get_or_create_period_instance, send_notification_to_users, send_notification_to_org, backfill_sessions_for_instance
+from .utils import get_or_create_period_instance, send_notification_to_users, send_notification_to_org, backfill_sessions_for_instance, period_end_of_day
 
 
 def create_email_verification_token(user):
@@ -287,6 +287,7 @@ class PeriodSettingViewSet(viewsets.ModelViewSet):
         period_setting = serializer.save(org=self.request.user.org, is_active=True)
 
         current_time = timezone.now()
+        org_tz = getattr(period_setting.org, 'timezone', 'UTC')
         # Normalize to midnight UTC — strips local-time offset from the frontend ISO string
         inst_start = period_setting.start_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -297,7 +298,7 @@ class PeriodSettingViewSet(viewsets.ModelViewSet):
                 instance = PeriodInstance.objects.create(
                     period_setting=period_setting,
                     start_date=inst_start,
-                    end_date=due.replace(hour=23, minute=59, second=59, microsecond=999999),
+                    end_date=period_end_of_day(due, org_tz),
                     is_active=True,
                 )
                 backfill_sessions_for_instance(instance)
@@ -307,7 +308,7 @@ class PeriodSettingViewSet(viewsets.ModelViewSet):
                 due = period_setting.get_next_due_date(from_date=inst_start)
                 if not due:
                     break
-                inst_end = due.replace(hour=23, minute=59, second=59, microsecond=999999)
+                inst_end = period_end_of_day(due, org_tz)
                 is_current = inst_end >= current_time
                 instance = PeriodInstance.objects.create(
                     period_setting=period_setting,

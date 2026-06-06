@@ -96,6 +96,7 @@ interface GroupStat {
 const Reports = () => {
   const { dashboardState, handleUnauthorized } = useDashboard()
   const { isLoading: isDashboardLoading, error: dashboardError, data } = dashboardState
+  const orgTz = data?.org?.timezone || 'UTC'
   
   const [orgReport, setOrgReport] = useState<OrgReport | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -188,7 +189,7 @@ const Reports = () => {
   }, [data, isDashboardLoading, handleUnauthorized])
   
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, { timeZone: 'UTC' })
+    return new Date(dateString).toLocaleDateString(undefined, { timeZone: orgTz })
   }
 
   const csvEscape = (value: string | number | null | undefined) => {

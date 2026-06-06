@@ -455,6 +455,7 @@ class OrgOwnerSignupSerializer(serializers.Serializer):
     org_name = serializers.CharField(max_length=255)
     school = serializers.CharField(max_length=255)
     reg_code = serializers.CharField(max_length=255)
+    timezone = serializers.CharField(max_length=64, required=False, default='America/New_York')
     
     def validate_reg_code(self, value):
         """Check if registration code is already in use"""
@@ -469,9 +470,10 @@ class OrgOwnerSignupSerializer(serializers.Serializer):
             'name': validated_data['org_name'],
             'school': validated_data['school'],
             'reg_code': validated_data['reg_code'],
-            'study_req': 2.0,  # Default values
+            'study_req': 2.0,
             'study_goal': 4.0,
             'is_premium': False,
+            'timezone': validated_data.get('timezone', 'America/New_York'),
         }
         
         # Create organization
