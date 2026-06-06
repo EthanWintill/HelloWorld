@@ -384,6 +384,13 @@ class ClockOut(APIView):
             raise exceptions.PermissionDenied(detail="Your organization is temporarily in maintenance mode")
         current_time = timezone.now()
 
+        raw_end_time = request.data.get('end_time')
+        if raw_end_time:
+            from django.utils.dateparse import parse_datetime
+            parsed = parse_datetime(raw_end_time)
+            if parsed and parsed < current_time:
+                current_time = parsed
+
         last_session = Session.objects.filter(user=current_user, hours__isnull=True).last()
         if last_session and not last_session.hours:
             start_time = last_session.start_time
