@@ -1,4 +1,4 @@
-import { Image, View, Text, ScrollView, Alert, Linking, TouchableOpacity, AppState, Modal, TextInput } from 'react-native'
+import { Image, View, Text, ScrollView, Alert, Linking, TouchableOpacity, AppState, Modal, TextInput, Platform } from 'react-native'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -15,6 +15,7 @@ import MapView, { Marker, Region, Circle } from 'react-native-maps';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface LocationType {
   id: number;
@@ -149,6 +150,9 @@ const Study = () => {
   const [locationsListVisible, setLocationsListVisible] = useState(false);
   const [manualEntryVisible, setManualEntryVisible] = useState(false);
   const [manualHours, setManualHours] = useState('');
+  const [manualStartTime, setManualStartTime] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   
   // Use our reimplemented stopwatch
   const {
@@ -513,7 +517,7 @@ const Study = () => {
 
       await axios.post(API_URL + 'api/manual-session/', {
         hours,
-        start_time: new Date().toISOString(),
+        start_time: manualStartTime.toISOString(),
       }, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -521,6 +525,7 @@ const Study = () => {
       });
 
       setManualHours('');
+      setManualStartTime(new Date());
       setManualEntryVisible(false);
       eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
       Alert.alert('Study Time Added', 'Your manual study time has been saved.');
@@ -1190,7 +1195,7 @@ const Study = () => {
                   )}
 
                   {(!mapRegion || !backgroundStatus || !foregroundStatus || !requiresLocationVerification) && (
-                    <View className="absolute inset-0 bg-gg-surfaceContainer items-center justify-center px-6">
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#eef1ed', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
                       <Ionicons
                         name={!requiresLocationVerification ? 'shield-checkmark-outline' : 'map-outline'}
                         size={26}
@@ -1315,19 +1320,73 @@ const Study = () => {
       >
         <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.25)' }}>
           <View className="bg-gg-surface rounded-t-3xl p-5">
-            <View className="flex-row justify-between items-center mb-4">
+            <View className="flex-row justify-between items-center mb-5">
               <Text className="text-xl font-psemibold">Add Study Time</Text>
               <TouchableOpacity onPress={() => setManualEntryVisible(false)} className="p-2">
                 <Ionicons name="close" size={24} color="#3e4a3d" />
               </TouchableOpacity>
             </View>
-            <Text className="text-gg-muted mb-2">Hours studied</Text>
+
+            <Text className="text-gg-muted text-xs font-psemibold uppercase tracking-wider mb-2">Date</Text>
+            <TouchableOpacity
+              onPress={() => { setShowTimePicker(false); setShowDatePicker(true); }}
+              className="border border-gg-outline rounded-lg p-3 mb-4 flex-row items-center justify-between"
+            >
+              <Text className="text-gg-text">
+                {manualStartTime.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </Text>
+              <Ionicons name="calendar-outline" size={18} color="#3e4a3d" />
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={manualStartTime}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={new Date()}
+                onChange={(_, date) => {
+                  setShowDatePicker(false);
+                  if (date) {
+                    const updated = new Date(manualStartTime);
+                    updated.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                    setManualStartTime(updated);
+                  }
+                }}
+              />
+            )}
+
+            <Text className="text-gg-muted text-xs font-psemibold uppercase tracking-wider mb-2">Start time</Text>
+            <TouchableOpacity
+              onPress={() => { setShowDatePicker(false); setShowTimePicker(true); }}
+              className="border border-gg-outline rounded-lg p-3 mb-4 flex-row items-center justify-between"
+            >
+              <Text className="text-gg-text">
+                {manualStartTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              </Text>
+              <Ionicons name="time-outline" size={18} color="#3e4a3d" />
+            </TouchableOpacity>
+            {showTimePicker && (
+              <DateTimePicker
+                value={manualStartTime}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(_, date) => {
+                  setShowTimePicker(false);
+                  if (date) {
+                    const updated = new Date(manualStartTime);
+                    updated.setHours(date.getHours(), date.getMinutes(), 0, 0);
+                    setManualStartTime(updated);
+                  }
+                }}
+              />
+            )}
+
+            <Text className="text-gg-muted text-xs font-psemibold uppercase tracking-wider mb-2">Hours studied</Text>
             <TextInput
               value={manualHours}
               onChangeText={setManualHours}
               keyboardType="decimal-pad"
               placeholder="1.5"
-              className="border border-gg-outline rounded-lg p-3 text-lg mb-4"
+              className="border border-gg-outline rounded-lg p-3 text-lg mb-5"
             />
             <TouchableOpacity
               onPress={submitManualEntry}

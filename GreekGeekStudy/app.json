@@ -9,7 +9,8 @@
     "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sambryant.GreekGeekStudy",
+      "bundleIdentifier": "app.greekgeek.GreekGeekStudy",
+      "developmentTeam": "TFXAED36Q2",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "GreekGeek uses your location to verify that study sessions are started from approved study locations.",
         "NSPhotoLibraryUsageDescription": "GreekGeek uses your photo library to let you choose a profile picture.",
