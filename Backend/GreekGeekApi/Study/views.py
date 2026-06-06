@@ -78,6 +78,54 @@ def stripe_get(obj, key, default=None):
     return getattr(obj, key, default)
 
 
+def revenuecat_millis_to_datetime(value):
+    if not value:
+        return None
+    return datetime.fromtimestamp(value / 1000, tz=datetime_timezone.utc)
+
+
+REVENUECAT_SUPPORTED_EVENT_TYPES = {
+    'INITIAL_PURCHASE',
+    'RENEWAL',
+    'PRODUCT_CHANGE',
+    'CANCELLATION',
+    'BILLING_ISSUE',
+    'UNCANCELLATION',
+    'TRANSFER',
+    'SUBSCRIPTION_PAUSED',
+    'EXPIRATION',
+    'SUBSCRIPTION_EXTENDED',
+    'TEMPORARY_ENTITLEMENT_GRANT',
+    'REFUND_REVERSED',
+}
+
+REVENUECAT_ACCESS_STATUSES = {
+    'active',
+    'canceled',
+    'billing_issue',
+    'paused',
+}
+
+
+def org_has_stripe_access(org):
+    return org.stripe_subscription_status in {'active', 'trialing'}
+
+
+def org_has_revenuecat_access(org):
+    if org.revenuecat_subscription_status not in REVENUECAT_ACCESS_STATUSES:
+        return False
+    if org.revenuecat_entitlement_expires_at is None:
+        return org.revenuecat_subscription_status == 'active'
+    return org.revenuecat_entitlement_expires_at > timezone.now()
+
+
+def update_org_premium_state(org, update_fields):
+    has_paid_access = org_has_stripe_access(org) or org_has_revenuecat_access(org)
+    if org.is_premium != has_paid_access:
+        org.is_premium = has_paid_access
+        update_fields.append('is_premium')
+
+
 def sync_org_subscription(
     org,
     subscription_id=None,
@@ -108,10 +156,7 @@ def sync_org_subscription(
         org.trial_ends_at = trial_ends_at
         update_fields.append('trial_ends_at')
 
-    has_paid_access = status_value in {'active', 'trialing'} if status_value else True
-    if org.is_premium != has_paid_access:
-        org.is_premium = has_paid_access
-        update_fields.append('is_premium')
+    update_org_premium_state(org, update_fields)
 
     if update_fields:
         org.save(update_fields=update_fields)
@@ -128,6 +173,142 @@ def sync_org_from_stripe_subscription(org, subscription, customer_id=None):
     )
 
 
+def revenuecat_uuid_values(values):
+    identifiers = []
+    for value in values:
+        if not value:
+            continue
+        try:
+            identifiers.append(uuid.UUID(str(value)))
+        except (TypeError, ValueError):
+            continue
+    return identifiers
+
+
+def revenuecat_event_identifiers(event):
+    return revenuecat_uuid_values([
+        event.get('app_user_id'),
+        event.get('original_app_user_id'),
+        *(event.get('aliases') or []),
+    ])
+
+
+def revenuecat_event_matches_org_subscription(event):
+    entitlement_ids = event.get('entitlement_ids') or []
+    if settings.REVENUECAT_ENTITLEMENT_ID in entitlement_ids or event.get('entitlement_id') == settings.REVENUECAT_ENTITLEMENT_ID:
+        return True
+
+    product_ids = [
+        event.get('product_id'),
+        event.get('new_product_id'),
+    ]
+    return any(
+        product_id == settings.REVENUECAT_PRODUCT_ID
+        or str(product_id).startswith(f'{settings.REVENUECAT_PRODUCT_ID}:')
+        for product_id in product_ids
+        if product_id
+    )
+
+
+def revenuecat_event_expiration(event):
+    timestamp = event.get('grace_period_expiration_at_ms') or event.get('expiration_at_ms')
+    return revenuecat_millis_to_datetime(timestamp), timestamp is not None
+
+
+def revenuecat_event_status(event):
+    event_type = event.get('type')
+    cancel_reason = event.get('cancel_reason')
+
+    if event_type == 'EXPIRATION':
+        return 'expired'
+    if event_type == 'CANCELLATION':
+        if cancel_reason == 'CUSTOMER_SUPPORT':
+            return 'refunded'
+        if cancel_reason == 'BILLING_ERROR':
+            return 'billing_issue'
+        return 'canceled'
+    if event_type == 'BILLING_ISSUE':
+        return 'billing_issue'
+    if event_type == 'SUBSCRIPTION_PAUSED':
+        return 'paused'
+
+    return 'active'
+
+
+def sync_org_from_revenuecat_event(org, event):
+    update_fields = []
+    status_value = revenuecat_event_status(event)
+    expires_at, has_expires_at = revenuecat_event_expiration(event)
+
+    if status_value == 'refunded':
+        expires_at = timezone.now()
+        has_expires_at = True
+
+    if org.revenuecat_subscription_status != status_value:
+        org.revenuecat_subscription_status = status_value
+        update_fields.append('revenuecat_subscription_status')
+
+    product_id = event.get('new_product_id') or event.get('product_id')
+    if product_id and org.revenuecat_product_id != product_id:
+        org.revenuecat_product_id = product_id
+        update_fields.append('revenuecat_product_id')
+
+    store = event.get('store')
+    if store and org.revenuecat_store != store:
+        org.revenuecat_store = store
+        update_fields.append('revenuecat_store')
+
+    transaction_id = event.get('original_transaction_id') or event.get('transaction_id')
+    if transaction_id and org.revenuecat_original_transaction_id != transaction_id:
+        org.revenuecat_original_transaction_id = transaction_id
+        update_fields.append('revenuecat_original_transaction_id')
+
+    if has_expires_at and org.revenuecat_entitlement_expires_at != expires_at:
+        org.revenuecat_entitlement_expires_at = expires_at
+        update_fields.append('revenuecat_entitlement_expires_at')
+
+    update_org_premium_state(org, update_fields)
+
+    if update_fields:
+        org.save(update_fields=update_fields)
+
+
+def sync_revenuecat_transfer_event(event):
+    transferred_from = revenuecat_uuid_values(event.get('transferred_from') or [])
+    transferred_to = revenuecat_uuid_values(event.get('transferred_to') or [])
+
+    if not transferred_from and not transferred_to:
+        return {'updated_org_ids': []}
+
+    updated_org_ids = []
+    now = timezone.now()
+
+    for org in Org.objects.filter(revenuecat_app_user_id__in=transferred_from):
+        update_fields = []
+        if org.revenuecat_subscription_status != 'transferred':
+            org.revenuecat_subscription_status = 'transferred'
+            update_fields.append('revenuecat_subscription_status')
+        if org.revenuecat_entitlement_expires_at != now:
+            org.revenuecat_entitlement_expires_at = now
+            update_fields.append('revenuecat_entitlement_expires_at')
+        update_org_premium_state(org, update_fields)
+        if update_fields:
+            org.save(update_fields=update_fields)
+            updated_org_ids.append(org.id)
+
+    for org in Org.objects.filter(revenuecat_app_user_id__in=transferred_to):
+        update_fields = []
+        if org.revenuecat_subscription_status != 'active':
+            org.revenuecat_subscription_status = 'active'
+            update_fields.append('revenuecat_subscription_status')
+        update_org_premium_state(org, update_fields)
+        if update_fields:
+            org.save(update_fields=update_fields)
+            updated_org_ids.append(org.id)
+
+    return {'updated_org_ids': updated_org_ids}
+
+
 def billing_response(org):
     return {
         'organization': OrgSerializer(org).data,
@@ -138,6 +319,10 @@ def billing_response(org):
             'stripe_subscription_status': org.stripe_subscription_status,
             'trial_started_at': org.trial_started_at,
             'trial_ends_at': org.trial_ends_at,
+            'revenuecat_subscription_status': org.revenuecat_subscription_status,
+            'revenuecat_product_id': org.revenuecat_product_id,
+            'revenuecat_store': org.revenuecat_store,
+            'revenuecat_entitlement_expires_at': org.revenuecat_entitlement_expires_at,
         },
     }
 
@@ -1614,6 +1799,50 @@ class StripeWebhookView(APIView):
                 )
 
         return Response({"received": True}, status=status.HTTP_200_OK)
+
+
+class RevenueCatWebhookView(APIView):
+    """
+    Receives RevenueCat subscription events and keeps organization premium state in sync.
+    """
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    def post(self, request, format=None):
+        expected_authorization = settings.REVENUECAT_WEBHOOK_AUTHORIZATION
+        if expected_authorization:
+            received_authorization = request.META.get('HTTP_AUTHORIZATION', '')
+            if received_authorization != expected_authorization:
+                return Response({"detail": "Invalid authorization"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        event = request.data.get('event') if isinstance(request.data, dict) else None
+        if not isinstance(event, dict):
+            return Response({"detail": "Invalid payload"}, status=status.HTTP_400_BAD_REQUEST)
+
+        event_type = event.get('type')
+        if event_type not in REVENUECAT_SUPPORTED_EVENT_TYPES:
+            return Response({"received": True, "ignored": True}, status=status.HTTP_200_OK)
+
+        if event_type == 'TRANSFER':
+            return Response(
+                {"received": True, "transfer": sync_revenuecat_transfer_event(event)},
+                status=status.HTTP_200_OK,
+            )
+
+        if not revenuecat_event_matches_org_subscription(event):
+            return Response({"received": True, "ignored": True}, status=status.HTTP_200_OK)
+
+        identifiers = revenuecat_event_identifiers(event)
+        if not identifiers:
+            return Response({"detail": "Missing RevenueCat app user id"}, status=status.HTTP_400_BAD_REQUEST)
+
+        org = Org.objects.filter(revenuecat_app_user_id__in=identifiers).first()
+        if org is None:
+            return Response({"detail": "Organization not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        sync_org_from_revenuecat_event(org, event)
+
+        return Response(billing_response(org), status=status.HTTP_200_OK)
 
 
 class EmailVerificationResendView(PublicEndpointMixin, APIView):

@@ -1,4 +1,5 @@
 from unittest.mock import patch
+from datetime import timedelta
 
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -262,3 +263,254 @@ class StripeWebhookTests(TestCase):
         org.refresh_from_db()
         self.assertFalse(org.is_premium)
         self.assertEqual(org.stripe_subscription_status, 'canceled')
+
+
+class RevenueCatWebhookTests(TestCase):
+    def revenuecat_payload(self, org, event_type='INITIAL_PURCHASE', expires_at=None, **event_fields):
+        expires_at = expires_at or timezone.now() + timedelta(days=365)
+        return {
+            'api_version': '1.0',
+            'event': {
+                'id': 'rc_event_123',
+                'type': event_type,
+                'app_user_id': str(org.revenuecat_app_user_id),
+                'original_app_user_id': str(org.revenuecat_app_user_id),
+                'aliases': [],
+                'product_id': 'yearly',
+                'entitlement_ids': ['GreekGeek Pro'],
+                'store': 'APP_STORE',
+                'transaction_id': 'tx_123',
+                'original_transaction_id': 'otx_123',
+                'expiration_at_ms': int(expires_at.timestamp() * 1000),
+                **event_fields,
+            },
+        }
+
+    @override_settings(REVENUECAT_WEBHOOK_AUTHORIZATION='Bearer rc_secret')
+    def test_revenuecat_initial_purchase_marks_org_premium(self):
+        org = Org.objects.create(
+            name='App Store Chapter',
+            reg_code='APP123',
+            school='Test University',
+        )
+
+        response = APIClient().post(
+            reverse('revenuecat-webhook'),
+            data=self.revenuecat_payload(org),
+            format='json',
+            HTTP_AUTHORIZATION='Bearer rc_secret',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertTrue(org.is_premium)
+        self.assertEqual(org.revenuecat_subscription_status, 'active')
+        self.assertEqual(org.revenuecat_product_id, 'yearly')
+        self.assertEqual(org.revenuecat_store, 'APP_STORE')
+        self.assertEqual(org.revenuecat_original_transaction_id, 'otx_123')
+        self.assertEqual(response.data['billing']['is_premium'], True)
+
+    @override_settings(REVENUECAT_WEBHOOK_AUTHORIZATION='Bearer rc_secret')
+    def test_revenuecat_expiration_removes_org_premium_without_stripe_access(self):
+        org = Org.objects.create(
+            name='Expired App Store Chapter',
+            reg_code='EXP123',
+            school='Test University',
+            is_premium=True,
+            revenuecat_subscription_status='active',
+            revenuecat_product_id='yearly',
+            revenuecat_entitlement_expires_at=timezone.now() + timedelta(days=1),
+        )
+
+        response = APIClient().post(
+            reverse('revenuecat-webhook'),
+            data=self.revenuecat_payload(org, event_type='EXPIRATION', expires_at=timezone.now() - timedelta(minutes=5)),
+            format='json',
+            HTTP_AUTHORIZATION='Bearer rc_secret',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertFalse(org.is_premium)
+        self.assertEqual(org.revenuecat_subscription_status, 'expired')
+
+    @override_settings(REVENUECAT_WEBHOOK_AUTHORIZATION='Bearer rc_secret')
+    def test_revenuecat_expiration_keeps_org_premium_with_stripe_access(self):
+        org = Org.objects.create(
+            name='Stripe Chapter',
+            reg_code='STRIPE123',
+            school='Test University',
+            is_premium=True,
+            stripe_subscription_status='active',
+            revenuecat_subscription_status='active',
+            revenuecat_product_id='yearly',
+            revenuecat_entitlement_expires_at=timezone.now() + timedelta(days=1),
+        )
+
+        response = APIClient().post(
+            reverse('revenuecat-webhook'),
+            data=self.revenuecat_payload(org, event_type='EXPIRATION', expires_at=timezone.now() - timedelta(minutes=5)),
+            format='json',
+            HTTP_AUTHORIZATION='Bearer rc_secret',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertTrue(org.is_premium)
+        self.assertEqual(org.revenuecat_subscription_status, 'expired')
+
+    @override_settings(REVENUECAT_WEBHOOK_AUTHORIZATION='Bearer rc_secret')
+    def test_revenuecat_cancellation_keeps_org_premium_until_expiration(self):
+        org = Org.objects.create(
+            name='Cancelled App Store Chapter',
+            reg_code='CANCEL123',
+            school='Test University',
+            is_premium=True,
+            revenuecat_subscription_status='active',
+            revenuecat_product_id='yearly',
+            revenuecat_entitlement_expires_at=timezone.now() + timedelta(days=20),
+        )
+
+        response = APIClient().post(
+            reverse('revenuecat-webhook'),
+            data=self.revenuecat_payload(org, event_type='CANCELLATION', cancel_reason='UNSUBSCRIBE'),
+            format='json',
+            HTTP_AUTHORIZATION='Bearer rc_secret',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertTrue(org.is_premium)
+        self.assertEqual(org.revenuecat_subscription_status, 'canceled')
+
+    @override_settings(REVENUECAT_WEBHOOK_AUTHORIZATION='Bearer rc_secret')
+    def test_revenuecat_billing_issue_keeps_org_premium_through_grace_period(self):
+        org = Org.objects.create(
+            name='Billing Issue Chapter',
+            reg_code='BILL123',
+            school='Test University',
+            is_premium=True,
+            revenuecat_subscription_status='active',
+            revenuecat_product_id='yearly',
+            revenuecat_entitlement_expires_at=timezone.now() + timedelta(days=1),
+        )
+
+        response = APIClient().post(
+            reverse('revenuecat-webhook'),
+            data=self.revenuecat_payload(
+                org,
+                event_type='BILLING_ISSUE',
+                grace_period_expiration_at_ms=int((timezone.now() + timedelta(days=3)).timestamp() * 1000),
+            ),
+            format='json',
+            HTTP_AUTHORIZATION='Bearer rc_secret',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertTrue(org.is_premium)
+        self.assertEqual(org.revenuecat_subscription_status, 'billing_issue')
+        self.assertGreater(org.revenuecat_entitlement_expires_at, timezone.now() + timedelta(days=2))
+
+    @override_settings(REVENUECAT_WEBHOOK_AUTHORIZATION='Bearer rc_secret')
+    def test_revenuecat_customer_support_cancellation_revokes_revenuecat_access(self):
+        org = Org.objects.create(
+            name='Refunded App Store Chapter',
+            reg_code='REFUND123',
+            school='Test University',
+            is_premium=True,
+            revenuecat_subscription_status='active',
+            revenuecat_product_id='yearly',
+            revenuecat_entitlement_expires_at=timezone.now() + timedelta(days=20),
+        )
+
+        response = APIClient().post(
+            reverse('revenuecat-webhook'),
+            data=self.revenuecat_payload(org, event_type='CANCELLATION', cancel_reason='CUSTOMER_SUPPORT'),
+            format='json',
+            HTTP_AUTHORIZATION='Bearer rc_secret',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertFalse(org.is_premium)
+        self.assertEqual(org.revenuecat_subscription_status, 'refunded')
+
+    @override_settings(REVENUECAT_WEBHOOK_AUTHORIZATION='Bearer rc_secret')
+    def test_revenuecat_transfer_removes_access_from_source_org(self):
+        source_org = Org.objects.create(
+            name='Source Chapter',
+            reg_code='SRC123',
+            school='Test University',
+            is_premium=True,
+            revenuecat_subscription_status='active',
+            revenuecat_product_id='yearly',
+            revenuecat_entitlement_expires_at=timezone.now() + timedelta(days=20),
+        )
+        destination_org = Org.objects.create(
+            name='Destination Chapter',
+            reg_code='DST123',
+            school='Test University',
+        )
+
+        response = APIClient().post(
+            reverse('revenuecat-webhook'),
+            data={
+                'api_version': '1.0',
+                'event': {
+                    'id': 'rc_transfer_123',
+                    'type': 'TRANSFER',
+                    'transferred_from': [str(source_org.revenuecat_app_user_id)],
+                    'transferred_to': [str(destination_org.revenuecat_app_user_id)],
+                },
+            },
+            format='json',
+            HTTP_AUTHORIZATION='Bearer rc_secret',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        source_org.refresh_from_db()
+        destination_org.refresh_from_db()
+        self.assertFalse(source_org.is_premium)
+        self.assertEqual(source_org.revenuecat_subscription_status, 'transferred')
+        self.assertTrue(destination_org.is_premium)
+        self.assertEqual(destination_org.revenuecat_subscription_status, 'active')
+
+    @override_settings(REVENUECAT_WEBHOOK_AUTHORIZATION='Bearer rc_secret')
+    def test_revenuecat_ignored_event_does_not_change_org_premium(self):
+        org = Org.objects.create(
+            name='Ignored Event Chapter',
+            reg_code='IGNORE123',
+            school='Test University',
+        )
+
+        response = APIClient().post(
+            reverse('revenuecat-webhook'),
+            data=self.revenuecat_payload(org, event_type='INVOICE_ISSUANCE'),
+            format='json',
+            HTTP_AUTHORIZATION='Bearer rc_secret',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['ignored'], True)
+        org.refresh_from_db()
+        self.assertFalse(org.is_premium)
+
+    @override_settings(REVENUECAT_WEBHOOK_AUTHORIZATION='Bearer rc_secret')
+    def test_revenuecat_webhook_rejects_invalid_authorization(self):
+        org = Org.objects.create(
+            name='Protected Chapter',
+            reg_code='AUTH123',
+            school='Test University',
+        )
+
+        response = APIClient().post(
+            reverse('revenuecat-webhook'),
+            data=self.revenuecat_payload(org),
+            format='json',
+            HTTP_AUTHORIZATION='Bearer wrong',
+        )
+
+        self.assertEqual(response.status_code, 401)
+        org.refresh_from_db()
+        self.assertFalse(org.is_premium)

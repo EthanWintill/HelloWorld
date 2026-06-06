@@ -1,5 +1,13 @@
 # HelloWorld Log
 
+## [2026-06-06] feature | RevenueCat mobile subscription starter
+
+Installed the RevenueCat React Native SDK and UI package in the Expo app, added a root RevenueCat provider, identified RevenueCat customers by organization, checked the `GreekGeek Pro` entitlement for product `yearly`, and added org-admin-only Profile actions for the custom in-app GreekGeek paywall, purchase restore, and Customer Center. The custom paywall fetches the current RevenueCat offering and purchases the selected package with `Purchases.purchasePackage`. Added backend RevenueCat webhook handling so Stripe and RevenueCat both preserve `Org.is_premium` at the org level.
+
+Expanded the RevenueCat webhook logic for the selected access-changing events: purchase, renewal, product change, cancellation, billing issue, uncancellation, transfer, pause, expiration, extension, temporary entitlement grant, and refund reversal. Cancellation and billing issue preserve access until expiration; customer-support cancellation/refund and expiration revoke RevenueCat access unless Stripe remains active.
+
+Added a mobile pre-paywall billing guard: org admins now call the backend Stripe subscription sync endpoint before opening or completing the RevenueCat paywall, and the app blocks RevenueCat purchase if the org is already premium through Stripe.
+
 ## [2026-05-31] legal | Cookie policy page
 
 Added a public `/cookies/` cookie policy page and linked it from the footer Legal section.

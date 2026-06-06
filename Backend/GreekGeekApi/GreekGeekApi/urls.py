@@ -66,6 +66,7 @@ urlpatterns = [
     path('api/billing/sync-checkout-session/', views.BillingCheckoutSessionSyncView.as_view(), name='billing-sync-checkout-session'),
     path('api/billing/sync-subscription/', views.BillingSubscriptionSyncView.as_view(), name='billing-sync-subscription'),
     path('api/billing/stripe-webhook/', views.StripeWebhookView.as_view(), name='stripe-webhook'),
+    path('api/billing/revenuecat-webhook/', views.RevenueCatWebhookView.as_view(), name='revenuecat-webhook'),
     
     # Period-related URLs
     path('api/period-settings/', views.PeriodSettingViewSet.as_view({'get': 'list', 'post': 'create'}), name='period-settings'),
