@@ -44,6 +44,30 @@ Added `POST /api/billing/sync-subscription/` so an authenticated org admin can r
 
 Added `/dashboard/` as the lightweight web admin landing page for organization admins. It exposes org name, school, and registration-code edits, sends admins to the mobile app for the full study-hour workflow, and shows the Stripe Checkout free-trial CTA for non-premium orgs.
 
+## [2026-05-31] planning | Landing page remaining remediation checklist
+
+Added `landing-page-remaining-remediations-2026-05-31.md` as the working checklist for the seven remaining landing-page items after the follow-up audit pass, and linked it from the project wiki index.
+
+## [2026-05-31] fix | Member chapter-code landing copy
+
+Added explicit member copy to the landing page's mobile app section: members with a chapter code should download GreekGeek, choose Join organization, and enter the code from their chapter admin. Marked the corresponding remaining-remediation checklist item complete while leaving the App Store URL replacement intentionally ignored for now.
+
+## [2026-05-31] fix | Register trial expectation copy
+
+Updated `/register/` so the page explains that admins create an organization account first, verify email, then start the one-month Stripe Checkout trial before configuring the chapter and inviting members. Marked the corresponding remaining-remediation checklist item complete.
+
+## [2026-05-31] fix | Earlier mobile landing CTA
+
+Moved the landing page's mid-page organization trial CTA directly under the problem panel so mobile visitors see the second organization action before the problem-card stack. Marked the corresponding remaining-remediation checklist item complete.
+
+## [2026-05-31] fix | Self-host public web vendor assets
+
+Self-hosted Bootstrap and Font Awesome under Django static assets and replaced the public template CDN references. This keeps the mobile nav, auth dropdown icons, success/dashboard icons, and purchase-page icon styling available without relying on external CDN availability. Marked the corresponding remaining-remediation checklist item complete.
+
+## [2026-05-31] blocked | Landing page social proof
+
+Checked for publishable pilot/customer proof for the remaining landing-page social-proof item. No approved quote, logo, named school/chapter/customer mention, or measured launch result was present in the repo, so the checklist item remains open and marked as waiting on approved real proof.
+
 ## [2026-05-30] seo | Product comparison pages
 
 Added a public `/compare/` hub and comparison pages for GreekGeek vs CampusStudy, GreekGeek vs MyGreekStudy, and CampusStudy vs MyGreekStudy. The pages target comparison-search intent with pricing, feature, and decision-guide copy grounded in public competitor claims.
