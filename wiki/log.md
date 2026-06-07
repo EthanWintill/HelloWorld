@@ -1,5 +1,13 @@
 # HelloWorld Log
 
+## [2026-06-07] fix | EAS API constant packaging
+
+Removed the stale root `.gitignore` rule for `GreekGeekStudy/constants/api.js` so EAS build packaging includes the committed API constant that Metro imports from admin screens.
+
+## [2026-06-07] fix | iOS bundle identifier for App Store Connect
+
+Updated the Expo iOS bundle identifier and checked-in Xcode project bundle identifier to `app.greekgeek.GreekGeekStudy` so EAS builds match the App Store Connect app record. Left the Android package as `app.greekgeek.GreekGeekStudy`.
+
 ## [2026-06-07] polish | App Store launch assets
 
 Generated GreekGeek-branded Expo release assets for the App Store icon, Android adaptive icon, splash screen, favicon, and runtime loading logo. After the reconstructed mark looked wrong, regenerated the active asset set from the source SVG in `newlogoassets/logo-small.svg`, added a separate bordered test variant under `bordered-logo-assets/`, wired the active assets into `app.json`, updated the checked-in iOS app icon and splash asset catalog, and changed the in-app loading screen to show the branded loading logo.

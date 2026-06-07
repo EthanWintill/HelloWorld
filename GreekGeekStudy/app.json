@@ -24,7 +24,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#006b2c"
-      }
+      },
+      "package": "app.greekgeek.GreekGeekStudy"
     },
     "web": {
       "bundler": "metro",

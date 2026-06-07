@@ -28,7 +28,7 @@
         <key>CFBundleURLSchemes</key>
         <array>
           <string>myapp</string>
-          <string>com.sambryant.GreekGeekStudy</string>
+          <string>app.greekgeek.GreekGeekStudy</string>
         </array>
       </dict>
       <dict>
