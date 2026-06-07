@@ -277,7 +277,7 @@ const Profile = () => {
     return <LoadingScreen />
   }
 
-  if (error) {
+  if (error && !data) {
     return (
       <ScrollView className="flex-1 p-4">
         <Text className="text-gg-error text-lg font-bold">Error:</Text>

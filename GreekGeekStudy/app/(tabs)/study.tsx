@@ -1,5 +1,6 @@
 import { Image, View, Text, ScrollView, Alert, Linking, TouchableOpacity, AppState, Modal, TextInput, Platform } from 'react-native'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
+import NetInfo from '@react-native-community/netinfo'
 import { useDashboard } from '../../context/DashboardContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -35,6 +36,7 @@ interface NearestLocationInfo {
 const GEOFENCE_TASK = 'GEOFENCE_TASK';
 const BACKGROUND_LOCATION_TASK = 'BACKGROUND_LOCATION_TASK';
 const ACTIVE_STUDY_LOCATION_KEY = 'activeStudyLocation';
+const PENDING_CLOCK_OUT_KEY = 'pendingClockOut';
 
 const stopBackgroundStudyMonitoring = async () => {
   const geofenceStarted = await Location.hasStartedGeofencingAsync(GEOFENCE_TASK);
@@ -52,17 +54,27 @@ const stopBackgroundStudyMonitoring = async () => {
 
 const clockOutFromBackgroundLocation = async () => {
   const token = await AsyncStorage.getItem('accessToken');
-  if (!token) throw new Error('No access token found');
+  if (!token) return;
 
-  await axios.post(API_URL + 'api/clockout/', {}, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  await stopBackgroundStudyMonitoring();
-  eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
-  eventEmitter.emit(EVENTS.CLOCK_OUT);
+  try {
+    await axios.post(API_URL + 'api/clockout/', {}, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
+    eventEmitter.emit(EVENTS.CLOCK_OUT);
+  } catch (error) {
+    if (error instanceof AxiosError && !error.response) {
+      const ts = new Date().toISOString();
+      console.log('[PendingClockOut] background: network error — storing pending clock-out at', ts);
+      await AsyncStorage.setItem(PENDING_CLOCK_OUT_KEY, JSON.stringify({ timestamp: ts }));
+    } else {
+      console.log('[PendingClockOut] background: server error, not storing pending:', error);
+    }
+  } finally {
+    await stopBackgroundStudyMonitoring();
+  }
 };
 
 TaskManager.defineTask(GEOFENCE_TASK, async ({ data, error }) => {
@@ -137,6 +149,7 @@ const Study = () => {
   const [foregroundStatus, setForegroundStatus] = useState(false)
 
   const [isStudying, setIsStudying] = useState(false)
+  const [pendingClockOut, setPendingClockOut] = useState(false)
   
   // Add state for current study location with proper type
   const [currentStudyLocation, setCurrentStudyLocation] = useState<LocationType | null>(null);
@@ -436,26 +449,63 @@ const Study = () => {
     }
   };
 
+  const retryPendingClockOut = async () => {
+    const pending = await AsyncStorage.getItem(PENDING_CLOCK_OUT_KEY);
+    if (!pending) return;
+    const { timestamp } = JSON.parse(pending);
+    console.log('[PendingClockOut] retry: attempting clock-out for pending stored at', timestamp);
+    const token = await AsyncStorage.getItem('accessToken');
+    if (!token) {
+      console.log('[PendingClockOut] retry: no token, skipping');
+      return;
+    }
+    try {
+      await axios.post(API_URL + 'api/clockout/', { end_time: timestamp }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('[PendingClockOut] retry: success — pending cleared with end_time', timestamp);
+      await AsyncStorage.removeItem(PENDING_CLOCK_OUT_KEY);
+      setPendingClockOut(false);
+      eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
+      eventEmitter.emit(EVENTS.CLOCK_OUT);
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
+        if (error.response.data?.detail === 'You are not clocked in') {
+          console.log('[PendingClockOut] retry: session already closed on server — pending cleared');
+          await AsyncStorage.removeItem(PENDING_CLOCK_OUT_KEY);
+          setPendingClockOut(false);
+          eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
+        } else {
+          console.log('[PendingClockOut] retry: server error, leaving pending:', error.response.status, error.response.data?.detail);
+        }
+      } else {
+        console.log('[PendingClockOut] retry: still offline — pending remains');
+      }
+    }
+  };
+
   const clockOut = async () => {
+    if (pendingClockOut) return;
     try {
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) throw new Error('No access token found');
-      const response = await axios.post(API_URL + 'api/clockout/', {}, {
+      await axios.post(API_URL + 'api/clockout/', {}, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
-      // Emit event to refresh dashboard after clock out
+      });
       eventEmitter.emit(EVENTS.DASHBOARD_REFRESH);
       eventEmitter.emit(EVENTS.CLOCK_OUT);
-
       await stopBackgroundStudyMonitoring();
-      console.log('Background study monitoring stopped');
-      
     } catch (error) {
-      console.log(error)
-      if (error instanceof AxiosError && error.response?.status === 401) {
-        await handleUnauthorized()
+      if (error instanceof AxiosError && !error.response) {
+        const ts = new Date().toISOString();
+        console.log('[PendingClockOut] manual clockOut: network error — storing pending at', ts);
+        await AsyncStorage.setItem(PENDING_CLOCK_OUT_KEY, JSON.stringify({ timestamp: ts }));
+        setPendingClockOut(true);
+        await stopBackgroundStudyMonitoring();
+      } else if (error instanceof AxiosError && error.response?.status === 401) {
+        await handleUnauthorized();
       } else if (error instanceof AxiosError) {
         Alert.alert('Clock Out Failed', error.response?.data?.errors?.[0]?.detail || error.response?.data?.detail || 'Unable to clock out.');
       }
@@ -465,6 +515,13 @@ const Study = () => {
   const clockOutIfOutsideActiveStudyLocation = async () => {
     try {
       if (!requiresLocationVerification || !checkIsStudying()) return;
+
+      const existingPending = await AsyncStorage.getItem(PENDING_CLOCK_OUT_KEY);
+      if (existingPending) {
+        console.log('[PendingClockOut] clockOutIfOutside: skipping — pending clock-out already stored');
+        setPendingClockOut(true);
+        return;
+      }
 
       const activeLocationData = await AsyncStorage.getItem(ACTIVE_STUDY_LOCATION_KEY);
       const openSessions = data?.user_sessions?.filter((session: any) => session.hours === null) || [];
@@ -816,6 +873,13 @@ const Study = () => {
     useCallback(() => {
       console.log('Study screen came into focus - refreshing dashboard');
       refreshDashboard();
+      AsyncStorage.getItem(PENDING_CLOCK_OUT_KEY).then(pending => {
+        if (pending) {
+          console.log('[PendingClockOut] focus: found pending clock-out, retrying');
+          setPendingClockOut(true);
+          retryPendingClockOut();
+        }
+      });
       return () => {
         // Cleanup if needed when screen loses focus
       };
@@ -891,6 +955,13 @@ const Study = () => {
         refreshDashboard();
         refreshClock();
         clockOutIfOutsideActiveStudyLocation();
+        AsyncStorage.getItem(PENDING_CLOCK_OUT_KEY).then(pending => {
+          if (pending) {
+            console.log('[PendingClockOut] foreground: found pending clock-out, retrying');
+            setPendingClockOut(true);
+            retryPendingClockOut();
+          }
+        });
       } else if (nextAppState.match(/inactive|background/) && appState === 'active') {
         console.log('App going to background');
         // App going to background - stop the stopwatch
@@ -924,16 +995,28 @@ const Study = () => {
   }, [isStudying, backgroundStatus, foregroundStatus, isLoading, requiresLocationVerification]);
 
   useEffect(() => {
-    if (isStudying && backgroundStatus && foregroundStatus && !isLoading && requiresLocationVerification) {
+    if (isStudying && !pendingClockOut && backgroundStatus && foregroundStatus && !isLoading && requiresLocationVerification) {
       const activeSessionLocationInterval = setInterval(() => {
         clockOutIfOutsideActiveStudyLocation();
       }, 30000);
 
       return () => clearInterval(activeSessionLocationInterval);
     }
-  }, [isStudying, backgroundStatus, foregroundStatus, isLoading, requiresLocationVerification, data]);
+  }, [isStudying, pendingClockOut, backgroundStatus, foregroundStatus, isLoading, requiresLocationVerification, data]);
 
-  if (error) {
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      if (state.isConnected && state.isInternetReachable) {
+        console.log('[PendingClockOut] NetInfo: connectivity restored — attempting retry');
+        retryPendingClockOut();
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const effectiveIsStudying = isStudying && !pendingClockOut;
+
+  if (error && !data) {
     return (
       <ScrollView className="flex-1 p-4">
         <Text className="text-gg-error text-lg font-bold">Error:</Text>
@@ -981,21 +1064,21 @@ const Study = () => {
                 <View className="flex-row items-start justify-between mb-3">
                   <View className="flex-1 pr-3">
                     <Text className="font-pregular text-gg-muted text-xs uppercase tracking-wider mb-1">
-                      {isStudying ? 'Current session' : 'Study status'}
+                      {effectiveIsStudying ? 'Current session' : 'Study status'}
                     </Text>
                     <Text className="font-psemibold text-gg-primary text-[17px] leading-6">
-                      {maintenanceMode ? 'Paused' : isStudying ? 'Studying' : 'Ready to study'}
+                      {maintenanceMode ? 'Paused' : pendingClockOut ? 'Syncing...' : effectiveIsStudying ? 'Studying' : 'Ready to study'}
                     </Text>
                     <Text className="font-pregular text-gg-muted text-sm mt-1">
-                      {isStudying ? currentStudyLocation?.name || 'Session in progress' : locationStatus.title}
+                      {effectiveIsStudying ? currentStudyLocation?.name || 'Session in progress' : locationStatus.title}
                     </Text>
                   </View>
                   <View className="items-end">
                     <Text className="font-psemibold text-gg-text text-[22px] leading-7">
-                      {isStudying ? time : `${studiedHours.toFixed(1)}h`}
+                      {effectiveIsStudying ? time : `${studiedHours.toFixed(1)}h`}
                     </Text>
                     <Text className="font-pregular text-gg-muted text-xs">
-                      {isStudying ? 'elapsed' : `${percentComplete}% complete`}
+                      {effectiveIsStudying ? 'elapsed' : `${percentComplete}% complete`}
                     </Text>
                   </View>
                 </View>
@@ -1026,11 +1109,11 @@ const Study = () => {
               {(backgroundStatus && foregroundStatus) || !requiresLocationVerification ? (
                 <TouchableOpacity
                   onPress={maintenanceMode ? () => Alert.alert('Maintenance Mode', 'Your organization is temporarily in maintenance mode.') : handleClock}
-                  disabled={isLoading && !data}
-                  className={`rounded-lg py-4 items-center ${isStudying ? 'bg-red-600' : 'bg-gg-primary'} ${maintenanceMode ? 'opacity-70' : ''}`}
+                  disabled={(isLoading && !data) || pendingClockOut}
+                  className={`rounded-lg py-4 items-center ${effectiveIsStudying ? 'bg-red-600' : 'bg-gg-primary'} ${maintenanceMode || pendingClockOut ? 'opacity-70' : ''}`}
                 >
                   <Text className="font-psemibold text-white text-base">
-                    {maintenanceMode ? 'Maintenance mode' : isStudying ? 'Clock out' : 'Clock in'}
+                    {maintenanceMode ? 'Maintenance mode' : pendingClockOut ? 'Syncing...' : effectiveIsStudying ? 'Clock out' : 'Clock in'}
                   </Text>
                 </TouchableOpacity>
               ) : (

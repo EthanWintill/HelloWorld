@@ -38,6 +38,16 @@ Finish launch-critical product, backend, onboarding, and operational work so the
 - A simple web admin dashboard now lives at `/dashboard/`. It lets organization admins edit org name, school, and registration code, points admins to the mobile app for the full workflow, and shows the Stripe Checkout free-trial CTA for non-premium orgs.
 - Stripe sandbox setup uses product `prod_UcC6g2cLgVZwOa`, annual price `price_1TcxhwFdUW1rAvnAxKr9UxvM`, and a test webhook endpoint pointed at `https://greekgeek.app/api/billing/stripe-webhook/`. Secrets stay in ignored env files or Stripe Dashboard only.
 
+## Background Clock-Out System
+
+The mobile app uses a layered system to detect when a member leaves a study location and clock them out automatically.
+
+**Exit detection (two redundant mechanisms):**
+- `GEOFENCE_TASK` — primary, iOS-native `CLLocationManager` geofencing. Fires an exit event when the device crosses the registered region boundary.
+
+
+The backend `ClockOut` view accepts an `end_time` ISO string and backdates the session hours to the stored exit timestamp, clamped to no earlier than the session start time.
+
 ## Open Questions
 
 - What is the final GreekGeek App Store product URL for the centralized badge link?

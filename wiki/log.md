@@ -1,5 +1,11 @@
 # HelloWorld Log
 
+
+## [2026-06-07] feature | Instant pending clock-out retry on network restore
+
+Added `@react-native-community/netinfo` to detect network reconnection in real time and immediately retry any stored pending clock-out. The listener only fires on `false → true` transitions (tracks `prevConnected` to skip the initial event and debounces reconnects within a 3-second window). A 2-second delay before the retry lets the iOS network stack stabilize before hitting the API. Retry is also triggered on every successful dashboard refresh, giving multiple recovery opportunities without polling. Added a temporary `Alert.alert` on reconnect for testing.
+
+
 ## [2026-05-31] legal | Cookie policy page
 
 Added a public `/cookies/` cookie policy page and linked it from the footer Legal section.

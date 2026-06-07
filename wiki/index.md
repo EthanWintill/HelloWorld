@@ -6,6 +6,10 @@
 - [Todo](todo.md): project-local backlog items and launch polish notes.
 - [Log](log.md): chronological project-local wiki log.
 
+## Feature Docs
+
+- [Clock Out](clock-out.md): triggers, API call, offline/pending clock-out handling, retry logic, UI states, error screen pattern, and relevant settings.
+
 ## Product Docs
 
 - [Repo README](../README.md): original repo notes and useful links.

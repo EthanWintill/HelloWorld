@@ -113,7 +113,7 @@ const Leaderboard = () => {
     return <LoadingScreen />
   }
 
-  if (error) {
+  if (error && !data) {
     return (
       <SafeAreaView className="flex-1">
         <ScrollView className="p-4">

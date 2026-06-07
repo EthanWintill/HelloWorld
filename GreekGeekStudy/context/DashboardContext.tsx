@@ -56,7 +56,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       registerPushTokenWithBackend().catch((error) => {
         console.warn('Push notification registration failed:', error);
       });
-      console.log('Dashboard Data:', JSON.stringify(response.data, null, 2));
+      //console.log('Dashboard Data:', JSON.stringify(response.data, null, 2));
     } catch (error) {
       if (error instanceof AxiosError && error.response?.status === 401) {
         console.log(error.response)
