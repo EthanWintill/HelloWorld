@@ -394,6 +394,9 @@ class ClockOut(APIView):
         last_session = Session.objects.filter(user=current_user, hours__isnull=True).last()
         if last_session and not last_session.hours:
             start_time = last_session.start_time
+            # Clamp end_time to be no earlier than start_time
+            if current_time < start_time:
+                current_time = start_time
             # Clock out logic
             hours = (current_time - start_time).total_seconds() / 3600
             last_session.hours = hours
