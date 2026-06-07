@@ -311,6 +311,215 @@ class StripeWebhookTests(TestCase):
         STRIPE_WEBHOOK_SECRET='whsec_123',
     )
     @patch('Study.views.stripe.Webhook.construct_event')
+    def test_subscription_updated_accepts_period_end_from_subscription_item(self, mock_construct_event):
+        org = Org.objects.create(
+            name='Updated Trial Chapter',
+            reg_code='UPDATED123',
+            school='Test University',
+        )
+        trial_start = 1780791032
+        trial_end = 1783383032
+        mock_construct_event.return_value = {
+            'type': 'customer.subscription.updated',
+            'data': {
+                'object': {
+                    'id': 'sub_123',
+                    'customer': 'cus_123',
+                    'status': 'trialing',
+                    'trial_start': trial_start,
+                    'trial_end': trial_end,
+                    'cancel_at_period_end': True,
+                    'items': {
+                        'data': [
+                            {
+                                'id': 'si_123',
+                                'current_period_end': trial_end,
+                                'current_period_start': trial_start,
+                            }
+                        ],
+                    },
+                    'metadata': {'org_id': str(org.id)},
+                }
+            },
+        }
+
+        response = APIClient().post(
+            reverse('stripe-webhook'),
+            data=b'{}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='test-signature',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertTrue(org.is_premium)
+        self.assertEqual(org.stripe_customer_id, 'cus_123')
+        self.assertEqual(org.stripe_subscription_id, 'sub_123')
+        self.assertEqual(org.stripe_subscription_status, 'trialing')
+        self.assertEqual(org.trial_started_at, timezone.datetime.fromtimestamp(trial_start, tz=timezone.get_current_timezone()))
+        self.assertEqual(org.trial_ends_at, timezone.datetime.fromtimestamp(trial_end, tz=timezone.get_current_timezone()))
+        self.assertEqual(org.stripe_current_period_end, timezone.datetime.fromtimestamp(trial_end, tz=timezone.get_current_timezone()))
+        self.assertTrue(org.stripe_cancel_at_period_end)
+
+    @override_settings(
+        STRIPE_API_KEY='rk_test_123',
+        STRIPE_WEBHOOK_SECRET='whsec_123',
+    )
+    @patch('Study.views.stripe.Webhook.construct_event')
+    def test_subscription_paused_removes_stripe_access(self, mock_construct_event):
+        org = Org.objects.create(
+            name='Paused Chapter',
+            reg_code='PAUSED123',
+            school='Test University',
+            is_premium=True,
+            stripe_customer_id='cus_123',
+            stripe_subscription_id='sub_123',
+            stripe_subscription_status='active',
+        )
+        mock_construct_event.return_value = {
+            'type': 'customer.subscription.paused',
+            'data': {
+                'object': {
+                    'id': 'sub_123',
+                    'customer': 'cus_123',
+                    'status': 'paused',
+                    'metadata': {'org_id': str(org.id)},
+                }
+            },
+        }
+
+        response = APIClient().post(
+            reverse('stripe-webhook'),
+            data=b'{}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='test-signature',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertFalse(org.is_premium)
+        self.assertEqual(org.stripe_subscription_status, 'paused')
+
+    @override_settings(
+        STRIPE_API_KEY='rk_test_123',
+        STRIPE_WEBHOOK_SECRET='whsec_123',
+    )
+    @patch('Study.views.stripe.Subscription.retrieve')
+    @patch('Study.views.stripe.Webhook.construct_event')
+    def test_invoice_paid_syncs_subscription_from_invoice_parent(self, mock_construct_event, mock_retrieve):
+        org = Org.objects.create(
+            name='Renewed Chapter',
+            reg_code='RENEW123',
+            school='Test University',
+            is_premium=True,
+            stripe_customer_id='cus_123',
+            stripe_subscription_id='sub_123',
+            stripe_subscription_status='trialing',
+        )
+        current_period_end = 1786061432
+        mock_construct_event.return_value = {
+            'type': 'invoice.paid',
+            'data': {
+                'object': {
+                    'id': 'in_123',
+                    'customer': 'cus_123',
+                    'parent': {
+                        'type': 'subscription_details',
+                        'subscription_details': {
+                            'subscription': 'sub_123',
+                            'metadata': {'org_id': str(org.id)},
+                        },
+                    },
+                }
+            },
+        }
+        mock_retrieve.return_value = {
+            'id': 'sub_123',
+            'customer': 'cus_123',
+            'status': 'active',
+            'trial_start': None,
+            'trial_end': None,
+            'items': {
+                'data': [
+                    {
+                        'id': 'si_123',
+                        'current_period_end': current_period_end,
+                    }
+                ],
+            },
+            'cancel_at_period_end': False,
+        }
+
+        response = APIClient().post(
+            reverse('stripe-webhook'),
+            data=b'{}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='test-signature',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertTrue(org.is_premium)
+        self.assertEqual(org.stripe_subscription_status, 'active')
+        self.assertEqual(org.stripe_current_period_end, timezone.datetime.fromtimestamp(current_period_end, tz=timezone.get_current_timezone()))
+        mock_retrieve.assert_called_once_with('sub_123')
+
+    @override_settings(
+        STRIPE_API_KEY='rk_test_123',
+        STRIPE_WEBHOOK_SECRET='whsec_123',
+    )
+    @patch('Study.views.stripe.Subscription.retrieve')
+    @patch('Study.views.stripe.Webhook.construct_event')
+    def test_invoice_payment_failed_syncs_subscription_status(self, mock_construct_event, mock_retrieve):
+        org = Org.objects.create(
+            name='Past Due Chapter',
+            reg_code='DUE123',
+            school='Test University',
+            is_premium=True,
+            stripe_customer_id='cus_123',
+            stripe_subscription_id='sub_123',
+            stripe_subscription_status='active',
+        )
+        current_period_end = 1786061432
+        mock_construct_event.return_value = {
+            'type': 'invoice.payment_failed',
+            'data': {
+                'object': {
+                    'id': 'in_123',
+                    'customer': 'cus_123',
+                    'subscription': 'sub_123',
+                }
+            },
+        }
+        mock_retrieve.return_value = {
+            'id': 'sub_123',
+            'customer': 'cus_123',
+            'status': 'past_due',
+            'trial_start': None,
+            'trial_end': None,
+            'current_period_end': current_period_end,
+            'cancel_at_period_end': False,
+        }
+
+        response = APIClient().post(
+            reverse('stripe-webhook'),
+            data=b'{}',
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE='test-signature',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertFalse(org.is_premium)
+        self.assertEqual(org.stripe_subscription_status, 'past_due')
+        self.assertEqual(org.stripe_current_period_end, timezone.datetime.fromtimestamp(current_period_end, tz=timezone.get_current_timezone()))
+        mock_retrieve.assert_called_once_with('sub_123')
+
+    @override_settings(
+        STRIPE_API_KEY='rk_test_123',
+        STRIPE_WEBHOOK_SECRET='whsec_123',
+    )
+    @patch('Study.views.stripe.Webhook.construct_event')
     def test_subscription_deleted_removes_premium_access(self, mock_construct_event):
         org = Org.objects.create(
             name='Canceled Chapter',

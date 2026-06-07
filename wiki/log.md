@@ -1,5 +1,13 @@
 # HelloWorld Log
 
+## [2026-06-07] fix | Stripe invoice webhook coverage
+
+Expanded Stripe webhook handling to sync org billing from invoice success/failure events and additional subscription lifecycle events such as pause/resume/pending update. Invoice webhooks now resolve subscription ids from current invoice payload shapes, refresh the subscription from Stripe, and reuse the existing org premium-state sync.
+
+## [2026-06-07] fix | Stripe subscription webhook period sync
+
+Updated Stripe subscription webhook handling for newer subscription payloads where `current_period_end` lives on the first subscription item instead of the top-level subscription object. The webhook now uses the shared subscription sync path for created/updated/deleted events and has a regression test for `customer.subscription.updated`.
+
 ## [2026-06-07] feature | Admin-only free-org paywall gate
 
 Added a shared mobile org subscription gate so non-premium organization admins see Start Free Trial CTAs on Study, History, Ranks, and Profile while members in the same org keep normal app access. The admin stack is blocked behind the paywall, and Study clock-in/manual-time/admin-location actions now open the paywall for unpaid admins instead of adding hours or entering admin setup.
