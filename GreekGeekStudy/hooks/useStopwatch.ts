@@ -39,7 +39,7 @@ export const useStopWatch = () => {
   const [timeWhenLastStopped, setTimeWhenLastStopped] = useState<number>(0)
   const [laps, setLaps] = useState<number[]>([])
 
-  const interval = useRef<ReturnType<typeof setInterval>>()
+  const interval = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (startTime > 0) {
@@ -49,7 +49,7 @@ export const useStopWatch = () => {
     } else {
       if (interval.current) {
         clearInterval(interval.current)
-        interval.current = undefined
+        interval.current = null
       }
     }
   }, [startTime])

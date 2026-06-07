@@ -14,7 +14,8 @@ export interface PushNotificationState {
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: false,
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldSetBadge: false,
   }),
 });
@@ -81,8 +82,8 @@ export const usePushNotifications = (): PushNotificationState => {
     Notifications.Notification | undefined
   >();
 
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
 
   useEffect(() => {
     registerPushTokenWithBackend()
@@ -107,11 +108,11 @@ export const usePushNotifications = (): PushNotificationState => {
 
     return () => {
       if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+        notificationListener.current.remove();
       }
 
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+        responseListener.current.remove();
       }
     };
   }, []);

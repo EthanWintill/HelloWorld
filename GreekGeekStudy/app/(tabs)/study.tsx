@@ -4,7 +4,6 @@ import { useDashboard } from '../../context/DashboardContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
-import PermissionButton from '@/components/PermissionButton'
 import { useStopWatch } from '@/hooks/useStopwatch'
 import { API_URL } from '@/constants';
 import axios, { AxiosError } from 'axios'
@@ -12,7 +11,7 @@ import haversine from 'haversine-distance'
 import * as TaskManager from 'expo-task-manager';
 import eventEmitter, { EVENTS } from '@/services/EventEmitter';
 import MapView, { Marker, Region, Circle } from 'react-native-maps';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -173,13 +172,28 @@ const Study = () => {
   const maintenanceMode = orgSettings?.maintenance_mode === true && !data?.is_staff;
 
   // --- Location Related Functions ---
+  const openAppSettings = async () => {
+    try {
+      await Linking.openSettings();
+    } catch {
+      Alert.alert(
+        'Unable to Open Settings',
+        Platform.OS === 'ios'
+          ? 'Open Settings, choose GreekGeek, then set Location to Always.'
+          : 'Open Settings, choose GreekGeek, then enable Location permissions.'
+      );
+    }
+  };
+
   const showSettingsAlert = () => {
     Alert.alert(
-      "Permission Required",
-      "You must enable location sharing to use this app. Please go to settings to enable it.",
+      "Location Permission Required",
+      !foregroundStatus
+        ? "GreekGeek needs location access to verify study sessions."
+        : "GreekGeek needs background location access to end sessions when you leave.",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Settings", onPress: () => Linking.openSettings() }
+        { text: "Open Settings", onPress: () => { openAppSettings(); } }
       ]
     );
   };
@@ -812,6 +826,7 @@ const Study = () => {
   const required = requiredHours();
   const percentComplete = calculatePercentComplete();
   const hoursLeft = studyHoursLeft();
+  const locationPermissionMissing = requiresLocationVerification && (!backgroundStatus || !foregroundStatus);
 
   // --- Storage Utilities ---
   const getAllAsyncStorageData = async () => {
@@ -1075,9 +1090,15 @@ const Study = () => {
                     Start Free Trial
                   </Text>
                 </TouchableOpacity>
-              ) : (backgroundStatus && foregroundStatus) || !requiresLocationVerification ? (
+              ) : (
                 <TouchableOpacity
-                  onPress={maintenanceMode ? () => Alert.alert('Maintenance Mode', 'Your organization is temporarily in maintenance mode.') : handleClock}
+                  onPress={
+                    maintenanceMode
+                      ? () => Alert.alert('Maintenance Mode', 'Your organization is temporarily in maintenance mode.')
+                      : locationPermissionMissing && !isStudying
+                      ? showSettingsAlert
+                      : handleClock
+                  }
                   disabled={isLoading && !data}
                   className={`rounded-lg py-4 items-center ${isStudying ? 'bg-red-600' : 'bg-gg-primary'} ${maintenanceMode ? 'opacity-70' : ''}`}
                 >
@@ -1085,8 +1106,6 @@ const Study = () => {
                     {maintenanceMode ? 'Maintenance mode' : isStudying ? 'Clock out' : 'Clock in'}
                   </Text>
                 </TouchableOpacity>
-              ) : (
-                <PermissionButton handlePress={handleLocationPermission} />
               )}
 
               <View className={`mt-3 border rounded-lg p-3 ${locationStatus.tone}`}>
@@ -1106,19 +1125,22 @@ const Study = () => {
             </View>
           </View>
 
-          {requiresLocationVerification && (!backgroundStatus || !foregroundStatus) && (
+          {locationPermissionMissing && (
             <View className="mx-4 mt-4 p-4 bg-[#ffdad6] rounded-lg border border-[#ffb4ab]">
               <Text className="font-psemibold text-center text-gg-error mb-2">
                 Location Permission Required
               </Text>
-              <Text className="font-pregular text-center text-gg-error mb-3">
+              <Text
+                className="font-pregular text-center text-gg-error text-sm leading-5 mb-3"
+                style={{ alignSelf: 'stretch', flexShrink: 1 }}
+              >
                 {!foregroundStatus
-                  ? "You need to enable location access for this app to track your study sessions."
-                  : "Background location access is required to track when you leave study areas."}
+                  ? "Enable location access to verify study sessions."
+                  : "Enable background location so sessions end when you leave study areas."}
               </Text>
               <View className="flex items-center">
                 <TouchableOpacity
-                  onPress={() => Linking.openSettings()}
+                  onPress={() => { openAppSettings(); }}
                   className="bg-red-600 py-2 px-4 rounded-md"
                 >
                   <Text className="font-psemibold text-white text-center">

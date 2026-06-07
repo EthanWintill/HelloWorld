@@ -2,7 +2,7 @@ import { Image, View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'r
 import React, { useCallback, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
-import { useFocusEffect } from '@react-navigation/native'
+import { useFocusEffect } from 'expo-router/react-navigation'
 import { Ionicons } from '@expo/vector-icons'
 import { Card, EmptyState, GG, ProgressBar } from '../../components/Design'
 import { AdminSubscriptionCTA, OrgPaywallModal } from '../../components/AdminSubscriptionGate'

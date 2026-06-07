@@ -223,3 +223,11 @@ Implemented the first landing-page remediation pass: retained App Store badges a
 ## [2026-05-31] fix | Stale auth tokens on public auth routes
 
 Changed public signup, sign-in, email verification, password reset, chapter-code lookup, and contact API endpoints to skip JWT authentication parsing so stale bearer tokens are treated as anonymous state. Updated the web login and register pages to clear invalid stored browser tokens instead of redirecting away from the forms.
+
+## [2026-06-07] upgrade | Expo SDK 56 for App Store builds
+
+Upgraded the mobile app from Expo SDK 52 to SDK 56 with React Native 0.85.3, React 19.2.3, React Compiler enabled, Node 22.13.1 recorded in `.nvmrc`, and SDK 56-compatible app code/import fixes. Regenerated the checked-in iOS project and `Podfile.lock` for SDK 56 after updating to Xcode 26.5. Local TypeScript, iOS JS export, CocoaPods install, and a native debug simulator build/install now pass.
+
+## [2026-06-07] fix | Study location permission UI
+
+Removed the legacy circular location-permission control from the Study screen, kept the normal clock-in button visible when location permissions are missing, and changed the permission prompt copy so it wraps cleanly in the red warning card.

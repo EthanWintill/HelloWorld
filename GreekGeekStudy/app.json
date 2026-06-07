@@ -7,12 +7,11 @@
     "icon": "./assets/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
     "ios": {
       "icon": "./assets/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "app.greekgeek.GreekGeekStudy",
-      "developmentTeam": "TFXAED36Q2",
+      "appleTeamId": "TFXAED36Q2",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "GreekGeek uses your location to verify that study sessions are started from approved study locations.",
         "NSPhotoLibraryUsageDescription": "GreekGeek uses your photo library to let you choose a profile picture.",
@@ -32,11 +31,6 @@
       "output": "static",
       "favicon": "./assets/favicon.png"
     },
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#f4fcf0"
-    },
     "plugins": [
       "expo-router",
       [
@@ -53,9 +47,23 @@
         {
           "photosPermission": "GreekGeek uses your photo library to let you choose a profile picture."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#f4fcf0",
+          "enableFullScreenImage_legacy": true
+        }
+      ],
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
+      "reactCompiler": true,
       "typedRoutes": true
     },
     "extra": {

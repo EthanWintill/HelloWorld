@@ -141,11 +141,13 @@ export default function Index() {
               </Text>
             </TouchableOpacity>
 
-            <Link href={`${API_URL}register/`} className="mt-3 self-center">
-              <Text className="font-pmedium text-gg-secondary text-sm">
-                Register your organization
-              </Text>
-            </Link>
+            <View className="items-center mt-3">
+              <Link href={`${API_URL}register/`}>
+                <Text className="font-pmedium text-gg-secondary text-[15px] text-center">
+                  Register your organization
+                </Text>
+              </Link>
+            </View>
           </View>
         </View>
       </ScrollView>
