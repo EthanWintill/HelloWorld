@@ -1,5 +1,9 @@
 # HelloWorld Log
 
+## [2026-06-07] fix | Stripe webhook signature and SDK object handling
+
+Fixed the Stripe billing webhook 500 caused by treating signed Stripe SDK events as plain dictionaries. The webhook now follows the current Python quickstart pattern with `StripeClient.construct_event`, rejects missing or invalid Stripe signatures, uses raw request bodies for verification, and handles Stripe SDK event/object access safely.
+
 ## [2026-06-07] fix | Stripe invoice webhook coverage
 
 Expanded Stripe webhook handling to sync org billing from invoice success/failure events and additional subscription lifecycle events such as pause/resume/pending update. Invoice webhooks now resolve subscription ids from current invoice payload shapes, refresh the subscription from Stripe, and reuse the existing org premium-state sync.

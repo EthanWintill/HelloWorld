@@ -64,6 +64,19 @@ def configure_stripe():
     stripe.api_version = "2026-05-27.dahlia"
 
 
+def stripe_client():
+    configure_stripe()
+    return stripe.StripeClient(settings.STRIPE_API_KEY)
+
+
+def construct_stripe_webhook_event(payload, signature):
+    return stripe_client().construct_event(
+        payload,
+        signature,
+        settings.STRIPE_WEBHOOK_SECRET,
+    )
+
+
 def stripe_timestamp_to_datetime(value):
     if not value:
         return None
@@ -76,6 +89,15 @@ def stripe_get(obj, key, default=None):
     if isinstance(obj, dict):
         return obj.get(key, default)
     return getattr(obj, key, default)
+
+
+def stripe_nested_get(obj, keys, default=None):
+    current = obj
+    for key in keys:
+        current = stripe_get(current, key, default)
+        if current is default:
+            return default
+    return current
 
 
 def stripe_subscription_current_period_end(subscription):
@@ -1870,27 +1892,23 @@ class StripeWebhookView(APIView):
         if not settings.STRIPE_WEBHOOK_SECRET:
             raise exceptions.APIException(detail="Stripe webhook secret is not configured")
 
-        configure_stripe()
-
         payload = request.body
         signature = request.META.get('HTTP_STRIPE_SIGNATURE')
+        if not signature:
+            return Response({"detail": "Missing Stripe signature"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            event = stripe.Webhook.construct_event(
-                payload=payload,
-                sig_header=signature,
-                secret=settings.STRIPE_WEBHOOK_SECRET,
-            )
+            event = construct_stripe_webhook_event(payload, signature)
         except ValueError:
             return Response({"detail": "Invalid payload"}, status=status.HTTP_400_BAD_REQUEST)
         except stripe.SignatureVerificationError:
             return Response({"detail": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
 
-        event_type = event.get('type')
-        event_object = event.get('data', {}).get('object', {})
+        event_type = stripe_get(event, 'type')
+        event_object = stripe_nested_get(event, ('data', 'object'), {})
 
         if event_type in {'checkout.session.completed', 'checkout.session.async_payment_succeeded'}:
-            org_id = event_object.get('metadata', {}).get('org_id') or event_object.get('client_reference_id')
+            org_id = stripe_nested_get(event_object, ('metadata', 'org_id')) or stripe_get(event_object, 'client_reference_id')
             if org_id:
                 try:
                     org = Org.objects.get(id=org_id)
@@ -1898,7 +1916,7 @@ class StripeWebhookView(APIView):
                     org = None
 
                 if org:
-                    subscription_id = event_object.get('subscription')
+                    subscription_id = stripe_id(stripe_get(event_object, 'subscription'))
                     subscription = None
                     if subscription_id:
                         try:
@@ -1910,13 +1928,13 @@ class StripeWebhookView(APIView):
                         sync_org_from_stripe_subscription(
                             org,
                             subscription,
-                            customer_id=event_object.get('customer'),
+                            customer_id=stripe_id(stripe_get(event_object, 'customer')),
                         )
                     else:
                         sync_org_subscription(
                             org,
                             subscription_id=subscription_id,
-                            customer_id=event_object.get('customer'),
+                            customer_id=stripe_id(stripe_get(event_object, 'customer')),
                             status_value='trialing',
                         )
 
@@ -1930,12 +1948,12 @@ class StripeWebhookView(APIView):
             'customer.subscription.resumed',
             'customer.subscription.trial_will_end',
         }:
-            subscription_id = event_object.get('id')
-            customer_id = event_object.get('customer')
+            subscription_id = stripe_get(event_object, 'id')
+            customer_id = stripe_id(stripe_get(event_object, 'customer'))
             org = org_for_stripe_billing_event(
                 subscription_id=subscription_id,
                 customer_id=customer_id,
-                metadata=event_object.get('metadata', {}),
+                metadata=stripe_get(event_object, 'metadata', {}),
             )
 
             if org:
