@@ -16,6 +16,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { AdminSubscriptionCTA, OrgPaywallModal } from '../../components/AdminSubscriptionGate';
+import { useOrgSubscriptionGate } from '../../hooks/useOrgSubscriptionGate';
 
 interface LocationType {
   id: number;
@@ -132,6 +134,7 @@ const Study = () => {
   // --- Hooks and State ---
   const { dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
+  const subscriptionGate = useOrgSubscriptionGate()
 
   const [backgroundStatus, setBackgroundStatus] = useState(false)
   const [foregroundStatus, setForegroundStatus] = useState(false)
@@ -366,10 +369,18 @@ const Study = () => {
 
   // --- Navigation Functions ---
   const navigateToAdmin = () => {
+    if (subscriptionGate.shouldGateAdmin) {
+      subscriptionGate.openPaywall()
+      return
+    }
     router.push('/(admin)');
   };
 
   const navigateToStudyLocations = () => {
+    if (subscriptionGate.shouldGateAdmin) {
+      subscriptionGate.openPaywall()
+      return
+    }
     router.push('/(admin)/study-locations');
   };
 
@@ -505,6 +516,11 @@ const Study = () => {
   };
 
   const submitManualEntry = async () => {
+    if (subscriptionGate.shouldGateAdmin) {
+      subscriptionGate.openPaywall()
+      return
+    }
+
     try {
       const hours = Number(manualHours);
       if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
@@ -548,6 +564,11 @@ const Study = () => {
 
   const handleClock = () => {
     console.log("handleClock")
+    if (subscriptionGate.shouldGateAdmin && !checkIsStudying()) {
+      subscriptionGate.openPaywall()
+      return
+    }
+
     if (!checkIsStudying()) {
       clockIn()
         .then(() => { })
@@ -975,6 +996,14 @@ const Study = () => {
       <View className="flex-1 flex-col justify-between">
         <ScrollView className="bg-gg-bg" contentContainerStyle={{ paddingBottom: 24 }}>
           <View className="px-4 pt-4">
+            {subscriptionGate.shouldGateAdmin && (
+              <View className="mb-4">
+                <AdminSubscriptionCTA
+                  gate={subscriptionGate}
+                  message="Start the free trial to add study hours, configure areas, and unlock admin tools."
+                />
+              </View>
+            )}
             <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl overflow-hidden flex-row">
               <View className="w-1 bg-gg-primary" />
               <View className="p-3 flex-1">
@@ -1023,7 +1052,17 @@ const Study = () => {
                   </View>
                 </View>
 
-              {(backgroundStatus && foregroundStatus) || !requiresLocationVerification ? (
+              {subscriptionGate.shouldGateAdmin && !isStudying ? (
+                <TouchableOpacity
+                  onPress={subscriptionGate.openPaywall}
+                  disabled={subscriptionGate.subscriptionAction === 'paywall'}
+                  className={`rounded-lg py-4 items-center bg-gg-primary ${subscriptionGate.subscriptionAction === 'paywall' ? 'opacity-60' : ''}`}
+                >
+                  <Text className="font-psemibold text-white text-base">
+                    Start Free Trial
+                  </Text>
+                </TouchableOpacity>
+              ) : (backgroundStatus && foregroundStatus) || !requiresLocationVerification ? (
                 <TouchableOpacity
                   onPress={maintenanceMode ? () => Alert.alert('Maintenance Mode', 'Your organization is temporarily in maintenance mode.') : handleClock}
                   disabled={isLoading && !data}
@@ -1234,7 +1273,7 @@ const Study = () => {
           <View className="mx-4 mt-4 flex-row">
             {allowManualEntry && (
               <TouchableOpacity
-                onPress={() => setManualEntryVisible(true)}
+                onPress={() => subscriptionGate.shouldGateAdmin ? subscriptionGate.openPaywall() : setManualEntryVisible(true)}
                 className="flex-1 bg-gg-surface border border-gg-outlineVariant rounded-lg p-3 mr-2 flex-row items-center"
               >
                 <Ionicons name="create-outline" size={19} color="#171d16" />
@@ -1398,7 +1437,7 @@ const Study = () => {
         </View>
       </Modal>
 
-      
+      <OrgPaywallModal gate={subscriptionGate} />
     </SafeAreaView>
   )
 }

@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { EmptyState } from '../../components/Design'
+import { AdminSubscriptionCTA, OrgPaywallModal } from '../../components/AdminSubscriptionGate'
+import { useOrgSubscriptionGate } from '../../hooks/useOrgSubscriptionGate'
 
 interface Location {
   id: number;
@@ -33,6 +35,7 @@ const History = () => {
   const { dashboardState } = useDashboard()
   const { isLoading, error, data } = dashboardState
   const orgTz = data?.org?.timezone || 'UTC'
+  const subscriptionGate = useOrgSubscriptionGate()
 
   // All hooks must be declared before any early returns
   const { width } = useWindowDimensions()
@@ -287,6 +290,14 @@ const History = () => {
     <SafeAreaView className="bg-gg-bg flex-1">
       {/* Fixed header — progress card + section title */}
       <View className="px-4 pt-6">
+        {subscriptionGate.shouldGateAdmin && (
+          <View className="mb-4">
+            <AdminSubscriptionCTA
+              gate={subscriptionGate}
+              message="Start the free trial to unlock admin setup and Pro reporting. Members can keep tracking study time."
+            />
+          </View>
+        )}
         <Text className="font-psemibold text-xs uppercase tracking-wider text-gg-muted mb-3">Current Period Progress</Text>
         <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl overflow-hidden relative mb-6">
           <View className="absolute left-0 top-0 bottom-0 w-1 bg-gg-primary" />
@@ -500,6 +511,7 @@ const History = () => {
           </TouchableOpacity>
         </View>
       </Modal>
+      <OrgPaywallModal gate={subscriptionGate} />
     </SafeAreaView>
   )
 }

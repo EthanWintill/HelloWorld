@@ -153,7 +153,7 @@ const buildBillingDisplay = (
     plan: 'GreekGeek Pro · $149.99/year',
     renewal: 'Not available',
     source: 'None',
-    statusDetail: 'Start the one-month trial to unlock premium access.',
+    statusDetail: 'Start the free trial to unlock premium access for your organization.',
     statusLabel: 'Trial',
     statusValue: 'Not started',
     subscription,
@@ -186,6 +186,7 @@ const Profile = () => {
   const hasRevenueCatBilling = isGreekGeekPro || orgRevenueCatIsCurrent
   const hasOrgPremiumAccess = orgIsPremium || isGreekGeekPro
   const canManageOrgSubscription = Boolean(data?.is_staff && data?.org)
+  const canPurchaseOrgSubscription = canManageOrgSubscription && !hasOrgPremiumAccess
 
   // Notification toggles state
   const [notifyOrgStudying, setNotifyOrgStudying] = useState(data?.notify_org_starts_studying ?? true)
@@ -252,6 +253,10 @@ const Profile = () => {
   };
 
   const navigateToAdmin = () => {
+    if (canPurchaseOrgSubscription) {
+      handlePresentPaywall()
+      return
+    }
     router.push('/(admin)');
   };
 
@@ -497,6 +502,10 @@ const Profile = () => {
       Alert.alert('Admin only', 'Only organization admins can manage billing.')
       return
     }
+    if (!hasOrgPremiumAccess) {
+      await handlePresentPaywall()
+      return
+    }
 
     setBillingVisible(true)
     await fetchOrgBilling().catch((billingRequestError) => {
@@ -638,9 +647,12 @@ const Profile = () => {
   const handleOpenCustomerCenter = async () => {
     setSubscriptionAction('customer-center')
     try {
-      await openCustomerCenter()
+      await withTimeout(openCustomerCenter(), 15000, 'Customer Center')
     } catch (error) {
-      Alert.alert('Subscription management unavailable', 'Could not open Customer Center. Please try again.')
+      Alert.alert(
+        'Subscription management unavailable',
+        'Could not open Customer Center. This can happen in Simulator or Test Store builds. Test App Store subscription management on a sandbox device or TestFlight build.'
+      )
     } finally {
       setSubscriptionAction(null)
     }
@@ -800,7 +812,21 @@ const Profile = () => {
               )}
             </View>
 
-            {canManageOrgSubscription ? (
+            {canPurchaseOrgSubscription ? (
+              <TouchableOpacity
+                className={`mx-4 my-4 rounded-xl bg-gg-primary px-4 py-4 flex-row items-center shadow-sm ${(revenueCatLoading || subscriptionAction === 'paywall') ? 'opacity-60' : ''}`}
+                onPress={handlePresentPaywall}
+                disabled={revenueCatLoading || subscriptionAction === 'paywall'}
+              >
+                {subscriptionAction === 'paywall' ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Ionicons name="card-outline" size={21} color="white" />
+                )}
+                <Text className="text-white ml-3 font-psemibold flex-1">Start Free Trial</Text>
+                <Ionicons name="chevron-forward" size={18} color="white" />
+              </TouchableOpacity>
+            ) : canManageOrgSubscription ? (
               <TouchableOpacity
                 className={`px-4 py-4 flex-row items-center ${billingLoading ? 'opacity-60' : ''}`}
                 onPress={handleOpenBilling}
@@ -987,7 +1013,7 @@ const Profile = () => {
                   <ActivityIndicator size="small" color="white" />
                 ) : (
                   <Text className="text-white font-pbold text-base">
-                    {proPrice ? `Start Pro for ${proPrice}` : 'Start GreekGeek Pro'}
+                    Start Free Trial
                   </Text>
                 )}
               </TouchableOpacity>
@@ -1014,7 +1040,7 @@ const Profile = () => {
         </Modal>
 
         <Modal
-          visible={billingVisible && canManageOrgSubscription}
+          visible={billingVisible && canManageOrgSubscription && hasOrgPremiumAccess}
           animationType="slide"
           onRequestClose={() => setBillingVisible(false)}
         >
@@ -1083,7 +1109,7 @@ const Profile = () => {
                   { label: 'Subscription', value: billingDisplay.subscription },
                 ].map((item, index, items) => (
                   <View
-                    key={item.label}
+                    key={`billing-detail-${item.label}`}
                     className={`px-4 py-3 ${index < items.length - 1 ? 'border-b border-gg-outlineVariant' : ''}`}
                   >
                     <Text className="text-gg-muted font-pregular text-xs">{item.label}</Text>
@@ -1093,25 +1119,6 @@ const Profile = () => {
               </View>
 
               <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl overflow-hidden shadow-sm">
-                {!billingDisplay.isPremium ? (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setBillingVisible(false)
-                      handlePresentPaywall()
-                    }}
-                    disabled={Boolean(subscriptionAction)}
-                    className={`px-4 py-4 border-b border-gg-outlineVariant flex-row items-center ${subscriptionAction ? 'opacity-60' : ''}`}
-                  >
-                    {subscriptionAction === 'paywall' ? (
-                      <ActivityIndicator size="small" color="#006b2c" />
-                    ) : (
-                      <Ionicons name="sparkles-outline" size={21} color="#006b2c" />
-                    )}
-                    <Text className="text-gg-text ml-3 font-pmedium flex-1">View GreekGeek Pro</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
-                  </TouchableOpacity>
-                ) : null}
-
                 {billingDisplay.hasRevenueCatBilling ? (
                   <TouchableOpacity
                     onPress={handleOpenCustomerCenter}

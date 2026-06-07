@@ -1,5 +1,17 @@
 # HelloWorld Log
 
+## [2026-06-07] feature | Admin-only free-org paywall gate
+
+Added a shared mobile org subscription gate so non-premium organization admins see Start Free Trial CTAs on Study, History, Ranks, and Profile while members in the same org keep normal app access. The admin stack is blocked behind the paywall, and Study clock-in/manual-time/admin-location actions now open the paywall for unpaid admins instead of adding hours or entering admin setup.
+
+## [2026-06-07] fix | Leaderboard duplicate keys
+
+Fixed duplicate React keys on the mobile leaderboard by namespacing podium and ranking row keys. This prevents the rank page warning when a real user id overlaps with an empty podium slot rank.
+
+## [2026-06-07] fix | Mobile purchase CTA
+
+Changed the mobile Profile subscription action so non-premium organization admins see a direct Start Free Trial button instead of opening an empty billing modal first. The in-app billing modal is now reserved for premium org billing management, and its detail rows use stable keys.
+
 ## [2026-06-07] feature | Separate billing page and app billing modal
 
 Moved full web billing management from the dashboard into `/billing/`, leaving the dashboard with a compact billing summary and Manage Billing link. Added an admin-only mobile Profile billing modal that pulls the same org billing state, shows status/source/trial/renewal/subscription details, and keeps purchase, restore, cancellation, refresh, and Customer Center actions behind the org-admin gate.
