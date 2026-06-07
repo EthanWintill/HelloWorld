@@ -1,5 +1,9 @@
 # HelloWorld Log
 
+## [2026-06-07] polish | App Store launch assets
+
+Generated GreekGeek-branded Expo release assets for the App Store icon, Android adaptive icon, splash screen, favicon, and runtime loading logo. After the reconstructed mark looked wrong, regenerated the active asset set from the source SVG in `newlogoassets/logo-small.svg`, added a separate bordered test variant under `bordered-logo-assets/`, wired the active assets into `app.json`, updated the checked-in iOS app icon and splash asset catalog, and changed the in-app loading screen to show the branded loading logo.
+
 ## [2026-06-07] fix | Mobile landing cleanup and app support links
 
 Condensed the mobile landing page screenshot and feature-card sections, simplified the pricing CTA copy, added more prominent contact CTAs, made comparison tables render as mobile cards, added an above-the-fold trial CTA on the signup success page, and linked Study/Profile help actions to the public contact page.

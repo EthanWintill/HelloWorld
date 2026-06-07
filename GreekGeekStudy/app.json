@@ -4,10 +4,12 @@
     "slug": "GreekGeekStudy",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "ios": {
+      "icon": "./assets/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "app.greekgeek.GreekGeekStudy",
       "developmentTeam": "TFXAED36Q2",
@@ -18,10 +20,21 @@
       }
     },
     "owner": "greekgeek",
-    "android": {},
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#006b2c"
+      }
+    },
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f4fcf0"
     },
     "plugins": [
       "expo-router",
