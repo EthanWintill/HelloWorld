@@ -13,6 +13,155 @@ import * as FileSystem from 'expo-file-system';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { REVENUECAT_ENTITLEMENT_ID, REVENUECAT_PRODUCT_IDS } from '@/constants/revenuecat';
 
+type BillingApiResponse = {
+  organization?: Record<string, any>
+  billing?: Record<string, any>
+}
+
+type BillingDisplay = {
+  canCancelWebBilling: boolean
+  hasRevenueCatBilling: boolean
+  isPremium: boolean
+  plan: string
+  renewal: string
+  source: string
+  statusDetail: string
+  statusLabel: string
+  statusValue: string
+  subscription: string
+  syncError: string | null
+  trial: string
+}
+
+const formatBillingDate = (value?: string | null) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+const buildBillingDisplay = (
+  billingState: BillingApiResponse | null,
+  org: Record<string, any> | null | undefined,
+  isGreekGeekPro: boolean
+): BillingDisplay => {
+  const billing = billingState?.billing ?? {}
+  const status = billing.stripe_subscription_status ?? org?.stripe_subscription_status ?? ''
+  const revenueCatStatus = billing.revenuecat_subscription_status ?? org?.revenuecat_subscription_status ?? ''
+  const revenueCatExpiresAt = billing.revenuecat_entitlement_expires_at ?? org?.revenuecat_entitlement_expires_at ?? null
+  const revenueCatExpiresDate = revenueCatExpiresAt ? new Date(revenueCatExpiresAt) : null
+  const hasRevenueCatBilling = Boolean(
+    isGreekGeekPro
+    || (revenueCatStatus === 'active' && (!revenueCatExpiresDate || revenueCatExpiresDate > new Date()))
+  )
+  const isPremium = Boolean(billing.is_premium ?? org?.is_premium ?? false) || ['active', 'trialing'].includes(status) || hasRevenueCatBilling
+  const cancelAtPeriodEnd = Boolean(billing.stripe_cancel_at_period_end ?? org?.stripe_cancel_at_period_end ?? false)
+  const currentPeriodEnd = billing.stripe_current_period_end ?? org?.stripe_current_period_end ?? null
+  const trialEndsAt = billing.trial_ends_at ?? org?.trial_ends_at ?? null
+  const renewalValue = currentPeriodEnd || trialEndsAt || revenueCatExpiresAt
+  const renewalDate = formatBillingDate(renewalValue)
+  const trialDate = formatBillingDate(trialEndsAt)
+  const subscription = billing.stripe_subscription_id
+    ?? org?.stripe_subscription_id
+    ?? billing.revenuecat_product_id
+    ?? org?.revenuecat_product_id
+    ?? 'None'
+
+  if (status === 'trialing') {
+    return {
+      canCancelWebBilling: Boolean((billing.stripe_subscription_id ?? org?.stripe_subscription_id) && !cancelAtPeriodEnd),
+      hasRevenueCatBilling,
+      isPremium,
+      plan: 'GreekGeek Pro · $149.99/year',
+      renewal: renewalDate ? (cancelAtPeriodEnd ? `Ends ${renewalDate}` : `Trial ends ${renewalDate}`) : 'Not available',
+      source: 'Web billing',
+      statusDetail: cancelAtPeriodEnd
+        ? `Your trial remains available until ${renewalDate || 'the current period ends'}.`
+        : `Your one-month trial is active${renewalDate ? ` until ${renewalDate}` : ''}.`,
+      statusLabel: 'Trial',
+      statusValue: cancelAtPeriodEnd ? 'Cancel scheduled' : 'Trial active',
+      subscription,
+      syncError: billing.sync_error ?? null,
+      trial: trialDate ? `Ends ${trialDate}` : 'Active',
+    }
+  }
+
+  if (status === 'active') {
+    return {
+      canCancelWebBilling: Boolean((billing.stripe_subscription_id ?? org?.stripe_subscription_id) && !cancelAtPeriodEnd),
+      hasRevenueCatBilling,
+      isPremium,
+      plan: 'GreekGeek Pro · $149.99/year',
+      renewal: renewalDate ? (cancelAtPeriodEnd ? `Ends ${renewalDate}` : `Renews ${renewalDate}`) : 'Not available',
+      source: 'Web billing',
+      statusDetail: cancelAtPeriodEnd
+        ? `Your subscription will end on ${renewalDate || 'the current period end date'}.`
+        : `Your subscription is active${renewalDate ? ` and renews on ${renewalDate}` : ''}.`,
+      statusLabel: 'Subscription',
+      statusValue: cancelAtPeriodEnd ? 'Cancel scheduled' : 'Currently paying',
+      subscription,
+      syncError: billing.sync_error ?? null,
+      trial: trialDate ? `Ended ${trialDate}` : 'Not in trial',
+    }
+  }
+
+  if (hasRevenueCatBilling) {
+    const expiresDate = formatBillingDate(revenueCatExpiresAt)
+    return {
+      canCancelWebBilling: false,
+      hasRevenueCatBilling,
+      isPremium,
+      plan: 'GreekGeek Pro · $149.99/year',
+      renewal: expiresDate || 'Managed in app',
+      source: 'Mobile app',
+      statusDetail: expiresDate
+        ? `Your App Store subscription is active until ${expiresDate}.`
+        : 'Your App Store subscription is active.',
+      statusLabel: 'App Store',
+      statusValue: 'Active',
+      subscription,
+      syncError: billing.sync_error ?? null,
+      trial: 'Not in trial',
+    }
+  }
+
+  if (isPremium) {
+    return {
+      canCancelWebBilling: false,
+      hasRevenueCatBilling,
+      isPremium,
+      plan: 'GreekGeek Pro · $149.99/year',
+      renewal: renewalDate || 'Not available',
+      source: 'Organization billing',
+      statusDetail: 'Your organization has premium access.',
+      statusLabel: 'Status',
+      statusValue: 'Premium active',
+      subscription,
+      syncError: billing.sync_error ?? null,
+      trial: trialDate ? `Ends ${trialDate}` : 'Not in trial',
+    }
+  }
+
+  return {
+    canCancelWebBilling: false,
+    hasRevenueCatBilling,
+    isPremium,
+    plan: 'GreekGeek Pro · $149.99/year',
+    renewal: 'Not available',
+    source: 'None',
+    statusDetail: 'Start the one-month trial to unlock premium access.',
+    statusLabel: 'Trial',
+    statusValue: 'Not started',
+    subscription,
+    syncError: billing.sync_error ?? null,
+    trial: 'Not started',
+  }
+}
+
 const Profile = () => {
   const { dashboardState, refreshDashboard } = useDashboard()
   const {
@@ -37,7 +186,6 @@ const Profile = () => {
   const hasRevenueCatBilling = isGreekGeekPro || orgRevenueCatIsCurrent
   const hasOrgPremiumAccess = orgIsPremium || isGreekGeekPro
   const canManageOrgSubscription = Boolean(data?.is_staff && data?.org)
-  const canBuyOrgSubscription = canManageOrgSubscription && !hasOrgPremiumAccess
 
   // Notification toggles state
   const [notifyOrgStudying, setNotifyOrgStudying] = useState(data?.notify_org_starts_studying ?? true)
@@ -51,19 +199,13 @@ const Profile = () => {
   const [contactMessage, setContactMessage] = useState('')
   const [contactSending, setContactSending] = useState(false)
   const [paywallVisible, setPaywallVisible] = useState(false)
-  const [subscriptionAction, setSubscriptionAction] = useState<'paywall' | 'restore' | 'customer-center' | null>(null)
+  const [billingVisible, setBillingVisible] = useState(false)
+  const [billingState, setBillingState] = useState<BillingApiResponse | null>(null)
+  const [billingLoading, setBillingLoading] = useState(false)
+  const [billingError, setBillingError] = useState<string | null>(null)
+  const [subscriptionAction, setSubscriptionAction] = useState<'paywall' | 'restore' | 'customer-center' | 'cancel-web' | null>(null)
   const CONTACT_TOPICS = ['Organization setup', 'Member access', 'Study locations', 'Billing or trial', 'Technical support', 'Other']
   const proEntitlement = customerInfo?.entitlements.active[REVENUECAT_ENTITLEMENT_ID] ?? null
-  const proExpirationDate = proEntitlement?.expirationDate
-    ? new Date(proEntitlement.expirationDate).toLocaleDateString()
-    : data?.org?.revenuecat_entitlement_expires_at
-    ? new Date(data.org.revenuecat_entitlement_expires_at).toLocaleDateString()
-    : null
-  const billingSource = hasRevenueCatBilling
-    ? 'App Store billing'
-    : orgIsPremium
-    ? 'Organization billing'
-    : 'No active org subscription'
   const proProductIdentifier = proEntitlement?.productIdentifier
     || data?.org?.revenuecat_product_id
     || proPackage?.product.identifier
@@ -74,6 +216,7 @@ const Profile = () => {
   const proPeriod = proPackage?.product.subscriptionPeriod === 'P1Y' ? 'per year' : 'subscription'
   const proTitle = proPackage?.product.title || 'GreekGeek Pro'
   const proDescription = proPackage?.product.description || 'Organization-wide Pro access for your chapter.'
+  const billingDisplay = buildBillingDisplay(billingState, data?.org, isGreekGeekPro)
 
   useEffect(() => {
     if (!canManageOrgSubscription) return
@@ -311,7 +454,99 @@ const Profile = () => {
     }
   }
 
-  const syncStripeBillingBeforePaywall = async () => {
+  const getBillingErrorMessage = (billingRequestError: unknown, fallback: string) => {
+    if (axios.isAxiosError(billingRequestError)) {
+      const detail = billingRequestError.response?.data?.detail
+      if (typeof detail === 'string') return detail
+    }
+    if (billingRequestError instanceof Error) return billingRequestError.message
+    return fallback
+  }
+
+  const fetchOrgBilling = async () => {
+    if (!canManageOrgSubscription) {
+      throw new Error('Only organization admins can manage billing.')
+    }
+
+    setBillingLoading(true)
+    setBillingError(null)
+    try {
+      const token = await AsyncStorage.getItem('accessToken')
+      if (!token) throw new Error('No access token found')
+
+      const response = await axios.post<BillingApiResponse>(
+        `${API_URL}api/billing/sync-subscription/`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+      setBillingState(response.data)
+      return response.data
+    } catch (billingRequestError) {
+      const message = getBillingErrorMessage(billingRequestError, 'Unable to refresh billing details.')
+      setBillingError(message)
+      throw billingRequestError
+    } finally {
+      setBillingLoading(false)
+    }
+  }
+
+  const handleOpenBilling = async () => {
+    if (!canManageOrgSubscription) {
+      Alert.alert('Admin only', 'Only organization admins can manage billing.')
+      return
+    }
+
+    setBillingVisible(true)
+    await fetchOrgBilling().catch((billingRequestError) => {
+      console.warn('Billing refresh failed:', billingRequestError)
+    })
+  }
+
+  const handleCancelWebBilling = () => {
+    if (!billingDisplay.canCancelWebBilling) return
+
+    Alert.alert(
+      'Cancel subscription?',
+      'Premium access remains active through the current billing period.',
+      [
+        { text: 'Keep Subscription', style: 'cancel' },
+        {
+          text: 'Cancel Subscription',
+          style: 'destructive',
+          onPress: async () => {
+            setSubscriptionAction('cancel-web')
+            setBillingError(null)
+            try {
+              const token = await AsyncStorage.getItem('accessToken')
+              if (!token) throw new Error('No access token found')
+              const response = await axios.post<BillingApiResponse>(
+                `${API_URL}api/billing/cancel-subscription/`,
+                {},
+                {
+                  headers: { Authorization: `Bearer ${token}` },
+                }
+              )
+              setBillingState(response.data)
+              await refreshDashboard().catch((error) => {
+                console.warn('Dashboard refresh after billing cancellation failed:', error)
+              })
+              Alert.alert('Cancellation scheduled', 'Premium access remains active through the current period.')
+            } catch (billingRequestError) {
+              const message = getBillingErrorMessage(billingRequestError, 'Unable to cancel subscription.')
+              setBillingError(message)
+              Alert.alert('Unable to cancel', message)
+            } finally {
+              setSubscriptionAction(null)
+            }
+          },
+        },
+      ]
+    )
+  }
+
+  const syncWebBillingBeforePaywall = async () => {
     const token = await AsyncStorage.getItem('accessToken')
     if (!token) throw new Error('No access token found')
 
@@ -325,7 +560,7 @@ const Profile = () => {
 
     if (response.data?.billing?.is_premium) {
       await refreshDashboard().catch((error) => {
-        console.warn('Dashboard refresh after Stripe billing sync failed:', error)
+        console.warn('Dashboard refresh after web billing sync failed:', error)
       })
       Alert.alert('GreekGeek Pro', 'Your organization already has Pro access.')
       return true
@@ -337,7 +572,7 @@ const Profile = () => {
   const handlePresentPaywall = async () => {
     setSubscriptionAction('paywall')
     try {
-      const alreadyPremium = await syncStripeBillingBeforePaywall()
+      const alreadyPremium = await syncWebBillingBeforePaywall()
       if (alreadyPremium) return
 
       setPaywallVisible(true)
@@ -345,7 +580,7 @@ const Profile = () => {
         console.warn('RevenueCat offerings failed:', error)
       })
     } catch (error) {
-      console.warn('Stripe billing sync before paywall failed:', error)
+      console.warn('Web billing sync before paywall failed:', error)
       Alert.alert('Subscription unavailable', 'Could not verify organization billing. Please try again.')
     } finally {
       setSubscriptionAction(null)
@@ -355,7 +590,7 @@ const Profile = () => {
   const handlePurchasePro = async () => {
     setSubscriptionAction('paywall')
     try {
-      const alreadyPremium = await syncStripeBillingBeforePaywall()
+      const alreadyPremium = await syncWebBillingBeforePaywall()
       if (alreadyPremium) {
         setPaywallVisible(false)
         return
@@ -547,10 +782,10 @@ const Profile = () => {
                 <View className="ml-3 flex-1">
                   <Text className="font-psemibold text-gg-text">GreekGeek Pro</Text>
                   <Text className="font-pregular text-gg-muted text-sm mt-1">
-                    {hasOrgPremiumAccess
-                      ? `${billingSource}${proExpirationDate ? ` renews ${proExpirationDate}` : ''}`
-                      : canManageOrgSubscription
-                      ? `Product ${proProductIdentifier}`
+                    {canManageOrgSubscription
+                      ? billingDisplay.statusDetail
+                      : hasOrgPremiumAccess
+                      ? 'Your organization has Pro access.'
                       : 'Ask an organization admin to start Pro for your chapter'}
                   </Text>
                 </View>
@@ -565,62 +800,25 @@ const Profile = () => {
               )}
             </View>
 
-            {canBuyOrgSubscription && (
+            {canManageOrgSubscription ? (
               <TouchableOpacity
-                className={`px-4 py-4 border-b border-gg-outlineVariant flex-row items-center ${subscriptionAction === 'paywall' ? 'opacity-60' : ''}`}
-                onPress={handlePresentPaywall}
-                disabled={revenueCatLoading || Boolean(subscriptionAction)}
+                className={`px-4 py-4 flex-row items-center ${billingLoading ? 'opacity-60' : ''}`}
+                onPress={handleOpenBilling}
+                disabled={billingLoading}
               >
-                {subscriptionAction === 'paywall' ? (
+                {billingLoading ? (
                   <ActivityIndicator size="small" color="#006b2c" />
                 ) : (
                   <Ionicons name="card-outline" size={21} color="#3e4a3d" />
                 )}
-                <Text className="text-gg-text ml-3 font-pmedium flex-1">View GreekGeek Pro</Text>
+                <Text className="text-gg-text ml-3 font-pmedium flex-1">Manage billing</Text>
                 <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
               </TouchableOpacity>
-            )}
-
-            {canBuyOrgSubscription && (
-              <TouchableOpacity
-                className={`px-4 py-4 border-b border-gg-outlineVariant flex-row items-center ${subscriptionAction === 'restore' ? 'opacity-60' : ''}`}
-                onPress={handleRestorePurchases}
-                disabled={revenueCatLoading || Boolean(subscriptionAction)}
-              >
-                {subscriptionAction === 'restore' ? (
-                  <ActivityIndicator size="small" color="#006b2c" />
-                ) : (
-                  <Ionicons name="refresh-outline" size={21} color="#3e4a3d" />
-                )}
-                <Text className="text-gg-text ml-3 font-pmedium flex-1">Restore purchases</Text>
-              </TouchableOpacity>
-            )}
-
-            {canManageOrgSubscription && hasRevenueCatBilling && (
-              <TouchableOpacity
-                className={`px-4 py-4 flex-row items-center ${subscriptionAction === 'customer-center' ? 'opacity-60' : ''}`}
-                onPress={handleOpenCustomerCenter}
-                disabled={revenueCatLoading || Boolean(subscriptionAction)}
-              >
-                {subscriptionAction === 'customer-center' ? (
-                  <ActivityIndicator size="small" color="#006b2c" />
-                ) : (
-                  <Ionicons name="settings-outline" size={21} color="#3e4a3d" />
-                )}
-                <Text className="text-gg-text ml-3 font-pmedium flex-1">Manage subscription</Text>
-                <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
-              </TouchableOpacity>
-            )}
-
-            {canManageOrgSubscription && orgIsPremium && !hasRevenueCatBilling && (
-              <TouchableOpacity
-                className="px-4 py-4 flex-row items-center"
-                onPress={() => openUrl('dashboard/')}
-              >
-                <Ionicons name="open-outline" size={21} color="#3e4a3d" />
-                <Text className="text-gg-text ml-3 font-pmedium flex-1">Manage organization billing</Text>
-                <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
-              </TouchableOpacity>
+            ) : (
+              <View className="px-4 py-4 flex-row items-center">
+                <Ionicons name="information-circle-outline" size={21} color="#3e4a3d" />
+                <Text className="text-gg-muted ml-3 font-pregular flex-1">Only organization admins can manage billing.</Text>
+              </View>
             )}
           </View>
 
@@ -809,6 +1007,170 @@ const Profile = () => {
                 <Text className="text-gg-muted font-pregular text-xs py-1">|</Text>
                 <TouchableOpacity onPress={() => openUrl('privacy/')} className="px-2 py-1">
                   <Text className="text-gg-muted font-pregular text-xs">Privacy</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+
+        <Modal
+          visible={billingVisible && canManageOrgSubscription}
+          animationType="slide"
+          onRequestClose={() => setBillingVisible(false)}
+        >
+          <SafeAreaView className="flex-1 bg-gg-bg">
+            <ScrollView className="flex-1" contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
+              <View className="flex-row items-center justify-between mb-5">
+                <View className="flex-1 pr-3">
+                  <Text className="text-gg-text font-pbold text-2xl">Billing</Text>
+                  <Text className="text-gg-muted font-pregular text-sm mt-1">
+                    {data?.org?.name || 'Your organization'} subscription details.
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setBillingVisible(false)}
+                  className="h-10 w-10 rounded-full bg-gg-surface border border-gg-outlineVariant items-center justify-center"
+                  accessibilityLabel="Close billing"
+                >
+                  <Ionicons name="close" size={20} color="#3e4a3d" />
+                </TouchableOpacity>
+              </View>
+
+              {billingLoading ? (
+                <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl p-5 items-center mb-4">
+                  <ActivityIndicator size="small" color="#006b2c" />
+                  <Text className="text-gg-muted font-pregular text-sm mt-3">Refreshing billing details...</Text>
+                </View>
+              ) : null}
+
+              {billingError ? (
+                <View className="bg-[#ffdad6] border border-[#ffb4ab] rounded-lg p-3 mb-4 flex-row">
+                  <Ionicons name="alert-circle" size={18} color="#ba1a1a" />
+                  <Text className="text-gg-error ml-2 flex-1 font-pregular text-sm">{billingError}</Text>
+                </View>
+              ) : null}
+
+              {billingDisplay.syncError ? (
+                <View className="bg-[#fff8bd] border border-[#e2c400] rounded-lg p-3 mb-4 flex-row">
+                  <Ionicons name="warning-outline" size={18} color="#7a5c00" />
+                  <Text className="text-[#5c4300] ml-2 flex-1 font-pregular text-sm">{billingDisplay.syncError}</Text>
+                </View>
+              ) : null}
+
+              <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl p-4 mb-4 shadow-sm">
+                <View className="flex-row items-start justify-between">
+                  <View className="flex-1 pr-4">
+                    <Text className="text-gg-muted font-pregular text-xs uppercase tracking-wider">
+                      {billingDisplay.statusLabel}
+                    </Text>
+                    <Text className="text-gg-text font-pbold text-2xl mt-1">{billingDisplay.statusValue}</Text>
+                  </View>
+                  <View className={`rounded-full px-3 py-1 ${billingDisplay.isPremium ? 'bg-gg-surfaceLow border border-gg-outlineVariant' : 'bg-[#dbe1ff] border border-[#b4c5ff]'}`}>
+                    <Text className={`font-psemibold text-xs ${billingDisplay.isPremium ? 'text-gg-primary' : 'text-gg-secondary'}`}>
+                      {billingDisplay.isPremium ? 'Active' : 'Free'}
+                    </Text>
+                  </View>
+                </View>
+                <Text className="text-gg-muted font-pregular text-sm mt-3">{billingDisplay.statusDetail}</Text>
+              </View>
+
+              <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl overflow-hidden mb-4 shadow-sm">
+                {[
+                  { label: 'Plan', value: billingDisplay.plan },
+                  { label: 'Billing Source', value: billingDisplay.source },
+                  { label: 'Trial', value: billingDisplay.trial },
+                  { label: 'Renewal / End Date', value: billingDisplay.renewal },
+                  { label: 'Subscription', value: billingDisplay.subscription },
+                ].map((item, index, items) => (
+                  <View
+                    key={item.label}
+                    className={`px-4 py-3 ${index < items.length - 1 ? 'border-b border-gg-outlineVariant' : ''}`}
+                  >
+                    <Text className="text-gg-muted font-pregular text-xs">{item.label}</Text>
+                    <Text className="text-gg-text font-psemibold mt-1">{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl overflow-hidden shadow-sm">
+                {!billingDisplay.isPremium ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setBillingVisible(false)
+                      handlePresentPaywall()
+                    }}
+                    disabled={Boolean(subscriptionAction)}
+                    className={`px-4 py-4 border-b border-gg-outlineVariant flex-row items-center ${subscriptionAction ? 'opacity-60' : ''}`}
+                  >
+                    {subscriptionAction === 'paywall' ? (
+                      <ActivityIndicator size="small" color="#006b2c" />
+                    ) : (
+                      <Ionicons name="sparkles-outline" size={21} color="#006b2c" />
+                    )}
+                    <Text className="text-gg-text ml-3 font-pmedium flex-1">View GreekGeek Pro</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
+                  </TouchableOpacity>
+                ) : null}
+
+                {billingDisplay.hasRevenueCatBilling ? (
+                  <TouchableOpacity
+                    onPress={handleOpenCustomerCenter}
+                    disabled={Boolean(subscriptionAction)}
+                    className={`px-4 py-4 border-b border-gg-outlineVariant flex-row items-center ${subscriptionAction ? 'opacity-60' : ''}`}
+                  >
+                    {subscriptionAction === 'customer-center' ? (
+                      <ActivityIndicator size="small" color="#006b2c" />
+                    ) : (
+                      <Ionicons name="phone-portrait-outline" size={21} color="#3e4a3d" />
+                    )}
+                    <Text className="text-gg-text ml-3 font-pmedium flex-1">Manage App Store Subscription</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#6e7b6c" />
+                  </TouchableOpacity>
+                ) : null}
+
+                {billingDisplay.canCancelWebBilling ? (
+                  <TouchableOpacity
+                    onPress={handleCancelWebBilling}
+                    disabled={subscriptionAction === 'cancel-web'}
+                    className={`px-4 py-4 border-b border-gg-outlineVariant flex-row items-center ${subscriptionAction === 'cancel-web' ? 'opacity-60' : ''}`}
+                  >
+                    {subscriptionAction === 'cancel-web' ? (
+                      <ActivityIndicator size="small" color="#ba1a1a" />
+                    ) : (
+                      <Ionicons name="close-circle-outline" size={21} color="#ba1a1a" />
+                    )}
+                    <Text className="text-gg-error ml-3 font-pmedium flex-1">Cancel Subscription</Text>
+                  </TouchableOpacity>
+                ) : null}
+
+                <TouchableOpacity
+                  onPress={handleRestorePurchases}
+                  disabled={Boolean(subscriptionAction)}
+                  className={`px-4 py-4 border-b border-gg-outlineVariant flex-row items-center ${subscriptionAction ? 'opacity-60' : ''}`}
+                >
+                  {subscriptionAction === 'restore' ? (
+                    <ActivityIndicator size="small" color="#006b2c" />
+                  ) : (
+                    <Ionicons name="refresh-outline" size={21} color="#3e4a3d" />
+                  )}
+                  <Text className="text-gg-text ml-3 font-pmedium flex-1">Restore purchases</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    fetchOrgBilling().catch((billingRequestError) => {
+                      console.warn('Billing refresh failed:', billingRequestError)
+                    })
+                  }}
+                  disabled={billingLoading || Boolean(subscriptionAction)}
+                  className={`px-4 py-4 flex-row items-center ${(billingLoading || subscriptionAction) ? 'opacity-60' : ''}`}
+                >
+                  {billingLoading ? (
+                    <ActivityIndicator size="small" color="#006b2c" />
+                  ) : (
+                    <Ionicons name="sync-outline" size={21} color="#3e4a3d" />
+                  )}
+                  <Text className="text-gg-text ml-3 font-pmedium flex-1">Refresh billing</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>

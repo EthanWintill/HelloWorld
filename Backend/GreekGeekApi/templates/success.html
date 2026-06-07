@@ -17,19 +17,30 @@
                         <div class="display-1 text-primary mb-3">
                             <i class="fas fa-graduation-cap"></i>
                         </div>
-                        <h4 class="text-primary" id="success-heading">Your Organization is Ready</h4>
-                        <p class="text-muted" id="success-copy">Start your one-month trial when you are ready. GreekGeek is $149.99 per organization per year after the trial.</p>
+                        <h4 class="text-primary" id="success-heading">{% if billing_success %}Trial Started{% elif start_trial_prompt %}Start Your One-Month Trial{% else %}Your Organization is Ready{% endif %}</h4>
+                        <p class="text-muted" id="success-copy">{% if billing_success %}Your trial is active. Your organization now has premium access.{% elif start_trial_prompt %}Your organization is created but not premium yet. Start the trial to unlock premium access.{% else %}Start your one-month trial when you are ready.{% endif %}</p>
                     </div>
                     
                     <div id="organization-info">
                         <!-- Organization details will be loaded here -->
                     </div>
 
-                    <div id="billing-action" class="alert alert-primary" role="status">
+                    <div id="billing-action" class="alert {% if billing_success %}alert-success{% else %}alert-primary{% endif %}" role="status">
+                        {% if billing_success %}
                         <div class="d-flex flex-column gap-3">
                             <div>
-                                <strong>Start your one-month trial.</strong>
-                                <div>Your organization gets premium access during the trial and continues automatically after the first month.</div>
+                                <strong>Your trial is active.</strong>
+                                <div>Premium access is unlocked for your organization. Finish setup in the dashboard, then invite members when you are ready.</div>
+                            </div>
+                            <div class="d-flex flex-column flex-sm-row gap-2">
+                                <a href="/dashboard/" class="btn btn-primary">Set Up Your Chapter</a>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="d-flex flex-column gap-3">
+                            <div>
+                                <strong>Unlock premium access.</strong>
+                                <div>Your organization gets premium access during the one-month trial and continues automatically after the first month.</div>
                             </div>
                             <div class="d-flex flex-column flex-sm-row gap-2">
                                 <button type="button" class="btn btn-primary" id="start-trial-btn" onclick="startTrial()">
@@ -40,6 +51,7 @@
                             </div>
                             <div id="billing-error" class="text-danger d-none"></div>
                         </div>
+                        {% endif %}
                     </div>
 
                     <div class="mt-4 pt-3 border-top">
@@ -95,7 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const params = new URLSearchParams(window.location.search);
 
-    if (params.get('stripe_checkout') === 'success') {
+    if (isBillingSuccessReturn(params)) {
         showBillingSuccess();
         return;
     }
@@ -162,11 +174,33 @@ async function showTrialPrompt(existingData = null) {
 }
 
 async function showBillingSuccess() {
-    await syncCheckoutSessionFromUrl();
-    const data = normalizeOrgData(await fetchDashboard());
-    document.getElementById('success-heading').textContent = 'Trial Started';
-    document.getElementById('success-copy').textContent = 'Your trial is active. Your organization now has premium access.';
-    displayOrganizationInfo(data);
+    showPostCheckoutAction();
+    try {
+        await syncCheckoutSessionFromUrl();
+        const data = normalizeOrgData(await fetchDashboard());
+        showPostCheckoutAction();
+        document.getElementById('success-heading').textContent = 'Trial Started';
+        document.getElementById('success-copy').textContent = 'Your trial is active. Your organization now has premium access.';
+        displayOrganizationInfo(data);
+    } catch (error) {
+        console.error('Error loading billing success state:', error);
+    }
+}
+
+function showPostCheckoutAction() {
+    const billingAction = document.getElementById('billing-action');
+    billingAction.className = 'alert alert-success';
+    billingAction.innerHTML = `
+        <div class="d-flex flex-column gap-3">
+            <div>
+                <strong>Your trial is active.</strong>
+                <div>Premium access is unlocked for your organization. Finish setup in the dashboard, then invite members when you are ready.</div>
+            </div>
+            <div class="d-flex flex-column flex-sm-row gap-2">
+                <a href="/dashboard/" class="btn btn-primary">Set Up Your Chapter</a>
+            </div>
+        </div>
+    `;
 }
 
 async function syncCheckoutSessionFromUrl() {
@@ -183,7 +217,11 @@ async function syncCheckoutSessionFromUrl() {
         },
         body: JSON.stringify({ session_id: sessionId })
     });
-    if (!response.ok) throw new Error('Unable to sync checkout session');
+    if (!response.ok) throw new Error('Unable to sync billing session');
+}
+
+function isBillingSuccessReturn(params) {
+    return params.get('stripe_checkout') === 'success' || Boolean(params.get('session_id'));
 }
 
 function normalizeOrgData(data) {
@@ -204,7 +242,7 @@ async function startTrial() {
 
     button.disabled = true;
     spinner.classList.remove('d-none');
-    text.textContent = 'Opening checkout...';
+    text.textContent = 'Opening billing setup...';
     error.classList.add('d-none');
 
     try {

@@ -5,6 +5,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.urls import reverse
 from rest_framework.test import APIClient
+import stripe
 
 from .models import Org, User
 
@@ -68,6 +69,8 @@ class BillingCheckoutSessionTests(TestCase):
                 'status': 'trialing',
                 'trial_start': trial_start,
                 'trial_end': trial_end,
+                'current_period_end': trial_end,
+                'cancel_at_period_end': False,
             },
         }
 
@@ -81,6 +84,8 @@ class BillingCheckoutSessionTests(TestCase):
         self.assertEqual(self.org.stripe_customer_id, 'cus_123')
         self.assertEqual(self.org.stripe_subscription_id, 'sub_123')
         self.assertEqual(self.org.stripe_subscription_status, 'trialing')
+        self.assertEqual(self.org.stripe_current_period_end, timezone.datetime.fromtimestamp(trial_end, tz=timezone.get_current_timezone()))
+        self.assertFalse(self.org.stripe_cancel_at_period_end)
         mock_retrieve.assert_called_once_with('cs_test_123', expand=['subscription'])
 
     @override_settings(STRIPE_API_KEY='rk_test_123')
@@ -102,6 +107,8 @@ class BillingCheckoutSessionTests(TestCase):
             'status': 'canceled',
             'trial_start': None,
             'trial_end': None,
+            'current_period_end': 1782781000,
+            'cancel_at_period_end': True,
         }
 
         response = self.client.post(reverse('billing-sync-subscription'), {}, format='json')
@@ -110,7 +117,37 @@ class BillingCheckoutSessionTests(TestCase):
         self.org.refresh_from_db()
         self.assertFalse(self.org.is_premium)
         self.assertEqual(self.org.stripe_subscription_status, 'canceled')
+        self.assertTrue(self.org.stripe_cancel_at_period_end)
         self.assertEqual(response.data['billing']['stripe_subscription_status'], 'canceled')
+        self.assertTrue(response.data['billing']['stripe_cancel_at_period_end'])
+        mock_retrieve.assert_called_once_with('sub_123')
+
+    @override_settings(STRIPE_API_KEY='rk_test_123')
+    @patch('Study.views.stripe.Subscription.retrieve')
+    def test_subscription_sync_returns_stored_state_when_stripe_refresh_fails(self, mock_retrieve):
+        self.org.stripe_customer_id = 'cus_123'
+        self.org.stripe_subscription_id = 'sub_123'
+        self.org.stripe_subscription_status = 'trialing'
+        self.org.trial_ends_at = timezone.now() + timedelta(days=30)
+        self.org.is_premium = True
+        self.org.save(update_fields=[
+            'stripe_customer_id',
+            'stripe_subscription_id',
+            'stripe_subscription_status',
+            'trial_ends_at',
+            'is_premium',
+        ])
+        mock_retrieve.side_effect = stripe.error.PermissionError('Permission denied')
+
+        response = self.client.post(reverse('billing-sync-subscription'), {}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['billing']['is_premium'])
+        self.assertEqual(response.data['billing']['stripe_subscription_status'], 'trialing')
+        self.assertIn('sync_error', response.data['billing'])
+        self.org.refresh_from_db()
+        self.assertTrue(self.org.is_premium)
+        self.assertEqual(self.org.stripe_subscription_status, 'trialing')
         mock_retrieve.assert_called_once_with('sub_123')
 
     @override_settings(STRIPE_API_KEY='rk_test_123')
@@ -126,6 +163,8 @@ class BillingCheckoutSessionTests(TestCase):
                     'status': 'trialing',
                     'trial_start': 1780189000,
                     'trial_end': 1782781000,
+                    'current_period_end': 1782781000,
+                    'cancel_at_period_end': False,
                 }
             ]
         }
@@ -137,6 +176,7 @@ class BillingCheckoutSessionTests(TestCase):
         self.assertTrue(self.org.is_premium)
         self.assertEqual(self.org.stripe_subscription_id, 'sub_123')
         self.assertEqual(self.org.stripe_subscription_status, 'trialing')
+        self.assertEqual(self.org.stripe_current_period_end, timezone.datetime.fromtimestamp(1782781000, tz=timezone.get_current_timezone()))
         mock_list.assert_called_once_with(customer='cus_123', status='all', limit=1)
 
     def test_admin_subscription_sync_without_billing_ids_returns_current_state(self):
@@ -145,6 +185,41 @@ class BillingCheckoutSessionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(response.data['billing']['is_premium'])
         self.assertIsNone(response.data['billing']['stripe_customer_id'])
+
+    @override_settings(STRIPE_API_KEY='rk_test_123')
+    @patch('Study.views.stripe.Subscription.modify')
+    def test_admin_can_cancel_subscription_at_period_end(self, mock_modify):
+        period_end = 1782781000
+        self.org.stripe_customer_id = 'cus_123'
+        self.org.stripe_subscription_id = 'sub_123'
+        self.org.stripe_subscription_status = 'active'
+        self.org.is_premium = True
+        self.org.save(update_fields=[
+            'stripe_customer_id',
+            'stripe_subscription_id',
+            'stripe_subscription_status',
+            'is_premium',
+        ])
+        mock_modify.return_value = {
+            'id': 'sub_123',
+            'customer': 'cus_123',
+            'status': 'active',
+            'trial_start': None,
+            'trial_end': None,
+            'current_period_end': period_end,
+            'cancel_at_period_end': True,
+        }
+
+        response = self.client.post(reverse('billing-cancel-subscription'), {}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.org.refresh_from_db()
+        self.assertTrue(self.org.is_premium)
+        self.assertEqual(self.org.stripe_subscription_status, 'active')
+        self.assertTrue(self.org.stripe_cancel_at_period_end)
+        self.assertEqual(self.org.stripe_current_period_end, timezone.datetime.fromtimestamp(period_end, tz=timezone.get_current_timezone()))
+        self.assertTrue(response.data['billing']['stripe_cancel_at_period_end'])
+        mock_modify.assert_called_once_with('sub_123', cancel_at_period_end=True)
 
 
 class StripeWebhookTests(TestCase):
@@ -198,6 +273,7 @@ class StripeWebhookTests(TestCase):
         )
         trial_start = 1780189000
         trial_end = 1782781000
+        current_period_end = 1782781000
         mock_construct_event.return_value = {
             'type': 'customer.subscription.created',
             'data': {
@@ -207,6 +283,8 @@ class StripeWebhookTests(TestCase):
                     'status': 'trialing',
                     'trial_start': trial_start,
                     'trial_end': trial_end,
+                    'current_period_end': current_period_end,
+                    'cancel_at_period_end': False,
                     'metadata': {'org_id': str(org.id)},
                 }
             },
@@ -225,6 +303,8 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(org.stripe_subscription_status, 'trialing')
         self.assertEqual(org.trial_started_at, timezone.datetime.fromtimestamp(trial_start, tz=timezone.get_current_timezone()))
         self.assertEqual(org.trial_ends_at, timezone.datetime.fromtimestamp(trial_end, tz=timezone.get_current_timezone()))
+        self.assertEqual(org.stripe_current_period_end, timezone.datetime.fromtimestamp(current_period_end, tz=timezone.get_current_timezone()))
+        self.assertFalse(org.stripe_cancel_at_period_end)
 
     @override_settings(
         STRIPE_API_KEY='rk_test_123',

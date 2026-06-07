@@ -1,5 +1,29 @@
 # HelloWorld Log
 
+## [2026-06-07] feature | Separate billing page and app billing modal
+
+Moved full web billing management from the dashboard into `/billing/`, leaving the dashboard with a compact billing summary and Manage Billing link. Added an admin-only mobile Profile billing modal that pulls the same org billing state, shows status/source/trial/renewal/subscription details, and keeps purchase, restore, cancellation, refresh, and Customer Center actions behind the org-admin gate.
+
+## [2026-06-07] fix | Dashboard billing refresh warning
+
+Changed dashboard billing refresh so a backend billing-provider permission error returns stored org billing state plus a visible warning instead of failing the billing panel. The dashboard now preserves trial/subscription details already stored locally while making API permission or webhook-delivery problems explicit, and subscription webhooks now persist renewal/end date and cancel-at-period-end state for the dashboard.
+
+## [2026-06-07] fix | Billing success page state
+
+Fixed `/success/` billing returns so a completed trial checkout renders the "Trial Started" state immediately, including when the return URL only has `session_id`. The page still syncs billing in the background, but it no longer flashes or falls back to the organization-created trial prompt after payment.
+
+## [2026-06-07] polish | Billing copy cleanup
+
+Removed customer-facing billing copy that described the plan with org/year phrasing or named the checkout provider. Public signup, success, landing pricing, cookie policy, dashboard billing, and mobile billing-sync log text now use generic trial, billing, and premium-access language.
+
+## [2026-06-06] feature | Dashboard billing management
+
+Moved dashboard billing into a top full-width section that shows trial active/currently paying state, billing source, subscription id, trial and renewal/end dates, and Stripe cancellation controls. Added persisted Stripe `current_period_end` and `cancel_at_period_end` org fields plus an admin-only `/api/billing/cancel-subscription/` endpoint that schedules cancellation at period end. Added `REVENUECAT_SECRET_API_KEY` to backend env configuration.
+
+## [2026-06-06] fix | Stripe success screen trial copy
+
+Updated the post-Stripe Checkout success state so the billing box confirms the trial is active and points admins to dashboard setup instead of showing another "Start Free Trial" prompt.
+
 ## [2026-06-06] feature | RevenueCat mobile subscription starter
 
 Installed the RevenueCat React Native SDK and UI package in the Expo app, added a root RevenueCat provider, identified RevenueCat customers by organization, checked the `GreekGeek Pro` entitlement for product `yearly`, and added org-admin-only Profile actions for the custom in-app GreekGeek paywall, purchase restore, and Customer Center. The custom paywall fetches the current RevenueCat offering and purchases the selected package with `Purchases.purchasePackage`. Added backend RevenueCat webhook handling so Stripe and RevenueCat both preserve `Org.is_premium` at the org level.

@@ -1336,6 +1336,99 @@ details p {
     grid-template-columns: minmax(0, 1fr) minmax(290px, 0.35fr);
 }
 
+.dashboard-billing-panel {
+    margin-bottom: 1rem;
+}
+
+.dashboard-billing-layout {
+    align-items: start;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(220px, 0.42fr) minmax(0, 1fr) auto;
+}
+
+.dashboard-billing-summary {
+    background: var(--color-green-soft);
+    border: 1px solid var(--color-green);
+    border-radius: var(--radius);
+    padding: 1rem;
+}
+
+.dashboard-billing-summary span,
+.dashboard-billing-details span {
+    color: var(--color-muted);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+}
+
+.dashboard-billing-summary strong {
+    color: var(--color-green-dark);
+    display: block;
+    font-size: 1.35rem;
+    line-height: 1.15;
+}
+
+.dashboard-billing-summary p {
+    color: var(--color-green-dark);
+    margin: 0.45rem 0 0;
+}
+
+.dashboard-billing-details {
+    display: grid;
+    gap: 0.9rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-billing-details div {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.85rem;
+}
+
+.dashboard-billing-details strong {
+    color: var(--color-text);
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.dashboard-billing-details-wide {
+    grid-column: 1 / -1;
+}
+
+.dashboard-billing-actions {
+    display: grid;
+    gap: 0.65rem;
+    min-width: 210px;
+}
+
+.dashboard-compact-status {
+    background: var(--color-green-soft);
+    border: 1px solid var(--color-green);
+    border-radius: var(--radius);
+    padding: 0.9rem;
+}
+
+.dashboard-compact-status span {
+    color: var(--color-muted);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+}
+
+.dashboard-compact-status strong {
+    color: var(--color-green-dark);
+    display: block;
+    font-size: 1.08rem;
+    line-height: 1.15;
+}
+
 .dashboard-side {
     display: grid;
     gap: 1rem;
@@ -1399,6 +1492,12 @@ details p {
     color: var(--color-danger);
 }
 
+.dashboard-inline-message-warning {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+}
+
 .dashboard-app-store {
     margin-top: 1rem;
 }
@@ -1441,8 +1540,13 @@ details p {
     .support-layout,
     .contact-layout,
     .dashboard-header,
+    .dashboard-billing-layout,
     .dashboard-grid {
         grid-template-columns: 1fr;
+    }
+
+    .dashboard-billing-actions {
+        min-width: 0;
     }
 
     .footer-grid {
@@ -1463,6 +1567,10 @@ details p {
 }
 
 @media (max-width: 767px) {
+    .dashboard-billing-details {
+        grid-template-columns: 1fr;
+    }
+
     .landing-hero {
         padding: 3.5rem 0 3rem;
     }

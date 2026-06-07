@@ -290,9 +290,17 @@ def dashboard_page(request):
     """Organization admin dashboard function-based view"""
     return render(request, 'dashboard.html')
 
+def billing_page(request):
+    """Organization admin billing function-based view"""
+    return render(request, 'billing.html')
+
 def success_page(request):
     """Success page function-based view"""
-    return render(request, 'success.html')
+    billing_success = request.GET.get('stripe_checkout') == 'success' or bool(request.GET.get('session_id'))
+    return render(request, 'success.html', {
+        'billing_success': billing_success,
+        'start_trial_prompt': request.GET.get('start_trial') == '1' and not billing_success,
+    })
 
 def forgot_password_page(request):
     """Forgot password page function-based view"""

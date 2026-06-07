@@ -133,6 +133,8 @@ def sync_org_subscription(
     status_value=None,
     trial_started_at=None,
     trial_ends_at=None,
+    current_period_end=None,
+    cancel_at_period_end=None,
 ):
     update_fields = []
 
@@ -156,6 +158,14 @@ def sync_org_subscription(
         org.trial_ends_at = trial_ends_at
         update_fields.append('trial_ends_at')
 
+    if current_period_end is not None and org.stripe_current_period_end != current_period_end:
+        org.stripe_current_period_end = current_period_end
+        update_fields.append('stripe_current_period_end')
+
+    if cancel_at_period_end is not None and org.stripe_cancel_at_period_end != cancel_at_period_end:
+        org.stripe_cancel_at_period_end = cancel_at_period_end
+        update_fields.append('stripe_cancel_at_period_end')
+
     update_org_premium_state(org, update_fields)
 
     if update_fields:
@@ -170,6 +180,8 @@ def sync_org_from_stripe_subscription(org, subscription, customer_id=None):
         status_value=stripe_get(subscription, 'status', ''),
         trial_started_at=stripe_timestamp_to_datetime(stripe_get(subscription, 'trial_start')),
         trial_ends_at=stripe_timestamp_to_datetime(stripe_get(subscription, 'trial_end')),
+        current_period_end=stripe_timestamp_to_datetime(stripe_get(subscription, 'current_period_end')),
+        cancel_at_period_end=bool(stripe_get(subscription, 'cancel_at_period_end', False)),
     )
 
 
@@ -309,14 +321,16 @@ def sync_revenuecat_transfer_event(event):
     return {'updated_org_ids': updated_org_ids}
 
 
-def billing_response(org):
-    return {
+def billing_response(org, sync_error=None):
+    response = {
         'organization': OrgSerializer(org).data,
         'billing': {
             'is_premium': org.is_premium,
             'stripe_customer_id': org.stripe_customer_id,
             'stripe_subscription_id': org.stripe_subscription_id,
             'stripe_subscription_status': org.stripe_subscription_status,
+            'stripe_current_period_end': org.stripe_current_period_end,
+            'stripe_cancel_at_period_end': org.stripe_cancel_at_period_end,
             'trial_started_at': org.trial_started_at,
             'trial_ends_at': org.trial_ends_at,
             'revenuecat_subscription_status': org.revenuecat_subscription_status,
@@ -325,6 +339,9 @@ def billing_response(org):
             'revenuecat_entitlement_expires_at': org.revenuecat_entitlement_expires_at,
         },
     }
+    if sync_error:
+        response['billing']['sync_error'] = sync_error
+    return response
 
 
 class PublicEndpointMixin:
@@ -1698,23 +1715,57 @@ class BillingSubscriptionSyncView(APIView):
         if not org.stripe_subscription_id and not org.stripe_customer_id:
             return Response(billing_response(org), status=status.HTTP_200_OK)
 
-        configure_stripe()
-        subscription = None
+        try:
+            configure_stripe()
+            subscription = None
 
-        if org.stripe_subscription_id:
-            subscription = stripe.Subscription.retrieve(org.stripe_subscription_id)
-        elif org.stripe_customer_id:
-            subscriptions = stripe.Subscription.list(
-                customer=org.stripe_customer_id,
-                status='all',
-                limit=1,
+            if org.stripe_subscription_id:
+                subscription = stripe.Subscription.retrieve(org.stripe_subscription_id)
+            elif org.stripe_customer_id:
+                subscriptions = stripe.Subscription.list(
+                    customer=org.stripe_customer_id,
+                    status='all',
+                    limit=1,
+                )
+                subscription_data = stripe_get(subscriptions, 'data', [])
+                if subscription_data:
+                    subscription = subscription_data[0]
+        except stripe.error.StripeError:
+            return Response(
+                billing_response(
+                    org,
+                    sync_error="Billing refresh failed. Check backend billing API permissions or webhook delivery.",
+                ),
+                status=status.HTTP_200_OK,
             )
-            subscription_data = stripe_get(subscriptions, 'data', [])
-            if subscription_data:
-                subscription = subscription_data[0]
 
         if subscription:
             sync_org_from_stripe_subscription(org, subscription)
+
+        return Response(billing_response(org), status=status.HTTP_200_OK)
+
+
+class BillingSubscriptionCancelView(APIView):
+    """
+    Cancels the org Stripe subscription at period end.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, format=None):
+        user = request.user
+        if not user.is_staff or not user.org:
+            raise exceptions.PermissionDenied(detail="Only organization admins can manage billing")
+
+        org = user.org
+        if not org.stripe_subscription_id:
+            raise exceptions.ValidationError(detail="Your organization does not have a Stripe subscription to cancel")
+
+        configure_stripe()
+        subscription = stripe.Subscription.modify(
+            org.stripe_subscription_id,
+            cancel_at_period_end=True,
+        )
+        sync_org_from_stripe_subscription(org, subscription)
 
         return Response(billing_response(org), status=status.HTTP_200_OK)
 
@@ -1803,6 +1854,8 @@ class StripeWebhookView(APIView):
                     status_value=event_object.get('status', ''),
                     trial_started_at=stripe_timestamp_to_datetime(event_object.get('trial_start')),
                     trial_ends_at=stripe_timestamp_to_datetime(event_object.get('trial_end')),
+                    current_period_end=stripe_timestamp_to_datetime(event_object.get('current_period_end')),
+                    cancel_at_period_end=bool(event_object.get('cancel_at_period_end', False)),
                 )
 
         return Response({"received": True}, status=status.HTTP_200_OK)

@@ -17,6 +17,7 @@ urlpatterns = [
     path('login/', web_views.login_page, name='login-page'),
     path('register/', web_views.register_page, name='register-page'),
     path('dashboard/', web_views.dashboard_page, name='dashboard-page'),
+    path('billing/', web_views.billing_page, name='billing-page'),
     path('success/', web_views.success_page, name='success-page'),
     path('forgot-password/', web_views.forgot_password_page, name='forgot-password-page'),
     path('reset-password/<str:token>/', web_views.reset_password_page, name='reset-password-page'),
@@ -65,6 +66,7 @@ urlpatterns = [
     path('api/billing/checkout-session/', views.BillingCheckoutSessionView.as_view(), name='billing-checkout-session'),
     path('api/billing/sync-checkout-session/', views.BillingCheckoutSessionSyncView.as_view(), name='billing-sync-checkout-session'),
     path('api/billing/sync-subscription/', views.BillingSubscriptionSyncView.as_view(), name='billing-sync-subscription'),
+    path('api/billing/cancel-subscription/', views.BillingSubscriptionCancelView.as_view(), name='billing-cancel-subscription'),
     path('api/billing/stripe-webhook/', views.StripeWebhookView.as_view(), name='stripe-webhook'),
     path('api/billing/revenuecat-webhook/', views.RevenueCatWebhookView.as_view(), name='revenuecat-webhook'),
     
