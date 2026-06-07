@@ -1,5 +1,13 @@
 # HelloWorld Log
 
+## [2026-06-07] fix | Mobile landing cleanup and app support links
+
+Condensed the mobile landing page screenshot and feature-card sections, simplified the pricing CTA copy, added more prominent contact CTAs, made comparison tables render as mobile cards, added an above-the-fold trial CTA on the signup success page, and linked Study/Profile help actions to the public contact page.
+
+## [2026-06-07] test | Signed Stripe subscription updated regression
+
+Added a signed Stripe SDK-object regression test for `customer.subscription.updated` payloads that store the billing period on `items.data[0].current_period_end`. This confirms the current webhook handler accepts the same event shape that previously produced the `detail: "get"` 500 when production treated Stripe objects like dictionaries.
+
 ## [2026-06-07] fix | Stripe webhook signature and SDK object handling
 
 Fixed the Stripe billing webhook 500 caused by treating signed Stripe SDK events as plain dictionaries. The webhook now follows the current Python quickstart pattern with `StripeClient.construct_event`, rejects missing or invalid Stripe signatures, uses raw request bodies for verification, and handles Stripe SDK event/object access safely.

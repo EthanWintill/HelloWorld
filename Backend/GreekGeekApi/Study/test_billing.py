@@ -280,6 +280,63 @@ class StripeWebhookTests(TestCase):
         STRIPE_API_KEY='sk_test_123',
         STRIPE_WEBHOOK_SECRET='whsec_123',
     )
+    def test_signed_subscription_updated_accepts_item_period_end(self):
+        org = Org.objects.create(
+            name='Signed Updated Chapter',
+            reg_code='SIGUPD123',
+            school='Test University',
+        )
+        trial_start = 1780791032
+        trial_end = 1783383032
+        payload = json.dumps({
+            'id': 'evt_123',
+            'object': 'event',
+            'type': 'customer.subscription.updated',
+            'data': {
+                'object': {
+                    'id': 'sub_123',
+                    'object': 'subscription',
+                    'customer': 'cus_123',
+                    'status': 'trialing',
+                    'trial_start': trial_start,
+                    'trial_end': trial_end,
+                    'cancel_at_period_end': True,
+                    'items': {
+                        'object': 'list',
+                        'data': [
+                            {
+                                'id': 'si_123',
+                                'object': 'subscription_item',
+                                'current_period_end': trial_end,
+                                'current_period_start': trial_start,
+                            },
+                        ],
+                    },
+                    'metadata': {'org_id': str(org.id)},
+                },
+            },
+        }, separators=(',', ':'))
+
+        response = APIClient().post(
+            reverse('stripe-webhook'),
+            data=payload.encode('utf-8'),
+            content_type='application/json',
+            HTTP_STRIPE_SIGNATURE=self.stripe_signature_header(payload),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        org.refresh_from_db()
+        self.assertTrue(org.is_premium)
+        self.assertEqual(org.stripe_customer_id, 'cus_123')
+        self.assertEqual(org.stripe_subscription_id, 'sub_123')
+        self.assertEqual(org.stripe_subscription_status, 'trialing')
+        self.assertEqual(org.stripe_current_period_end, timezone.datetime.fromtimestamp(trial_end, tz=timezone.get_current_timezone()))
+        self.assertTrue(org.stripe_cancel_at_period_end)
+
+    @override_settings(
+        STRIPE_API_KEY='sk_test_123',
+        STRIPE_WEBHOOK_SECRET='whsec_123',
+    )
     def test_webhook_rejects_missing_stripe_signature(self):
         response = APIClient().post(
             reverse('stripe-webhook'),

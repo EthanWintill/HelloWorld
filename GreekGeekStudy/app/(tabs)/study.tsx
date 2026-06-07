@@ -384,6 +384,10 @@ const Study = () => {
     router.push('/(admin)/study-locations');
   };
 
+  const openContactSupport = async () => {
+    await Linking.openURL(`${API_URL}contact/?topic=Technical%20support`);
+  };
+
   const profileInitials = () => {
     const first = data?.first_name?.[0] || '';
     const last = data?.last_name?.[0] || '';
@@ -981,14 +985,23 @@ const Study = () => {
             {data?.org?.name || 'Organization'}
           </Text>
         </View>
-        <View className="h-9 w-9 rounded-full bg-gg-surfaceLow border border-gg-outlineVariant items-center justify-center overflow-hidden">
-          {data?.profile_picture_url ? (
-            <Image source={{ uri: data.profile_picture_url }} className="h-9 w-9 rounded-full" />
-          ) : (
-            <Text className="font-pbold text-gg-primary text-sm">
-              {profileInitials()}
-            </Text>
-          )}
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={openContactSupport}
+            className="h-9 w-9 rounded-full bg-gg-surfaceLow border border-gg-outlineVariant items-center justify-center mr-2"
+            accessibilityLabel="Contact support"
+          >
+            <Ionicons name="help-circle-outline" size={20} color="#3e4a3d" />
+          </TouchableOpacity>
+          <View className="h-9 w-9 rounded-full bg-gg-surfaceLow border border-gg-outlineVariant items-center justify-center overflow-hidden">
+            {data?.profile_picture_url ? (
+              <Image source={{ uri: data.profile_picture_url }} className="h-9 w-9 rounded-full" />
+            ) : (
+              <Text className="font-pbold text-gg-primary text-sm">
+                {profileInitials()}
+              </Text>
+            )}
+          </View>
         </View>
       </View>
 

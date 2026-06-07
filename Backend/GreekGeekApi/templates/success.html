@@ -19,6 +19,15 @@
                         </div>
                         <h4 class="text-primary" id="success-heading">{% if billing_success %}Trial Started{% elif start_trial_prompt %}Start Your One-Month Trial{% else %}Your Organization is Ready{% endif %}</h4>
                         <p class="text-muted" id="success-copy">{% if billing_success %}Your trial is active. Your organization now has premium access.{% elif start_trial_prompt %}Your organization is created but not premium yet. Start the trial to unlock premium access.{% else %}Start your one-month trial when you are ready.{% endif %}</p>
+                        {% if not billing_success %}
+                        <div id="trial-top-action" class="mt-3">
+                            <button type="button" class="btn btn-primary btn-lg w-100" id="start-trial-top-btn" onclick="startTrial()">
+                                <span id="start-trial-top-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                <span id="start-trial-top-text">Start Free Trial</span>
+                            </button>
+                            <div id="billing-error-top" class="text-danger mt-2 d-none"></div>
+                        </div>
+                        {% endif %}
                     </div>
                     
                     <div id="organization-info">
@@ -171,6 +180,7 @@ async function showTrialPrompt(existingData = null) {
     displayOrganizationInfo(data);
     document.getElementById('billing-action').classList.remove('d-none');
     document.getElementById('start-trial-btn').onclick = startTrial;
+    showTopTrialAction();
 }
 
 async function showBillingSuccess() {
@@ -182,6 +192,7 @@ async function showBillingSuccess() {
         document.getElementById('success-heading').textContent = 'Trial Started';
         document.getElementById('success-copy').textContent = 'Your trial is active. Your organization now has premium access.';
         displayOrganizationInfo(data);
+        hideTopTrialAction();
     } catch (error) {
         console.error('Error loading billing success state:', error);
     }
@@ -189,6 +200,7 @@ async function showBillingSuccess() {
 
 function showPostCheckoutAction() {
     const billingAction = document.getElementById('billing-action');
+    hideTopTrialAction();
     billingAction.className = 'alert alert-success';
     billingAction.innerHTML = `
         <div class="d-flex flex-column gap-3">
@@ -233,17 +245,59 @@ function normalizeOrgData(data) {
     };
 }
 
+function getTrialButtonElements() {
+    return [
+        {
+            button: document.getElementById('start-trial-top-btn'),
+            spinner: document.getElementById('start-trial-top-spinner'),
+            text: document.getElementById('start-trial-top-text'),
+        },
+        {
+            button: document.getElementById('start-trial-btn'),
+            spinner: document.getElementById('start-trial-spinner'),
+            text: document.getElementById('start-trial-text'),
+        },
+    ].filter(item => item.button && item.spinner && item.text);
+}
+
+function setTrialButtonsLoading(isLoading) {
+    getTrialButtonElements().forEach(({ button, spinner, text }) => {
+        button.disabled = isLoading;
+        spinner.classList.toggle('d-none', !isLoading);
+        text.textContent = isLoading ? 'Opening billing setup...' : 'Start Free Trial';
+    });
+}
+
+function showTopTrialAction() {
+    const topAction = document.getElementById('trial-top-action');
+    if (topAction) topAction.classList.remove('d-none');
+}
+
+function hideTopTrialAction() {
+    const topAction = document.getElementById('trial-top-action');
+    if (topAction) topAction.classList.add('d-none');
+}
+
+function showBillingError(message) {
+    ['billing-error', 'billing-error-top'].forEach(id => {
+        const error = document.getElementById(id);
+        if (!error) return;
+        error.textContent = message;
+        error.classList.remove('d-none');
+    });
+}
+
+function hideBillingErrors() {
+    ['billing-error', 'billing-error-top'].forEach(id => {
+        const error = document.getElementById(id);
+        if (error) error.classList.add('d-none');
+    });
+}
+
 async function startTrial() {
     const token = localStorage.getItem('access_token');
-    const button = document.getElementById('start-trial-btn');
-    const spinner = document.getElementById('start-trial-spinner');
-    const text = document.getElementById('start-trial-text');
-    const error = document.getElementById('billing-error');
-
-    button.disabled = true;
-    spinner.classList.remove('d-none');
-    text.textContent = 'Opening billing setup...';
-    error.classList.add('d-none');
+    setTrialButtonsLoading(true);
+    hideBillingErrors();
 
     try {
         const response = await fetch('/api/billing/checkout-session/', {
@@ -258,11 +312,8 @@ async function startTrial() {
         if (!response.ok) throw new Error(result.detail || 'Unable to start trial');
         window.location.href = result.checkout_url;
     } catch (err) {
-        error.textContent = err.message || 'Unable to start trial. Please try again.';
-        error.classList.remove('d-none');
-        button.disabled = false;
-        spinner.classList.add('d-none');
-        text.textContent = 'Start Free Trial';
+        showBillingError(err.message || 'Unable to start trial. Please try again.');
+        setTrialButtonsLoading(false);
     }
 }
 
