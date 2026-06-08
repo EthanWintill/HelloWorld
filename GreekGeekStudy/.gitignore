@@ -12,6 +12,10 @@ npm-debug.*
 *.orig.*
 web-build/
 
+# Expo Prebuild / CNG generates native projects for EAS builds.
+/android/
+/ios/
+
 # macOS
 .DS_Store
 

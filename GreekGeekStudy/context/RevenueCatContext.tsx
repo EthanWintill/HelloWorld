@@ -11,7 +11,9 @@ import Purchases, {
 import RevenueCatUI from 'react-native-purchases-ui'
 import {
   REVENUECAT_API_KEY,
+  REVENUECAT_DISABLED_MESSAGE,
   REVENUECAT_ENTITLEMENT_ID,
+  REVENUECAT_IS_ENABLED,
   REVENUECAT_PRODUCT_IDS,
 } from '@/constants/revenuecat'
 
@@ -91,6 +93,16 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const ensureConfigured = useCallback(async () => {
     if (configuredRef.current) return true
+
+    if (!REVENUECAT_IS_ENABLED) {
+      configuredRef.current = false
+      configurePromiseRef.current = null
+      setCustomerInfo(null)
+      setError(REVENUECAT_DISABLED_MESSAGE)
+      setIsConfigured(false)
+      setIsLoading(false)
+      return false
+    }
 
     if (!configurePromiseRef.current) {
       configurePromiseRef.current = (async () => {

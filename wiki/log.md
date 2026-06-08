@@ -1,5 +1,13 @@
 # HelloWorld Log
 
+## [2026-06-07] fix | EAS CNG native folder handling
+
+Added `/ios/` and `/android/` to `GreekGeekStudy/.gitignore` and removed the generated iOS project from Git tracking so EAS can run Expo Prebuild / CNG from `app.json` instead of treating the app as a non-CNG native project.
+
+## [2026-06-07] fix | EAS npm lockfile sync
+
+Regenerated `GreekGeekStudy/package-lock.json` for the Expo SDK 56 dependency set so EAS `npm ci --include=dev` includes the missing peer/transitive packages such as `@testing-library/dom`, `@react-native/jest-preset`, and `react-native-svg`. Verified the clean install command succeeds under the app's Node 22.13.1 runtime.
+
 ## [2026-06-07] fix | EAS API constant packaging
 
 Removed the stale root `.gitignore` rule for `GreekGeekStudy/constants/api.js` so EAS build packaging includes the committed API constant that Metro imports from admin screens.
@@ -231,3 +239,11 @@ Upgraded the mobile app from Expo SDK 52 to SDK 56 with React Native 0.85.3, Rea
 ## [2026-06-07] fix | Study location permission UI
 
 Removed the legacy circular location-permission control from the Study screen, kept the normal clock-in button visible when location permissions are missing, and changed the permission prompt copy so it wraps cleanly in the red warning card.
+
+## [2026-06-07] fix | Disable RevenueCat in TestFlight until App Store key is ready
+
+Changed the mobile RevenueCat configuration so dev builds can keep using the current Test Store SDK key, but release/TestFlight builds do not initialize RevenueCat unless `EXPO_PUBLIC_REVENUECAT_API_KEY` provides a production RevenueCat App Store SDK key. Added `EXPO_PUBLIC_REVENUECAT_DISABLED=true` as a temporary off switch for builds that need to run before App Store subscriptions are fully configured.
+
+## [2026-06-07] config | EAS production auto-increment
+
+Enabled remote EAS app version source and production `autoIncrement` so production/TestFlight builds automatically advance build numbers.
