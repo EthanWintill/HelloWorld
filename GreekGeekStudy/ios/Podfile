@@ -62,5 +62,25 @@ target 'GreekGeekStudy' do
         end
       end
     end
+
+    # Xcode 26 no longer auto-bridges TARGET_OS_SIMULATOR / TARGET_IPHONE_SIMULATOR
+    # C macros into Swift. Patch any pod Swift files that still use them.
+    node_modules = File.expand_path(File.join(installer.sandbox.root, '..', '..', 'node_modules'))
+    Dir.glob("#{node_modules}/*/ios/**/*.swift").each do |file|
+      content = File.read(file)
+      next unless content.include?('TARGET_OS_SIMULATOR') || content.include?('TARGET_IPHONE_SIMULATOR')
+
+      content.gsub!(/^(\s*)return\s+TARGET_(?:OS_SIMULATOR|IPHONE_SIMULATOR)\s*[!<>=]+\s*\d+/) do
+        indent = $1
+        "#{indent}#if targetEnvironment(simulator)\n#{indent}return true\n#{indent}#else\n#{indent}return false\n#{indent}#endif"
+      end
+
+      content.gsub!(/^(\s*)(let|var)\s+(\w+)\s*=\s*TARGET_(?:OS_SIMULATOR|IPHONE_SIMULATOR)\s*[!<>=]+\s*\d+/) do
+        indent = $1; keyword = $2; varname = $3
+        "#{indent}#if targetEnvironment(simulator)\n#{indent}#{keyword} #{varname} = true\n#{indent}#else\n#{indent}#{keyword} #{varname} = false\n#{indent}#endif"
+      end
+
+      File.write(file, content)
+    end
   end
 end
