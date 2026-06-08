@@ -1,0 +1,373 @@
+{% extends 'base.html' %}
+
+{% block title %}Billing - GreekGeek{% endblock %}
+{% block meta_description %}Manage GreekGeek billing, trial status, renewal details, and subscription access for your organization.{% endblock %}
+{% block canonical_url %}https://greekgeek.app/billing/{% endblock %}
+{% block og_title %}GreekGeek Billing{% endblock %}
+{% block og_description %}Manage organization billing and subscription access for GreekGeek.{% endblock %}
+{% block og_url %}https://greekgeek.app/billing/{% endblock %}
+
+{% block content %}
+<section class="dashboard-page">
+    <div class="container">
+        <div id="billing-loading" class="dashboard-loading" role="status">
+            <span class="spinner-border text-primary" aria-hidden="true"></span>
+            <span>Loading billing...</span>
+        </div>
+
+        <div id="billing-alert" class="dashboard-alert d-none" role="alert"></div>
+
+        <div id="billing-content" class="d-none">
+            <div class="dashboard-header">
+                <div>
+                    <p class="eyebrow mb-2">Organization admin</p>
+                    <h1>Billing</h1>
+                    <p id="billing-subtitle">Manage subscription status for your organization.</p>
+                </div>
+                <a class="btn btn-outline-dark" href="/dashboard/">Back to Dashboard</a>
+            </div>
+
+            <section class="dashboard-panel dashboard-billing-panel" id="billing-panel" aria-labelledby="billing-heading">
+                <div class="dashboard-panel-heading">
+                    <div>
+                        <h2 id="billing-heading">Subscription</h2>
+                        <p id="billing-copy">Checking your subscription status.</p>
+                    </div>
+                </div>
+                <div class="dashboard-billing-layout">
+                    <div class="dashboard-billing-summary">
+                        <span id="billing-panel-label">Status</span>
+                        <strong id="billing-panel-status">Checking</strong>
+                        <p id="billing-panel-detail">Syncing billing information.</p>
+                    </div>
+                    <div class="dashboard-billing-details" aria-label="Billing details">
+                        <div>
+                            <span>Plan</span>
+                            <strong id="billing-plan-value">GreekGeek Pro</strong>
+                        </div>
+                        <div>
+                            <span>Billing Source</span>
+                            <strong id="billing-source-value">Checking</strong>
+                        </div>
+                        <div>
+                            <span>Trial</span>
+                            <strong id="billing-trial-value">Not started</strong>
+                        </div>
+                        <div>
+                            <span>Renewal / End Date</span>
+                            <strong id="billing-renewal-value">Not available</strong>
+                        </div>
+                        <div class="dashboard-billing-details-wide">
+                            <span>Subscription</span>
+                            <strong id="billing-subscription-value">None</strong>
+                        </div>
+                    </div>
+                    <div class="dashboard-billing-actions">
+                        <button class="btn btn-primary d-none" type="button" id="start-trial-btn">
+                            <span id="start-trial-spinner" class="spinner-border spinner-border-sm d-none" aria-hidden="true"></span>
+                            <span id="start-trial-text">Start Free Trial</span>
+                        </button>
+                        <button class="btn btn-outline-danger d-none" type="button" id="cancel-subscription-btn">
+                            <span id="cancel-subscription-text">Cancel Subscription</span>
+                        </button>
+                        <div id="billing-message" class="dashboard-inline-message d-none" role="status"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loading = document.getElementById('billing-loading');
+    const content = document.getElementById('billing-content');
+    const alertBox = document.getElementById('billing-alert');
+    const subtitle = document.getElementById('billing-subtitle');
+    const billingCopy = document.getElementById('billing-copy');
+    const billingPanelLabel = document.getElementById('billing-panel-label');
+    const billingPanelStatus = document.getElementById('billing-panel-status');
+    const billingPanelDetail = document.getElementById('billing-panel-detail');
+    const billingPlanValue = document.getElementById('billing-plan-value');
+    const billingSourceValue = document.getElementById('billing-source-value');
+    const billingTrialValue = document.getElementById('billing-trial-value');
+    const billingRenewalValue = document.getElementById('billing-renewal-value');
+    const billingSubscriptionValue = document.getElementById('billing-subscription-value');
+    const billingMessage = document.getElementById('billing-message');
+    const startTrialBtn = document.getElementById('start-trial-btn');
+    const startTrialSpinner = document.getElementById('start-trial-spinner');
+    const startTrialText = document.getElementById('start-trial-text');
+    const cancelSubscriptionBtn = document.getElementById('cancel-subscription-btn');
+    const cancelSubscriptionText = document.getElementById('cancel-subscription-text');
+    let currentOrg = null;
+
+    if (!isAuthenticated()) {
+        window.location.href = '/login/';
+        return;
+    }
+
+    startTrialBtn.addEventListener('click', startTrial);
+    cancelSubscriptionBtn.addEventListener('click', cancelSubscription);
+
+    loadBilling();
+
+    async function loadBilling() {
+        try {
+            await syncCheckoutSessionFromUrl();
+            const dashboardResponse = await apiRequest('/api/dashboard/');
+            if (!dashboardResponse.ok) {
+                throw new Error(await getResponseError(dashboardResponse, 'Unable to load billing.'));
+            }
+            const dashboardData = await dashboardResponse.json();
+            if (!dashboardData.is_staff || !dashboardData.org) {
+                showAlert('This page is only available to organization admins.', 'danger');
+                loading.classList.add('d-none');
+                return;
+            }
+
+            let billingSyncError = null;
+            const billingData = await syncBillingState().catch((error) => {
+                billingSyncError = error.message || 'Unable to refresh billing details.';
+                return null;
+            });
+            if (billingData?.organization) dashboardData.org = billingData.organization;
+            if (billingData?.billing) dashboardData.billing = billingData.billing;
+
+            renderBilling(dashboardData);
+            if (dashboardData.billing?.sync_error) {
+                showInlineMessage(billingMessage, dashboardData.billing.sync_error, 'warning');
+            } else if (billingSyncError) {
+                showInlineMessage(billingMessage, billingSyncError, 'danger');
+            }
+            showCheckoutMessage();
+            loading.classList.add('d-none');
+            content.classList.remove('d-none');
+        } catch (error) {
+            loading.classList.add('d-none');
+            showAlert(error.message || 'Unable to load billing.', 'danger');
+        }
+    }
+
+    function renderBilling(data) {
+        currentOrg = data.org;
+        const billing = data.billing || {};
+        const status = billing.stripe_subscription_status || currentOrg.stripe_subscription_status || '';
+        const revenueCatStatus = billing.revenuecat_subscription_status || currentOrg.revenuecat_subscription_status || '';
+        const revenueCatExpiresAt = billing.revenuecat_entitlement_expires_at || currentOrg.revenuecat_entitlement_expires_at || '';
+        const revenueCatIsCurrent = revenueCatStatus === 'active' && (!revenueCatExpiresAt || new Date(revenueCatExpiresAt) > new Date());
+        const backendPremium = billing.is_premium ?? currentOrg.is_premium;
+        const hasPremiumAccess = Boolean(backendPremium || ['active', 'trialing'].includes(status) || revenueCatIsCurrent);
+        const cancelAtPeriodEnd = Boolean(billing.stripe_cancel_at_period_end ?? currentOrg.stripe_cancel_at_period_end);
+        const currentPeriodEnd = billing.stripe_current_period_end || currentOrg.stripe_current_period_end || '';
+        const trialEndsAt = billing.trial_ends_at || currentOrg.trial_ends_at || '';
+        const stripeSubscriptionId = billing.stripe_subscription_id || currentOrg.stripe_subscription_id || '';
+        const renewalDate = currentPeriodEnd || trialEndsAt || revenueCatExpiresAt;
+
+        subtitle.textContent = `${currentOrg.name || 'Your organization'} billing and subscription access.`;
+        billingPlanValue.textContent = 'GreekGeek Pro · $149.99/year';
+        billingTrialValue.textContent = trialEndsAt ? `Ends ${formatDate(trialEndsAt)}` : 'Not in trial';
+        billingRenewalValue.textContent = renewalDate ? formatDate(renewalDate) : 'Not available';
+        billingSubscriptionValue.textContent = stripeSubscriptionId || billing.revenuecat_product_id || currentOrg.revenuecat_product_id || 'None';
+        startTrialBtn.classList.add('d-none');
+        cancelSubscriptionBtn.classList.add('d-none');
+        hideInlineMessage(billingMessage);
+
+        if (status === 'trialing') {
+            billingPanelLabel.textContent = 'Trial';
+            billingPanelStatus.textContent = cancelAtPeriodEnd ? 'Cancel scheduled' : 'Trial active';
+            billingPanelDetail.textContent = cancelAtPeriodEnd
+                ? `Your trial remains available until ${formatDate(renewalDate)}.`
+                : `Your one-month trial is active${renewalDate ? ` until ${formatDate(renewalDate)}` : ''}.`;
+            billingCopy.textContent = 'Your organization has premium access during the trial.';
+            billingSourceValue.textContent = 'Web billing';
+            billingRenewalValue.textContent = renewalDate ? (cancelAtPeriodEnd ? `Ends ${formatDate(renewalDate)}` : `Trial ends ${formatDate(renewalDate)}`) : 'Not available';
+            if (stripeSubscriptionId && !cancelAtPeriodEnd) cancelSubscriptionBtn.classList.remove('d-none');
+            return;
+        }
+
+        if (status === 'active') {
+            billingPanelLabel.textContent = 'Subscription';
+            billingPanelStatus.textContent = cancelAtPeriodEnd ? 'Cancel scheduled' : 'Currently paying';
+            billingPanelDetail.textContent = cancelAtPeriodEnd
+                ? `Your subscription will end on ${formatDate(renewalDate)}.`
+                : `Your subscription is active${renewalDate ? ` and renews on ${formatDate(renewalDate)}` : ''}.`;
+            billingCopy.textContent = 'Your organization has premium access.';
+            billingSourceValue.textContent = 'Web billing';
+            billingTrialValue.textContent = trialEndsAt ? `Ended ${formatDate(trialEndsAt)}` : 'Not in trial';
+            billingRenewalValue.textContent = renewalDate ? (cancelAtPeriodEnd ? `Ends ${formatDate(renewalDate)}` : `Renews ${formatDate(renewalDate)}`) : 'Not available';
+            if (stripeSubscriptionId && !cancelAtPeriodEnd) cancelSubscriptionBtn.classList.remove('d-none');
+            return;
+        }
+
+        if (revenueCatIsCurrent) {
+            billingPanelLabel.textContent = 'App Store';
+            billingPanelStatus.textContent = 'Active';
+            billingPanelDetail.textContent = revenueCatExpiresAt
+                ? `Your App Store subscription is active until ${formatDate(revenueCatExpiresAt)}.`
+                : 'Your App Store subscription is active.';
+            billingCopy.textContent = 'This organization is billed through in-app purchase. Manage it from the mobile app.';
+            billingSourceValue.textContent = 'Mobile app';
+            billingRenewalValue.textContent = revenueCatExpiresAt ? formatDate(revenueCatExpiresAt) : 'Managed in app';
+            billingTrialValue.textContent = 'Not in trial';
+            return;
+        }
+
+        if (hasPremiumAccess) {
+            billingPanelLabel.textContent = 'Status';
+            billingPanelStatus.textContent = 'Premium active';
+            billingPanelDetail.textContent = 'Your organization has premium access.';
+            billingCopy.textContent = 'Premium access is active for this organization.';
+            billingSourceValue.textContent = 'Organization billing';
+            return;
+        }
+
+        billingPanelLabel.textContent = 'Trial';
+        billingPanelStatus.textContent = 'Not started';
+        billingPanelDetail.textContent = 'Premium access is not active yet.';
+        billingCopy.textContent = 'Use the one-month trial to unlock premium access.';
+        billingSourceValue.textContent = 'None';
+        billingRenewalValue.textContent = 'Not available';
+        startTrialBtn.classList.remove('d-none');
+    }
+
+    async function syncBillingState() {
+        const response = await apiRequest('/api/billing/sync-subscription/', {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+        if (!response.ok) {
+            throw new Error(await getResponseError(response, 'Unable to refresh billing details.'));
+        }
+        return await response.json();
+    }
+
+    async function startTrial() {
+        startTrialBtn.disabled = true;
+        startTrialSpinner.classList.remove('d-none');
+        startTrialText.textContent = 'Opening billing setup...';
+        hideInlineMessage(billingMessage);
+
+        try {
+            const response = await apiRequest('/api/billing/checkout-session/', {
+                method: 'POST',
+                body: JSON.stringify({})
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.detail || 'Unable to start trial.');
+            }
+            window.location.href = result.checkout_url;
+        } catch (error) {
+            showInlineMessage(billingMessage, error.message || 'Unable to start trial.', 'danger');
+            startTrialBtn.disabled = false;
+            startTrialSpinner.classList.add('d-none');
+            startTrialText.textContent = 'Start Free Trial';
+        }
+    }
+
+    async function cancelSubscription() {
+        if (!window.confirm('Cancel this subscription at the end of the current billing period?')) return;
+
+        cancelSubscriptionBtn.disabled = true;
+        cancelSubscriptionText.textContent = 'Cancelling...';
+        hideInlineMessage(billingMessage);
+
+        try {
+            const response = await apiRequest('/api/billing/cancel-subscription/', {
+                method: 'POST',
+                body: JSON.stringify({})
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.detail || 'Unable to cancel subscription.');
+            }
+            renderBilling({ org: result.organization, billing: result.billing });
+            showInlineMessage(billingMessage, 'Cancellation scheduled. Premium access remains active through the current period.', 'success');
+        } catch (error) {
+            showInlineMessage(billingMessage, error.message || 'Unable to cancel subscription.', 'danger');
+        } finally {
+            cancelSubscriptionBtn.disabled = false;
+            cancelSubscriptionText.textContent = 'Cancel Subscription';
+        }
+    }
+
+    async function syncCheckoutSessionFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get('session_id');
+        if (params.get('stripe_checkout') !== 'success' || !sessionId) return;
+
+        try {
+            const response = await apiRequest('/api/billing/sync-checkout-session/', {
+                method: 'POST',
+                body: JSON.stringify({ session_id: sessionId })
+            });
+            if (!response.ok) {
+                throw new Error(await getResponseError(response, 'Unable to sync billing session.'));
+            }
+            window.history.replaceState(null, '', '/billing/?stripe_checkout=success');
+        } catch (error) {
+            showAlert(error.message || 'Billing setup completed, but account sync failed.', 'warning');
+        }
+    }
+
+    function showCheckoutMessage() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('stripe_checkout') === 'success') {
+            showAlert('Trial started. Your organization now has premium access.', 'success');
+        }
+        if (params.get('stripe_checkout') === 'cancelled') {
+            showAlert('Billing setup was cancelled. You can start the trial when you are ready.', 'info');
+        }
+    }
+
+    async function getResponseError(response, fallback) {
+        try {
+            const data = await response.json();
+            if (data.detail) return data.detail;
+            if (data.errors && Array.isArray(data.errors)) {
+                return data.errors.map((error) => error.detail).join(' ');
+            }
+            const fieldErrors = Object.entries(data).flatMap(([field, value]) => {
+                if (Array.isArray(value)) return value.map((item) => `${field}: ${item}`);
+                if (typeof value === 'string') return [`${field}: ${value}`];
+                return [];
+            });
+            if (fieldErrors.length) return fieldErrors.join(' ');
+        } catch (error) {
+            return fallback;
+        }
+        return fallback;
+    }
+
+    function showAlert(message, type) {
+        alertBox.className = `dashboard-alert alert alert-${type}`;
+        alertBox.textContent = message;
+        alertBox.classList.remove('d-none');
+    }
+
+    function showInlineMessage(element, message, type) {
+        element.className = `dashboard-inline-message dashboard-inline-message-${type}`;
+        element.textContent = message;
+        element.classList.remove('d-none');
+    }
+
+    function hideInlineMessage(element) {
+        element.classList.add('d-none');
+        element.textContent = '';
+    }
+
+    function formatDate(value) {
+        if (!value) return 'Not available';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Not available';
+        return date.toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+});
+</script>
+{% endblock %}

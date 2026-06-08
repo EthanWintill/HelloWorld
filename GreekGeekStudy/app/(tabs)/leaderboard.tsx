@@ -2,9 +2,11 @@ import { Image, View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'r
 import React, { useCallback, useState } from 'react'
 import { useDashboard } from '../../context/DashboardContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
-import { useFocusEffect } from '@react-navigation/native'
+import { useFocusEffect } from 'expo-router/react-navigation'
 import { Ionicons } from '@expo/vector-icons'
 import { Card, EmptyState, GG, ProgressBar } from '../../components/Design'
+import { AdminSubscriptionCTA, OrgPaywallModal } from '../../components/AdminSubscriptionGate'
+import { useOrgSubscriptionGate } from '../../hooks/useOrgSubscriptionGate'
 
 interface User {
   id: number;
@@ -39,6 +41,7 @@ const Leaderboard = () => {
   const { dashboardState, refreshDashboard } = useDashboard()
   const { isLoading, error, data } = dashboardState
   const [activeTab, setActiveTab] = useState<'individual' | 'groups'>('individual')
+  const subscriptionGate = useOrgSubscriptionGate()
   
   // Add useFocusEffect to refresh dashboard when screen comes into focus
   useFocusEffect(
@@ -211,6 +214,14 @@ const Leaderboard = () => {
     <SafeAreaView className="bg-gg-bg flex-1">
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
         <View className="px-4 py-6">
+          {subscriptionGate.shouldGateAdmin && (
+            <View className="mb-4">
+              <AdminSubscriptionCTA
+                gate={subscriptionGate}
+                message="Start the free trial to unlock admin controls and Pro reporting for your organization."
+              />
+            </View>
+          )}
           <View className="bg-gg-surfaceLow p-1 rounded-lg flex-row items-center border border-gg-outlineVariant">
             <TouchableOpacity
               onPress={() => setActiveTab('individual')}
@@ -235,7 +246,7 @@ const Leaderboard = () => {
             const isFirst = rank === 1;
             const heightClass = isFirst ? 'h-24 pt-6' : rank === 2 ? 'h-20 pt-4' : 'h-16 pt-3';
             return (
-              <View key={user?.id || rank} className="flex-1 items-center justify-end px-1">
+              <View key={`individual-podium-${rank}-${user?.id ?? 'placeholder'}`} className="flex-1 items-center justify-end px-1">
                 <View className="relative mb-2">
                   <UserAvatar user={user} size="podium" isFirst={isFirst} />
                   <View className={`absolute -bottom-1 -right-1 rounded-full px-1.5 py-0.5 border ${isFirst ? 'bg-gg-primary border-gg-primary' : 'bg-gg-surface border-gg-outlineVariant'}`}>
@@ -268,7 +279,7 @@ const Leaderboard = () => {
               const isFirst = rank === 1;
               const heightClass = isFirst ? 'h-24 pt-6' : rank === 2 ? 'h-20 pt-4' : 'h-16 pt-3';
               return (
-                <View key={group.id} className="flex-1 items-center justify-end px-1">
+                <View key={`group-podium-${rank}-${group.id}`} className="flex-1 items-center justify-end px-1">
                   <View className="relative mb-2">
                     <View className={`${isFirst ? 'w-16 h-16 border-gg-primary' : 'w-14 h-14 border-gg-outlineVariant'} rounded-full border-2 bg-gg-surface items-center justify-center`}>
                       <Text className={`${isFirst ? 'text-lg' : 'text-base'} font-psemibold text-gg-primary`}>
@@ -296,9 +307,9 @@ const Leaderboard = () => {
             {activeTab === 'individual' ? 'Full Rankings' : 'Group Rankings'}
           </Text>
         
-          {activeTab === 'individual' && rankedUsers.map((user: User) => (
+          {activeTab === 'individual' && rankedUsers.map((user: User, index: number) => (
             <View
-              key={user.id} 
+              key={`individual-rank-${user.id}-${index}`}
               className={`min-h-[56px] rounded-xl px-3 py-2 mb-2 flex-row items-center ${user.id === data.id ? 'border border-gg-primary bg-gg-surfaceLow' : ''}`}
             >
               <Text className={`w-7 font-pbold text-sm ${user.id === data.id ? 'text-gg-text' : 'text-gg-outline'}`}>{getRank(user.id)}</Text>
@@ -334,7 +345,7 @@ const Leaderboard = () => {
 
           {activeTab === 'groups' && rankedGroups.map((group: GroupRank, index: number) => (
             <View
-              key={group.id}
+              key={`group-rank-${group.id}-${index}`}
               className="min-h-[72px] rounded-xl px-3 py-3 mb-2 border border-gg-outlineVariant bg-gg-bg"
             >
               <View className="flex-row items-center">
@@ -376,6 +387,7 @@ const Leaderboard = () => {
           )}
         </View>
       </ScrollView>
+      <OrgPaywallModal gate={subscriptionGate} />
     </SafeAreaView>
   )
 }

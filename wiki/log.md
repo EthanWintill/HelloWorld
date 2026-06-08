@@ -1,5 +1,89 @@
 # HelloWorld Log
 
+## [2026-06-07] fix | EAS CNG native folder handling
+
+Added `/ios/` and `/android/` to `GreekGeekStudy/.gitignore` and removed the generated iOS project from Git tracking so EAS can run Expo Prebuild / CNG from `app.json` instead of treating the app as a non-CNG native project.
+
+## [2026-06-07] fix | EAS npm lockfile sync
+
+Regenerated `GreekGeekStudy/package-lock.json` for the Expo SDK 56 dependency set so EAS `npm ci --include=dev` includes the missing peer/transitive packages such as `@testing-library/dom`, `@react-native/jest-preset`, and `react-native-svg`. Verified the clean install command succeeds under the app's Node 22.13.1 runtime.
+
+## [2026-06-07] fix | EAS API constant packaging
+
+Removed the stale root `.gitignore` rule for `GreekGeekStudy/constants/api.js` so EAS build packaging includes the committed API constant that Metro imports from admin screens.
+
+## [2026-06-07] fix | iOS bundle identifier for App Store Connect
+
+Updated the Expo iOS bundle identifier and checked-in Xcode project bundle identifier to `app.greekgeek.GreekGeekStudy` so EAS builds match the App Store Connect app record. Left the Android package as `app.greekgeek.GreekGeekStudy`.
+
+## [2026-06-07] polish | App Store launch assets
+
+Generated GreekGeek-branded Expo release assets for the App Store icon, Android adaptive icon, splash screen, favicon, and runtime loading logo. After the reconstructed mark looked wrong, regenerated the active asset set from the source SVG in `newlogoassets/logo-small.svg`, added a separate bordered test variant under `bordered-logo-assets/`, wired the active assets into `app.json`, updated the checked-in iOS app icon and splash asset catalog, and changed the in-app loading screen to show the branded loading logo.
+
+## [2026-06-07] fix | Mobile landing cleanup and app support links
+
+Condensed the mobile landing page screenshot and feature-card sections, simplified the pricing CTA copy, added more prominent contact CTAs, made comparison tables render as mobile cards, added an above-the-fold trial CTA on the signup success page, and linked Study/Profile help actions to the public contact page.
+
+## [2026-06-07] test | Signed Stripe subscription updated regression
+
+Added a signed Stripe SDK-object regression test for `customer.subscription.updated` payloads that store the billing period on `items.data[0].current_period_end`. This confirms the current webhook handler accepts the same event shape that previously produced the `detail: "get"` 500 when production treated Stripe objects like dictionaries.
+
+## [2026-06-07] fix | Stripe webhook signature and SDK object handling
+
+Fixed the Stripe billing webhook 500 caused by treating signed Stripe SDK events as plain dictionaries. The webhook now follows the current Python quickstart pattern with `StripeClient.construct_event`, rejects missing or invalid Stripe signatures, uses raw request bodies for verification, and handles Stripe SDK event/object access safely.
+
+## [2026-06-07] fix | Stripe invoice webhook coverage
+
+Expanded Stripe webhook handling to sync org billing from invoice success/failure events and additional subscription lifecycle events such as pause/resume/pending update. Invoice webhooks now resolve subscription ids from current invoice payload shapes, refresh the subscription from Stripe, and reuse the existing org premium-state sync.
+
+## [2026-06-07] fix | Stripe subscription webhook period sync
+
+Updated Stripe subscription webhook handling for newer subscription payloads where `current_period_end` lives on the first subscription item instead of the top-level subscription object. The webhook now uses the shared subscription sync path for created/updated/deleted events and has a regression test for `customer.subscription.updated`.
+
+## [2026-06-07] feature | Admin-only free-org paywall gate
+
+Added a shared mobile org subscription gate so non-premium organization admins see Start Free Trial CTAs on Study, History, Ranks, and Profile while members in the same org keep normal app access. The admin stack is blocked behind the paywall, and Study clock-in/manual-time/admin-location actions now open the paywall for unpaid admins instead of adding hours or entering admin setup.
+
+## [2026-06-07] fix | Leaderboard duplicate keys
+
+Fixed duplicate React keys on the mobile leaderboard by namespacing podium and ranking row keys. This prevents the rank page warning when a real user id overlaps with an empty podium slot rank.
+
+## [2026-06-07] fix | Mobile purchase CTA
+
+Changed the mobile Profile subscription action so non-premium organization admins see a direct Start Free Trial button instead of opening an empty billing modal first. The in-app billing modal is now reserved for premium org billing management, and its detail rows use stable keys.
+
+## [2026-06-07] feature | Separate billing page and app billing modal
+
+Moved full web billing management from the dashboard into `/billing/`, leaving the dashboard with a compact billing summary and Manage Billing link. Added an admin-only mobile Profile billing modal that pulls the same org billing state, shows status/source/trial/renewal/subscription details, and keeps purchase, restore, cancellation, refresh, and Customer Center actions behind the org-admin gate.
+
+## [2026-06-07] fix | Dashboard billing refresh warning
+
+Changed dashboard billing refresh so a backend billing-provider permission error returns stored org billing state plus a visible warning instead of failing the billing panel. The dashboard now preserves trial/subscription details already stored locally while making API permission or webhook-delivery problems explicit, and subscription webhooks now persist renewal/end date and cancel-at-period-end state for the dashboard.
+
+## [2026-06-07] fix | Billing success page state
+
+Fixed `/success/` billing returns so a completed trial checkout renders the "Trial Started" state immediately, including when the return URL only has `session_id`. The page still syncs billing in the background, but it no longer flashes or falls back to the organization-created trial prompt after payment.
+
+## [2026-06-07] polish | Billing copy cleanup
+
+Removed customer-facing billing copy that described the plan with org/year phrasing or named the checkout provider. Public signup, success, landing pricing, cookie policy, dashboard billing, and mobile billing-sync log text now use generic trial, billing, and premium-access language.
+
+## [2026-06-06] feature | Dashboard billing management
+
+Moved dashboard billing into a top full-width section that shows trial active/currently paying state, billing source, subscription id, trial and renewal/end dates, and Stripe cancellation controls. Added persisted Stripe `current_period_end` and `cancel_at_period_end` org fields plus an admin-only `/api/billing/cancel-subscription/` endpoint that schedules cancellation at period end. Added `REVENUECAT_SECRET_API_KEY` to backend env configuration.
+
+## [2026-06-06] fix | Stripe success screen trial copy
+
+Updated the post-Stripe Checkout success state so the billing box confirms the trial is active and points admins to dashboard setup instead of showing another "Start Free Trial" prompt.
+
+## [2026-06-06] feature | RevenueCat mobile subscription starter
+
+Installed the RevenueCat React Native SDK and UI package in the Expo app, added a root RevenueCat provider, identified RevenueCat customers by organization, checked the `GreekGeek Pro` entitlement for product `yearly`, and added org-admin-only Profile actions for the custom in-app GreekGeek paywall, purchase restore, and Customer Center. The custom paywall fetches the current RevenueCat offering and purchases the selected package with `Purchases.purchasePackage`. Added backend RevenueCat webhook handling so Stripe and RevenueCat both preserve `Org.is_premium` at the org level.
+
+Expanded the RevenueCat webhook logic for the selected access-changing events: purchase, renewal, product change, cancellation, billing issue, uncancellation, transfer, pause, expiration, extension, temporary entitlement grant, and refund reversal. Cancellation and billing issue preserve access until expiration; customer-support cancellation/refund and expiration revoke RevenueCat access unless Stripe remains active.
+
+Added a mobile pre-paywall billing guard: org admins now call the backend Stripe subscription sync endpoint before opening or completing the RevenueCat paywall, and the app blocks RevenueCat purchase if the org is already premium through Stripe.
+
 
 ## [2026-06-07] feature | Instant pending clock-out retry on network restore
 
@@ -153,3 +237,19 @@ Implemented the first landing-page remediation pass: retained App Store badges a
 ## [2026-05-31] fix | Stale auth tokens on public auth routes
 
 Changed public signup, sign-in, email verification, password reset, chapter-code lookup, and contact API endpoints to skip JWT authentication parsing so stale bearer tokens are treated as anonymous state. Updated the web login and register pages to clear invalid stored browser tokens instead of redirecting away from the forms.
+
+## [2026-06-07] upgrade | Expo SDK 56 for App Store builds
+
+Upgraded the mobile app from Expo SDK 52 to SDK 56 with React Native 0.85.3, React 19.2.3, React Compiler enabled, Node 22.13.1 recorded in `.nvmrc`, and SDK 56-compatible app code/import fixes. Regenerated the checked-in iOS project and `Podfile.lock` for SDK 56 after updating to Xcode 26.5. Local TypeScript, iOS JS export, CocoaPods install, and a native debug simulator build/install now pass.
+
+## [2026-06-07] fix | Study location permission UI
+
+Removed the legacy circular location-permission control from the Study screen, kept the normal clock-in button visible when location permissions are missing, and changed the permission prompt copy so it wraps cleanly in the red warning card.
+
+## [2026-06-07] fix | Disable RevenueCat in TestFlight until App Store key is ready
+
+Changed the mobile RevenueCat configuration so dev builds can keep using the current Test Store SDK key, but release/TestFlight builds do not initialize RevenueCat unless `EXPO_PUBLIC_REVENUECAT_API_KEY` provides a production RevenueCat App Store SDK key. Added `EXPO_PUBLIC_REVENUECAT_DISABLED=true` as a temporary off switch for builds that need to run before App Store subscriptions are fully configured.
+
+## [2026-06-07] config | EAS production auto-increment
+
+Enabled remote EAS app version source and production `autoIncrement` so production/TestFlight builds automatically advance build numbers.

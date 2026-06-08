@@ -234,7 +234,22 @@ class WebDashboardPageTestCase(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertContains(response, 'Organization Settings')
+        self.assertContains(response, 'Billing')
+        self.assertContains(response, 'Manage Billing')
+        self.assertContains(response, '/billing/')
+        self.assertContains(response, 'View billing details on the billing page.')
+        self.assertNotContains(response, '/api/billing/cancel-subscription/')
+
+    def test_billing_page_renders(self):
+        response = self.client.get(reverse('billing-page'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, 'Billing')
+        self.assertContains(response, 'Back to Dashboard')
+        self.assertContains(response, '/api/billing/sync-subscription/')
+        self.assertContains(response, '/api/billing/cancel-subscription/')
         self.assertContains(response, 'Start Free Trial')
+        self.assertContains(response, 'Renewal / End Date')
 
 
 class WebLegalPageTestCase(TestCase):
@@ -1215,10 +1230,24 @@ class AdminEmailVerificationTestCase(TestCase):
         self.assertContains(response, 'Start Free Trial')
         self.assertContains(response, 'Dashboard')
         self.assertContains(response, 'onclick="startTrial()"')
+        self.assertContains(response, 'showPostCheckoutAction')
+        self.assertContains(response, 'Premium access is unlocked for your organization.')
+        self.assertContains(response, 'Set Up Your Chapter')
         self.assertContains(response, 'user: data.user || data')
         self.assertNotContains(response, 'Skip for Now')
         self.assertNotContains(response, 'Continue Without Trial')
         self.assertNotContains(response, 'Setup Complete')
+
+    def test_success_page_checkout_return_renders_trial_started_state(self):
+        response = self.client.get(f"{reverse('success-page')}?session_id=cs_test_123")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, '<h4 class="text-primary" id="success-heading">Trial Started</h4>', html=True)
+        self.assertContains(response, 'Your trial is active. Your organization now has premium access.')
+        self.assertContains(response, 'Premium access is unlocked for your organization.')
+        self.assertContains(response, 'Set Up Your Chapter')
+        self.assertContains(response, 'isBillingSuccessReturn(params)')
+        self.assertNotContains(response, '<strong>Start your one-month trial.</strong>', html=True)
 
     @override_settings(FAST_TEST_REGISTRATION_ENABLED=False)
     def test_fast_test_registration_is_hidden_and_disabled_by_default(self):

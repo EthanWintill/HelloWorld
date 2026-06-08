@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { API_URL } from '@/constants';
 import eventEmitter, { EVENTS } from '@/services/EventEmitter';
 import { registerPushTokenWithBackend } from '@/hooks/usePushNotifications';
+import { useRevenueCat } from './RevenueCatContext';
 
 type DashboardState = {
   isLoading: boolean;
@@ -22,6 +23,7 @@ type DashboardContextType = {
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
 export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { identifyUser, resetUser } = useRevenueCat();
   const [dashboardState, setDashboardState] = useState<DashboardState>({
     isLoading: true,
     error: null,
@@ -31,6 +33,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const handleUnauthorized = async () => {
     try {
       await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'dashboardData']);
+      await resetUser().catch((error) => {
+        console.warn('RevenueCat logout failed:', error);
+      });
       router.replace('/(auth)/sign-in');
     } catch (error) {
       console.error('Error clearing tokens:', error);
@@ -48,11 +53,16 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         },
       });
       
+      const dashboardData = response.data;
+
       setDashboardState(prev => ({
         isLoading: false,
         error: null,
-        data: response.data,
+        data: dashboardData,
       }));
+      identifyUser(dashboardData).catch((error) => {
+        console.warn('RevenueCat identify failed:', error);
+      });
       registerPushTokenWithBackend().catch((error) => {
         console.warn('Push notification registration failed:', error);
       });

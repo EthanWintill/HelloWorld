@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import "../global.css";
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { RevenueCatProvider } from '@/context/RevenueCatContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -52,7 +53,7 @@ export default function _layout() {
 
   if (!fontsLoaded && !error) return null;
   return (
-    <>
+    <RevenueCatProvider>
       <Stack>
         <Stack.Screen name='index' options={{headerShown: false}}/>
         <Stack.Screen name='(auth)' options={{headerShown: false}}/>
@@ -60,7 +61,7 @@ export default function _layout() {
         <Stack.Screen name='(admin)' options={{headerShown: false}}/>
       </Stack>
       <StatusBar style="dark" />
-    </>
+    </RevenueCatProvider>
     
   )
 }

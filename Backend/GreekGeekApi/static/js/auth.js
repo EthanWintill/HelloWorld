@@ -139,7 +139,7 @@ function updateNavbar() {
             const displayName = userData ? `${userData.first_name} ${userData.last_name}` : 'User';
             const needsTrial = userData?.org && !userData.org.is_premium && !['active', 'trialing'].includes(userData.org.stripe_subscription_status || '');
             const trialLink = needsTrial ? `
-                        <li><a class="dropdown-item" href="/dashboard/">
+                        <li><a class="dropdown-item" href="/billing/">
                             <i class="fas fa-credit-card me-2"></i>Start Free Trial
                         </a></li>
                         <li><hr class="dropdown-divider"></li>

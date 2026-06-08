@@ -64,6 +64,19 @@ def configure_stripe():
     stripe.api_version = "2026-05-27.dahlia"
 
 
+def stripe_client():
+    configure_stripe()
+    return stripe.StripeClient(settings.STRIPE_API_KEY)
+
+
+def construct_stripe_webhook_event(payload, signature):
+    return stripe_client().construct_event(
+        payload,
+        signature,
+        settings.STRIPE_WEBHOOK_SECRET,
+    )
+
+
 def stripe_timestamp_to_datetime(value):
     if not value:
         return None
@@ -78,6 +91,116 @@ def stripe_get(obj, key, default=None):
     return getattr(obj, key, default)
 
 
+def stripe_nested_get(obj, keys, default=None):
+    current = obj
+    for key in keys:
+        current = stripe_get(current, key, default)
+        if current is default:
+            return default
+    return current
+
+
+def stripe_subscription_current_period_end(subscription):
+    current_period_end = stripe_get(subscription, 'current_period_end')
+    if current_period_end:
+        return current_period_end
+
+    item_data = stripe_get(stripe_get(subscription, 'items', {}), 'data', [])
+    if item_data:
+        return stripe_get(item_data[0], 'current_period_end')
+
+    return None
+
+
+def stripe_id(value):
+    if not value:
+        return None
+    if isinstance(value, str):
+        return value
+    return stripe_get(value, 'id')
+
+
+def stripe_invoice_subscription_id(invoice):
+    subscription_id = stripe_id(stripe_get(invoice, 'subscription'))
+    if subscription_id:
+        return subscription_id
+
+    parent = stripe_get(invoice, 'parent', {})
+    subscription_details = stripe_get(parent, 'subscription_details', {})
+    subscription_id = stripe_id(stripe_get(subscription_details, 'subscription'))
+    if subscription_id:
+        return subscription_id
+
+    line_data = stripe_get(stripe_get(invoice, 'lines', {}), 'data', [])
+    for line in line_data:
+        line_parent = stripe_get(line, 'parent', {})
+        for detail_key in ('subscription_item_details', 'invoice_item_details'):
+            detail = stripe_get(line_parent, detail_key, {})
+            subscription_id = stripe_id(stripe_get(detail, 'subscription'))
+            if subscription_id:
+                return subscription_id
+
+    return None
+
+
+def stripe_invoice_metadata(invoice):
+    metadata = stripe_get(invoice, 'metadata', {})
+    if stripe_get(metadata, 'org_id'):
+        return metadata
+
+    parent = stripe_get(invoice, 'parent', {})
+    subscription_details = stripe_get(parent, 'subscription_details', {})
+    return stripe_get(subscription_details, 'metadata', {}) or {}
+
+
+def revenuecat_millis_to_datetime(value):
+    if not value:
+        return None
+    return datetime.fromtimestamp(value / 1000, tz=datetime_timezone.utc)
+
+
+REVENUECAT_SUPPORTED_EVENT_TYPES = {
+    'INITIAL_PURCHASE',
+    'RENEWAL',
+    'PRODUCT_CHANGE',
+    'CANCELLATION',
+    'BILLING_ISSUE',
+    'UNCANCELLATION',
+    'TRANSFER',
+    'SUBSCRIPTION_PAUSED',
+    'EXPIRATION',
+    'SUBSCRIPTION_EXTENDED',
+    'TEMPORARY_ENTITLEMENT_GRANT',
+    'REFUND_REVERSED',
+}
+
+REVENUECAT_ACCESS_STATUSES = {
+    'active',
+    'canceled',
+    'billing_issue',
+    'paused',
+}
+
+
+def org_has_stripe_access(org):
+    return org.stripe_subscription_status in {'active', 'trialing'}
+
+
+def org_has_revenuecat_access(org):
+    if org.revenuecat_subscription_status not in REVENUECAT_ACCESS_STATUSES:
+        return False
+    if org.revenuecat_entitlement_expires_at is None:
+        return org.revenuecat_subscription_status == 'active'
+    return org.revenuecat_entitlement_expires_at > timezone.now()
+
+
+def update_org_premium_state(org, update_fields):
+    has_paid_access = org_has_stripe_access(org) or org_has_revenuecat_access(org)
+    if org.is_premium != has_paid_access:
+        org.is_premium = has_paid_access
+        update_fields.append('is_premium')
+
+
 def sync_org_subscription(
     org,
     subscription_id=None,
@@ -85,6 +208,8 @@ def sync_org_subscription(
     status_value=None,
     trial_started_at=None,
     trial_ends_at=None,
+    current_period_end=None,
+    cancel_at_period_end=None,
 ):
     update_fields = []
 
@@ -108,10 +233,15 @@ def sync_org_subscription(
         org.trial_ends_at = trial_ends_at
         update_fields.append('trial_ends_at')
 
-    has_paid_access = status_value in {'active', 'trialing'} if status_value else True
-    if org.is_premium != has_paid_access:
-        org.is_premium = has_paid_access
-        update_fields.append('is_premium')
+    if current_period_end is not None and org.stripe_current_period_end != current_period_end:
+        org.stripe_current_period_end = current_period_end
+        update_fields.append('stripe_current_period_end')
+
+    if cancel_at_period_end is not None and org.stripe_cancel_at_period_end != cancel_at_period_end:
+        org.stripe_cancel_at_period_end = cancel_at_period_end
+        update_fields.append('stripe_cancel_at_period_end')
+
+    update_org_premium_state(org, update_fields)
 
     if update_fields:
         org.save(update_fields=update_fields)
@@ -125,21 +255,204 @@ def sync_org_from_stripe_subscription(org, subscription, customer_id=None):
         status_value=stripe_get(subscription, 'status', ''),
         trial_started_at=stripe_timestamp_to_datetime(stripe_get(subscription, 'trial_start')),
         trial_ends_at=stripe_timestamp_to_datetime(stripe_get(subscription, 'trial_end')),
+        current_period_end=stripe_timestamp_to_datetime(stripe_subscription_current_period_end(subscription)),
+        cancel_at_period_end=bool(stripe_get(subscription, 'cancel_at_period_end', False)),
     )
 
 
-def billing_response(org):
-    return {
+def org_for_stripe_billing_event(subscription_id=None, customer_id=None, metadata=None):
+    org = None
+    if subscription_id:
+        org = Org.objects.filter(stripe_subscription_id=subscription_id).first()
+    if org is None and customer_id:
+        org = Org.objects.filter(stripe_customer_id=customer_id).first()
+    if org is None:
+        org_id = stripe_get(metadata, 'org_id')
+        if org_id:
+            org = Org.objects.filter(id=org_id).first()
+    return org
+
+
+def sync_org_from_stripe_invoice(invoice):
+    subscription_id = stripe_invoice_subscription_id(invoice)
+    customer_id = stripe_get(invoice, 'customer')
+    org = org_for_stripe_billing_event(
+        subscription_id=subscription_id,
+        customer_id=customer_id,
+        metadata=stripe_invoice_metadata(invoice),
+    )
+    if not org or not subscription_id:
+        return
+
+    try:
+        subscription = stripe.Subscription.retrieve(subscription_id)
+    except stripe.error.StripeError:
+        return
+
+    sync_org_from_stripe_subscription(
+        org,
+        subscription,
+        customer_id=customer_id,
+    )
+
+
+def revenuecat_uuid_values(values):
+    identifiers = []
+    for value in values:
+        if not value:
+            continue
+        try:
+            identifiers.append(uuid.UUID(str(value)))
+        except (TypeError, ValueError):
+            continue
+    return identifiers
+
+
+def revenuecat_event_identifiers(event):
+    return revenuecat_uuid_values([
+        event.get('app_user_id'),
+        event.get('original_app_user_id'),
+        *(event.get('aliases') or []),
+    ])
+
+
+def revenuecat_event_matches_org_subscription(event):
+    entitlement_ids = event.get('entitlement_ids') or []
+    if settings.REVENUECAT_ENTITLEMENT_ID in entitlement_ids or event.get('entitlement_id') == settings.REVENUECAT_ENTITLEMENT_ID:
+        return True
+
+    product_ids = [
+        event.get('product_id'),
+        event.get('new_product_id'),
+    ]
+    return any(
+        product_id == settings.REVENUECAT_PRODUCT_ID
+        or str(product_id).startswith(f'{settings.REVENUECAT_PRODUCT_ID}:')
+        for product_id in product_ids
+        if product_id
+    )
+
+
+def revenuecat_event_expiration(event):
+    timestamp = event.get('grace_period_expiration_at_ms') or event.get('expiration_at_ms')
+    return revenuecat_millis_to_datetime(timestamp), timestamp is not None
+
+
+def revenuecat_event_status(event):
+    event_type = event.get('type')
+    cancel_reason = event.get('cancel_reason')
+
+    if event_type == 'EXPIRATION':
+        return 'expired'
+    if event_type == 'CANCELLATION':
+        if cancel_reason == 'CUSTOMER_SUPPORT':
+            return 'refunded'
+        if cancel_reason == 'BILLING_ERROR':
+            return 'billing_issue'
+        return 'canceled'
+    if event_type == 'BILLING_ISSUE':
+        return 'billing_issue'
+    if event_type == 'SUBSCRIPTION_PAUSED':
+        return 'paused'
+
+    return 'active'
+
+
+def sync_org_from_revenuecat_event(org, event):
+    update_fields = []
+    status_value = revenuecat_event_status(event)
+    expires_at, has_expires_at = revenuecat_event_expiration(event)
+
+    if status_value == 'refunded':
+        expires_at = timezone.now()
+        has_expires_at = True
+
+    if org.revenuecat_subscription_status != status_value:
+        org.revenuecat_subscription_status = status_value
+        update_fields.append('revenuecat_subscription_status')
+
+    product_id = event.get('new_product_id') or event.get('product_id')
+    if product_id and org.revenuecat_product_id != product_id:
+        org.revenuecat_product_id = product_id
+        update_fields.append('revenuecat_product_id')
+
+    store = event.get('store')
+    if store and org.revenuecat_store != store:
+        org.revenuecat_store = store
+        update_fields.append('revenuecat_store')
+
+    transaction_id = event.get('original_transaction_id') or event.get('transaction_id')
+    if transaction_id and org.revenuecat_original_transaction_id != transaction_id:
+        org.revenuecat_original_transaction_id = transaction_id
+        update_fields.append('revenuecat_original_transaction_id')
+
+    if has_expires_at and org.revenuecat_entitlement_expires_at != expires_at:
+        org.revenuecat_entitlement_expires_at = expires_at
+        update_fields.append('revenuecat_entitlement_expires_at')
+
+    update_org_premium_state(org, update_fields)
+
+    if update_fields:
+        org.save(update_fields=update_fields)
+
+
+def sync_revenuecat_transfer_event(event):
+    transferred_from = revenuecat_uuid_values(event.get('transferred_from') or [])
+    transferred_to = revenuecat_uuid_values(event.get('transferred_to') or [])
+
+    if not transferred_from and not transferred_to:
+        return {'updated_org_ids': []}
+
+    updated_org_ids = []
+    now = timezone.now()
+
+    for org in Org.objects.filter(revenuecat_app_user_id__in=transferred_from):
+        update_fields = []
+        if org.revenuecat_subscription_status != 'transferred':
+            org.revenuecat_subscription_status = 'transferred'
+            update_fields.append('revenuecat_subscription_status')
+        if org.revenuecat_entitlement_expires_at != now:
+            org.revenuecat_entitlement_expires_at = now
+            update_fields.append('revenuecat_entitlement_expires_at')
+        update_org_premium_state(org, update_fields)
+        if update_fields:
+            org.save(update_fields=update_fields)
+            updated_org_ids.append(org.id)
+
+    for org in Org.objects.filter(revenuecat_app_user_id__in=transferred_to):
+        update_fields = []
+        if org.revenuecat_subscription_status != 'active':
+            org.revenuecat_subscription_status = 'active'
+            update_fields.append('revenuecat_subscription_status')
+        update_org_premium_state(org, update_fields)
+        if update_fields:
+            org.save(update_fields=update_fields)
+            updated_org_ids.append(org.id)
+
+    return {'updated_org_ids': updated_org_ids}
+
+
+def billing_response(org, sync_error=None):
+    response = {
         'organization': OrgSerializer(org).data,
         'billing': {
             'is_premium': org.is_premium,
             'stripe_customer_id': org.stripe_customer_id,
             'stripe_subscription_id': org.stripe_subscription_id,
             'stripe_subscription_status': org.stripe_subscription_status,
+            'stripe_current_period_end': org.stripe_current_period_end,
+            'stripe_cancel_at_period_end': org.stripe_cancel_at_period_end,
             'trial_started_at': org.trial_started_at,
             'trial_ends_at': org.trial_ends_at,
+            'revenuecat_subscription_status': org.revenuecat_subscription_status,
+            'revenuecat_product_id': org.revenuecat_product_id,
+            'revenuecat_store': org.revenuecat_store,
+            'revenuecat_entitlement_expires_at': org.revenuecat_entitlement_expires_at,
         },
     }
+    if sync_error:
+        response['billing']['sync_error'] = sync_error
+    return response
 
 
 class PublicEndpointMixin:
@@ -1516,23 +1829,57 @@ class BillingSubscriptionSyncView(APIView):
         if not org.stripe_subscription_id and not org.stripe_customer_id:
             return Response(billing_response(org), status=status.HTTP_200_OK)
 
-        configure_stripe()
-        subscription = None
+        try:
+            configure_stripe()
+            subscription = None
 
-        if org.stripe_subscription_id:
-            subscription = stripe.Subscription.retrieve(org.stripe_subscription_id)
-        elif org.stripe_customer_id:
-            subscriptions = stripe.Subscription.list(
-                customer=org.stripe_customer_id,
-                status='all',
-                limit=1,
+            if org.stripe_subscription_id:
+                subscription = stripe.Subscription.retrieve(org.stripe_subscription_id)
+            elif org.stripe_customer_id:
+                subscriptions = stripe.Subscription.list(
+                    customer=org.stripe_customer_id,
+                    status='all',
+                    limit=1,
+                )
+                subscription_data = stripe_get(subscriptions, 'data', [])
+                if subscription_data:
+                    subscription = subscription_data[0]
+        except stripe.error.StripeError:
+            return Response(
+                billing_response(
+                    org,
+                    sync_error="Billing refresh failed. Check backend billing API permissions or webhook delivery.",
+                ),
+                status=status.HTTP_200_OK,
             )
-            subscription_data = stripe_get(subscriptions, 'data', [])
-            if subscription_data:
-                subscription = subscription_data[0]
 
         if subscription:
             sync_org_from_stripe_subscription(org, subscription)
+
+        return Response(billing_response(org), status=status.HTTP_200_OK)
+
+
+class BillingSubscriptionCancelView(APIView):
+    """
+    Cancels the org Stripe subscription at period end.
+    """
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, format=None):
+        user = request.user
+        if not user.is_staff or not user.org:
+            raise exceptions.PermissionDenied(detail="Only organization admins can manage billing")
+
+        org = user.org
+        if not org.stripe_subscription_id:
+            raise exceptions.ValidationError(detail="Your organization does not have a Stripe subscription to cancel")
+
+        configure_stripe()
+        subscription = stripe.Subscription.modify(
+            org.stripe_subscription_id,
+            cancel_at_period_end=True,
+        )
+        sync_org_from_stripe_subscription(org, subscription)
 
         return Response(billing_response(org), status=status.HTTP_200_OK)
 
@@ -1548,27 +1895,23 @@ class StripeWebhookView(APIView):
         if not settings.STRIPE_WEBHOOK_SECRET:
             raise exceptions.APIException(detail="Stripe webhook secret is not configured")
 
-        configure_stripe()
-
         payload = request.body
         signature = request.META.get('HTTP_STRIPE_SIGNATURE')
+        if not signature:
+            return Response({"detail": "Missing Stripe signature"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            event = stripe.Webhook.construct_event(
-                payload=payload,
-                sig_header=signature,
-                secret=settings.STRIPE_WEBHOOK_SECRET,
-            )
+            event = construct_stripe_webhook_event(payload, signature)
         except ValueError:
             return Response({"detail": "Invalid payload"}, status=status.HTTP_400_BAD_REQUEST)
         except stripe.SignatureVerificationError:
             return Response({"detail": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
 
-        event_type = event.get('type')
-        event_object = event.get('data', {}).get('object', {})
+        event_type = stripe_get(event, 'type')
+        event_object = stripe_nested_get(event, ('data', 'object'), {})
 
-        if event_type == 'checkout.session.completed':
-            org_id = event_object.get('metadata', {}).get('org_id') or event_object.get('client_reference_id')
+        if event_type in {'checkout.session.completed', 'checkout.session.async_payment_succeeded'}:
+            org_id = stripe_nested_get(event_object, ('metadata', 'org_id')) or stripe_get(event_object, 'client_reference_id')
             if org_id:
                 try:
                     org = Org.objects.get(id=org_id)
@@ -1576,25 +1919,25 @@ class StripeWebhookView(APIView):
                     org = None
 
                 if org:
-                    subscription_id = event_object.get('subscription')
+                    subscription_id = stripe_id(stripe_get(event_object, 'subscription'))
                     subscription = None
                     if subscription_id:
                         try:
                             subscription = stripe.Subscription.retrieve(subscription_id)
-                        except Exception:
+                        except stripe.error.StripeError:
                             subscription = None
 
                     if subscription:
                         sync_org_from_stripe_subscription(
                             org,
                             subscription,
-                            customer_id=event_object.get('customer'),
+                            customer_id=stripe_id(stripe_get(event_object, 'customer')),
                         )
                     else:
                         sync_org_subscription(
                             org,
                             subscription_id=subscription_id,
-                            customer_id=event_object.get('customer'),
+                            customer_id=stripe_id(stripe_get(event_object, 'customer')),
                             status_value='trialing',
                         )
 
@@ -1602,28 +1945,81 @@ class StripeWebhookView(APIView):
             'customer.subscription.created',
             'customer.subscription.updated',
             'customer.subscription.deleted',
+            'customer.subscription.paused',
+            'customer.subscription.pending_update_applied',
+            'customer.subscription.pending_update_expired',
+            'customer.subscription.resumed',
+            'customer.subscription.trial_will_end',
         }:
-            subscription_id = event_object.get('id')
-            customer_id = event_object.get('customer')
-            org = Org.objects.filter(stripe_subscription_id=subscription_id).first()
-            if org is None and customer_id:
-                org = Org.objects.filter(stripe_customer_id=customer_id).first()
-            if org is None:
-                org_id = event_object.get('metadata', {}).get('org_id')
-                if org_id:
-                    org = Org.objects.filter(id=org_id).first()
+            subscription_id = stripe_get(event_object, 'id')
+            customer_id = stripe_id(stripe_get(event_object, 'customer'))
+            org = org_for_stripe_billing_event(
+                subscription_id=subscription_id,
+                customer_id=customer_id,
+                metadata=stripe_get(event_object, 'metadata', {}),
+            )
 
             if org:
-                sync_org_subscription(
+                sync_org_from_stripe_subscription(
                     org,
-                    subscription_id=subscription_id,
                     customer_id=customer_id,
-                    status_value=event_object.get('status', ''),
-                    trial_started_at=stripe_timestamp_to_datetime(event_object.get('trial_start')),
-                    trial_ends_at=stripe_timestamp_to_datetime(event_object.get('trial_end')),
+                    subscription=event_object,
                 )
 
+        elif event_type in {
+            'invoice.paid',
+            'invoice.payment_succeeded',
+            'invoice.payment_failed',
+            'invoice.marked_uncollectible',
+            'invoice.voided',
+        }:
+            sync_org_from_stripe_invoice(event_object)
+
         return Response({"received": True}, status=status.HTTP_200_OK)
+
+
+class RevenueCatWebhookView(APIView):
+    """
+    Receives RevenueCat subscription events and keeps organization premium state in sync.
+    """
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+
+    def post(self, request, format=None):
+        expected_authorization = settings.REVENUECAT_WEBHOOK_AUTHORIZATION
+        if expected_authorization:
+            received_authorization = request.META.get('HTTP_AUTHORIZATION', '')
+            if received_authorization != expected_authorization:
+                return Response({"detail": "Invalid authorization"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        event = request.data.get('event') if isinstance(request.data, dict) else None
+        if not isinstance(event, dict):
+            return Response({"detail": "Invalid payload"}, status=status.HTTP_400_BAD_REQUEST)
+
+        event_type = event.get('type')
+        if event_type not in REVENUECAT_SUPPORTED_EVENT_TYPES:
+            return Response({"received": True, "ignored": True}, status=status.HTTP_200_OK)
+
+        if event_type == 'TRANSFER':
+            return Response(
+                {"received": True, "transfer": sync_revenuecat_transfer_event(event)},
+                status=status.HTTP_200_OK,
+            )
+
+        if not revenuecat_event_matches_org_subscription(event):
+            return Response({"received": True, "ignored": True}, status=status.HTTP_200_OK)
+
+        identifiers = revenuecat_event_identifiers(event)
+        if not identifiers:
+            return Response({"detail": "Missing RevenueCat app user id"}, status=status.HTTP_400_BAD_REQUEST)
+
+        org = Org.objects.filter(revenuecat_app_user_id__in=identifiers).first()
+        if org is None:
+            return Response({"detail": "Organization not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        sync_org_from_revenuecat_event(org, event)
+
+        return Response(billing_response(org), status=status.HTTP_200_OK)
 
 
 class EmailVerificationResendView(PublicEndpointMixin, APIView):

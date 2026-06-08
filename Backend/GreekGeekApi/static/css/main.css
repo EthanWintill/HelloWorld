@@ -107,6 +107,24 @@ h6 {
     color: #ffffff !important;
 }
 
+.site-navbar .nav-contact {
+    align-items: center;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    display: inline-flex;
+    font-weight: 800;
+    margin-left: 0.35rem;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+}
+
+.site-navbar .nav-contact:hover,
+.site-navbar .nav-contact:focus {
+    background: var(--color-surface);
+    color: var(--color-text);
+}
+
 .navbar-toggler {
     border-color: var(--color-border);
 }
@@ -237,6 +255,11 @@ h6 {
     color: var(--color-muted);
     font-size: 0.95rem;
     margin-top: 1rem;
+}
+
+.contact-cta {
+    align-items: center;
+    display: inline-flex;
 }
 
 .proof-strip-section {
@@ -1206,7 +1229,28 @@ details p {
 }
 
 .footer-app-store {
+    display: grid;
+    gap: 0.75rem;
+    justify-items: start;
     margin-top: 1rem;
+}
+
+.footer-contact-cta {
+    align-items: center;
+    border: 1px solid var(--color-green);
+    border-radius: var(--radius);
+    color: var(--color-green-dark);
+    display: inline-flex;
+    font-weight: 800;
+    min-height: 2.6rem;
+    padding: 0.55rem 0.9rem;
+    text-decoration: none;
+}
+
+.footer-contact-cta:hover,
+.footer-contact-cta:focus {
+    background: var(--color-green-soft);
+    color: var(--color-green-dark);
 }
 
 .footer-links {
@@ -1336,6 +1380,99 @@ details p {
     grid-template-columns: minmax(0, 1fr) minmax(290px, 0.35fr);
 }
 
+.dashboard-billing-panel {
+    margin-bottom: 1rem;
+}
+
+.dashboard-billing-layout {
+    align-items: start;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(220px, 0.42fr) minmax(0, 1fr) auto;
+}
+
+.dashboard-billing-summary {
+    background: var(--color-green-soft);
+    border: 1px solid var(--color-green);
+    border-radius: var(--radius);
+    padding: 1rem;
+}
+
+.dashboard-billing-summary span,
+.dashboard-billing-details span {
+    color: var(--color-muted);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+}
+
+.dashboard-billing-summary strong {
+    color: var(--color-green-dark);
+    display: block;
+    font-size: 1.35rem;
+    line-height: 1.15;
+}
+
+.dashboard-billing-summary p {
+    color: var(--color-green-dark);
+    margin: 0.45rem 0 0;
+}
+
+.dashboard-billing-details {
+    display: grid;
+    gap: 0.9rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-billing-details div {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.85rem;
+}
+
+.dashboard-billing-details strong {
+    color: var(--color-text);
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.dashboard-billing-details-wide {
+    grid-column: 1 / -1;
+}
+
+.dashboard-billing-actions {
+    display: grid;
+    gap: 0.65rem;
+    min-width: 210px;
+}
+
+.dashboard-compact-status {
+    background: var(--color-green-soft);
+    border: 1px solid var(--color-green);
+    border-radius: var(--radius);
+    padding: 0.9rem;
+}
+
+.dashboard-compact-status span {
+    color: var(--color-muted);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+}
+
+.dashboard-compact-status strong {
+    color: var(--color-green-dark);
+    display: block;
+    font-size: 1.08rem;
+    line-height: 1.15;
+}
+
 .dashboard-side {
     display: grid;
     gap: 1rem;
@@ -1399,6 +1536,12 @@ details p {
     color: var(--color-danger);
 }
 
+.dashboard-inline-message-warning {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+}
+
 .dashboard-app-store {
     margin-top: 1rem;
 }
@@ -1441,8 +1584,13 @@ details p {
     .support-layout,
     .contact-layout,
     .dashboard-header,
+    .dashboard-billing-layout,
     .dashboard-grid {
         grid-template-columns: 1fr;
+    }
+
+    .dashboard-billing-actions {
+        min-width: 0;
     }
 
     .footer-grid {
@@ -1463,6 +1611,10 @@ details p {
 }
 
 @media (max-width: 767px) {
+    .dashboard-billing-details {
+        grid-template-columns: 1fr;
+    }
+
     .landing-hero {
         padding: 3.5rem 0 3rem;
     }
@@ -1481,12 +1633,27 @@ details p {
         width: 100%;
     }
 
+    .hero-actions {
+        align-items: stretch;
+    }
+
+    .hero-actions .app-store-badge-link {
+        order: 2;
+    }
+
+    .hero-actions .contact-cta {
+        justify-content: center;
+        order: 3;
+    }
+
     .hero-actions .app-store-badge {
         width: 160px;
     }
 
     .hero-media {
-        grid-template-columns: 1fr;
+        align-items: end;
+        gap: 0.85rem;
+        grid-template-columns: minmax(0, 155px) minmax(0, 130px);
         justify-content: start;
         min-height: auto;
         padding-top: 0;
@@ -1494,19 +1661,24 @@ details p {
 
     .hero-device {
         align-items: flex-start;
-        margin-top: 1.5rem;
+        margin-top: 1.25rem;
     }
 
     .hero-device-primary .device-image {
-        width: min(100%, 240px);
+        width: min(100%, 155px);
     }
 
     .hero-device-secondary {
-        display: none;
+        display: flex;
+        transform: none;
+    }
+
+    .hero-device-secondary .device-image {
+        width: min(100%, 130px);
     }
 
     .section {
-        padding: 3rem 0;
+        padding: 2.6rem 0;
     }
 
     .workflow-desktop {
@@ -1536,9 +1708,63 @@ details p {
         padding: 1.15rem;
     }
 
+    .comparison-header {
+        display: none;
+    }
+
+    .comparison-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .comparison-row > span {
+        border-bottom: 1px solid var(--color-border);
+        grid-column: 1 / -1;
+        padding: 0.8rem 0.9rem 0.65rem;
+    }
+
+    .comparison-cell {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.5rem;
+        justify-content: flex-start;
+        min-height: 0;
+        padding: 0.85rem 0.9rem;
+    }
+
+    .comparison-cell::before {
+        color: var(--color-muted);
+        content: attr(data-label);
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .comparison-cell + .comparison-cell {
+        border-left: 1px solid var(--color-border);
+        border-top: 0;
+    }
+
+    .price-cell strong {
+        font-size: 0.95rem;
+        overflow-wrap: anywhere;
+        text-align: left;
+    }
+
     .compare-product-shots {
-        justify-items: start;
+        gap: 0.65rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-items: stretch;
         max-width: 360px;
+    }
+
+    .compare-product-shots .screenshot-card {
+        max-width: none;
+    }
+
+    .compare-product-shots .screenshot-card:last-child {
+        margin-bottom: 0;
     }
 
     .compare-product-actions .btn,
@@ -1561,11 +1787,6 @@ details p {
         width: 100%;
     }
 
-    .comparison-cell + .comparison-cell {
-        border-left: 0;
-        border-top: 1px solid var(--color-border);
-    }
-
     .contact-summary-grid {
         display: none;
     }
@@ -1584,15 +1805,71 @@ details p {
         width: 100%;
     }
 
+    .proof-strip div {
+        padding: 0.9rem 1rem;
+    }
+
+    .feature-card,
+    .trust-card,
+    .workflow-step {
+        padding: 1rem;
+    }
+
+    .feature-card.compact {
+        min-height: 0;
+    }
+
+    .feature-grid.four {
+        gap: 0.75rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .feature-card.compact h3 {
+        font-size: 1rem;
+        margin-bottom: 0.45rem;
+    }
+
+    .feature-card.compact p {
+        font-size: 0.92rem;
+        line-height: 1.4;
+    }
+
+    .workflow-panel {
+        gap: 0.9rem;
+        grid-template-columns: minmax(0, 1fr) minmax(84px, 112px);
+        padding: 1.15rem 0;
+    }
+
+    .workflow-copy h3 {
+        margin-bottom: 0.45rem;
+    }
+
+    .workflow-copy p {
+        font-size: 0.92rem;
+        line-height: 1.42;
+    }
+
+    .workflow-number {
+        height: 1.85rem;
+        margin-bottom: 0.65rem;
+        width: 1.85rem;
+    }
+
     .site-navbar .nav-cta {
         justify-content: center;
         margin: 0.4rem 0 0;
         width: 100%;
     }
 
+    .site-navbar .nav-contact {
+        justify-content: center;
+        margin: 0.4rem 0;
+        width: 100%;
+    }
+
     .screenshot-card {
         justify-self: start;
-        max-width: 230px;
+        max-width: 112px;
     }
 
     .feature-device,
@@ -1607,5 +1884,10 @@ details p {
     .footer-links {
         gap: 1.25rem;
         grid-template-columns: 1fr;
+    }
+
+    .footer-contact-cta {
+        justify-content: center;
+        width: 100%;
     }
 }

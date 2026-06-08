@@ -1,4 +1,4 @@
-import { View, Text } from 'react-native'
+import { View, Text, type ColorValue } from 'react-native'
 import React from 'react'
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -7,7 +7,7 @@ import { DashboardProvider } from '../../context/DashboardContext'
 
 interface TabIconProps {
     icon: keyof typeof Ionicons.glyphMap;
-    color?: string;
+    color?: ColorValue;
     name?: string;
     focused?: boolean;
 }

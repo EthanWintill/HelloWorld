@@ -17,6 +17,14 @@ class Org(models.Model):
     stripe_customer_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
     stripe_subscription_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
     stripe_subscription_status = models.CharField(max_length=64, blank=True)
+    stripe_current_period_end = models.DateTimeField(blank=True, null=True)
+    stripe_cancel_at_period_end = models.BooleanField(default=False)
+    revenuecat_app_user_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    revenuecat_subscription_status = models.CharField(max_length=64, blank=True)
+    revenuecat_product_id = models.CharField(max_length=255, blank=True)
+    revenuecat_store = models.CharField(max_length=64, blank=True)
+    revenuecat_original_transaction_id = models.CharField(max_length=255, blank=True)
+    revenuecat_entitlement_expires_at = models.DateTimeField(blank=True, null=True)
     timezone = models.CharField(max_length=64, default='America/New_York')
 
     class Meta:

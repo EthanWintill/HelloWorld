@@ -34,24 +34,24 @@
                         </div>
                         <div class="comparison-row price-row" role="row">
                             <span role="cell">Pricing</span>
-                            <div class="comparison-cell winner price-cell" role="cell">
+                            <div class="comparison-cell winner price-cell" role="cell" data-label="GreekGeek">
                                 <strong>{{ page.greekgeek_price }}</strong>
                             </div>
-                            <div class="comparison-cell competitor price-cell" role="cell">
+                            <div class="comparison-cell competitor price-cell" role="cell" data-label="{{ page.competitor }}">
                                 <strong>{{ page.competitor_price }}</strong>
                             </div>
                         </div>
                         {% for feature, greekgeek_has, competitor_has in page.rows %}
                         <div class="comparison-row" role="row">
                             <span role="cell">{{ feature }}</span>
-                            <div class="comparison-cell winner" role="cell">
+                            <div class="comparison-cell winner" role="cell" data-label="GreekGeek">
                                 {% if greekgeek_has %}
                                 <span class="comparison-check">✓</span>
                                 {% else %}
                                 <span class="comparison-bad">✕</span>
                                 {% endif %}
                             </div>
-                            <div class="comparison-cell competitor" role="cell">
+                            <div class="comparison-cell competitor" role="cell" data-label="{{ page.competitor }}">
                                 {% if competitor_has %}
                                 <span class="comparison-check">✓</span>
                                 {% else %}

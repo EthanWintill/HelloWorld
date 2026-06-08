@@ -100,6 +100,8 @@ class UpdateOrgSerializer(OrgSerializer):
             'stripe_customer_id',
             'stripe_subscription_id',
             'stripe_subscription_status',
+            'stripe_current_period_end',
+            'stripe_cancel_at_period_end',
         )
 
 class GroupSerializer(serializers.ModelSerializer):

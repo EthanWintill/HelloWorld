@@ -20,6 +20,7 @@ Finish launch-critical product, backend, onboarding, deployment, and operational
 - Keep product implementation docs close to the repo, and keep cross-project synthesis in the top-level workstation wiki.
 - Update `wiki/log.md` after meaningful project-local context changes.
 - Project-local `AGENTS.md`, `wiki/`, and `skills/` are intended to be committed with this repo unless they contain secrets, private credentials, or context that should remain outside the repo.
+- For app launch assets, use the source SVG/vector logo when available. Do not reconstruct the GreekGeek mark from low-resolution PNGs or generated approximations.
 
 ## Verification Bias
 

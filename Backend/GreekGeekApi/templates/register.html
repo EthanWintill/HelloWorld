@@ -10,18 +10,18 @@
                 <div class="card-body p-4">
                     <div class="text-center mb-4">
                         <h2 class="card-title">Create Your GreekGeek Organization Account</h2>
-                        <p class="text-muted">Create the admin account first. Your trial starts after email verification and Stripe Checkout.</p>
+                        <p class="text-muted">Create the admin account first. Your trial starts after email verification.</p>
                     </div>
                     <div class="trial-summary mb-4">
                         <strong>One month free, then $149.99/year.</strong>
-                        <span>Creating this account does not start billing. After email verification, Stripe Checkout starts the trial and collects payment details.</span>
+                        <span>Creating this account does not start billing. After email verification, you can start the one-month trial.</span>
                     </div>
                     <div class="border rounded p-3 mb-4">
                         <h3 class="h6 mb-3">What happens next</h3>
                         <ol class="mb-0 ps-3">
                             <li>Create your organization and admin account.</li>
                             <li>Verify your email.</li>
-                            <li>Start the one-month trial in Stripe Checkout.</li>
+                            <li>Start the one-month trial.</li>
                             <li>Configure your chapter study period, approved locations, and member code.</li>
                             <li>Invite members to join from the mobile app.</li>
                         </ol>
@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <strong>Check your email.</strong> Your organization and admin account have been created.<br>
                     <strong>Organization:</strong> ${result.organization.name}<br>
                     <strong>Registration Code:</strong> <code>${result.organization.reg_code}</code><br>
-                    Verify ${result.user.email}, then start your one-month trial in Stripe Checkout.${debugLink}
+                    Verify ${result.user.email}, then start your one-month trial.${debugLink}
                 `;
                 successMessage.classList.remove('d-none');
                 form.classList.add('d-none');

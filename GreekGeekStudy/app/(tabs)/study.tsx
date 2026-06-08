@@ -5,7 +5,6 @@ import { useDashboard } from '../../context/DashboardContext'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
-import PermissionButton from '@/components/PermissionButton'
 import { useStopWatch } from '@/hooks/useStopwatch'
 import { API_URL } from '@/constants';
 import axios, { AxiosError } from 'axios'
@@ -13,10 +12,12 @@ import haversine from 'haversine-distance'
 import * as TaskManager from 'expo-task-manager';
 import eventEmitter, { EVENTS } from '@/services/EventEmitter';
 import MapView, { Marker, Region, Circle } from 'react-native-maps';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { AdminSubscriptionCTA, OrgPaywallModal } from '../../components/AdminSubscriptionGate';
+import { useOrgSubscriptionGate } from '../../hooks/useOrgSubscriptionGate';
 
 interface LocationType {
   id: number;
@@ -144,6 +145,7 @@ const Study = () => {
   // --- Hooks and State ---
   const { dashboardState, refreshDashboard, checkIsStudying, handleUnauthorized } = useDashboard()
   const { isLoading, error, data } = dashboardState
+  const subscriptionGate = useOrgSubscriptionGate()
 
   const [backgroundStatus, setBackgroundStatus] = useState(false)
   const [foregroundStatus, setForegroundStatus] = useState(false)
@@ -183,13 +185,28 @@ const Study = () => {
   const maintenanceMode = orgSettings?.maintenance_mode === true && !data?.is_staff;
 
   // --- Location Related Functions ---
+  const openAppSettings = async () => {
+    try {
+      await Linking.openSettings();
+    } catch {
+      Alert.alert(
+        'Unable to Open Settings',
+        Platform.OS === 'ios'
+          ? 'Open Settings, choose GreekGeek, then set Location to Always.'
+          : 'Open Settings, choose GreekGeek, then enable Location permissions.'
+      );
+    }
+  };
+
   const showSettingsAlert = () => {
     Alert.alert(
-      "Permission Required",
-      "You must enable location sharing to use this app. Please go to settings to enable it.",
+      "Location Permission Required",
+      !foregroundStatus
+        ? "GreekGeek needs location access to verify study sessions."
+        : "GreekGeek needs background location access to end sessions when you leave.",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Settings", onPress: () => Linking.openSettings() }
+        { text: "Open Settings", onPress: () => { openAppSettings(); } }
       ]
     );
   };
@@ -379,11 +396,23 @@ const Study = () => {
 
   // --- Navigation Functions ---
   const navigateToAdmin = () => {
+    if (subscriptionGate.shouldGateAdmin) {
+      subscriptionGate.openPaywall()
+      return
+    }
     router.push('/(admin)');
   };
 
   const navigateToStudyLocations = () => {
+    if (subscriptionGate.shouldGateAdmin) {
+      subscriptionGate.openPaywall()
+      return
+    }
     router.push('/(admin)/study-locations');
+  };
+
+  const openContactSupport = async () => {
+    await Linking.openURL(`${API_URL}contact/?topic=Technical%20support`);
   };
 
   const profileInitials = () => {
@@ -562,6 +591,11 @@ const Study = () => {
   };
 
   const submitManualEntry = async () => {
+    if (subscriptionGate.shouldGateAdmin) {
+      subscriptionGate.openPaywall()
+      return
+    }
+
     try {
       const hours = Number(manualHours);
       if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
@@ -605,6 +639,11 @@ const Study = () => {
 
   const handleClock = () => {
     console.log("handleClock")
+    if (subscriptionGate.shouldGateAdmin && !checkIsStudying()) {
+      subscriptionGate.openPaywall()
+      return
+    }
+
     if (!checkIsStudying()) {
       clockIn()
         .then(() => { })
@@ -844,6 +883,7 @@ const Study = () => {
   const required = requiredHours();
   const percentComplete = calculatePercentComplete();
   const hoursLeft = studyHoursLeft();
+  const locationPermissionMissing = requiresLocationVerification && (!backgroundStatus || !foregroundStatus);
 
   // --- Storage Utilities ---
   const getAllAsyncStorageData = async () => {
@@ -1043,14 +1083,23 @@ const Study = () => {
             {data?.org?.name || 'Organization'}
           </Text>
         </View>
-        <View className="h-9 w-9 rounded-full bg-gg-surfaceLow border border-gg-outlineVariant items-center justify-center overflow-hidden">
-          {data?.profile_picture_url ? (
-            <Image source={{ uri: data.profile_picture_url }} className="h-9 w-9 rounded-full" />
-          ) : (
-            <Text className="font-pbold text-gg-primary text-sm">
-              {profileInitials()}
-            </Text>
-          )}
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={openContactSupport}
+            className="h-9 w-9 rounded-full bg-gg-surfaceLow border border-gg-outlineVariant items-center justify-center mr-2"
+            accessibilityLabel="Contact support"
+          >
+            <Ionicons name="help-circle-outline" size={20} color="#3e4a3d" />
+          </TouchableOpacity>
+          <View className="h-9 w-9 rounded-full bg-gg-surfaceLow border border-gg-outlineVariant items-center justify-center overflow-hidden">
+            {data?.profile_picture_url ? (
+              <Image source={{ uri: data.profile_picture_url }} className="h-9 w-9 rounded-full" />
+            ) : (
+              <Text className="font-pbold text-gg-primary text-sm">
+                {profileInitials()}
+              </Text>
+            )}
+          </View>
         </View>
       </View>
 
@@ -1058,6 +1107,14 @@ const Study = () => {
       <View className="flex-1 flex-col justify-between">
         <ScrollView className="bg-gg-bg" contentContainerStyle={{ paddingBottom: 24 }}>
           <View className="px-4 pt-4">
+            {subscriptionGate.shouldGateAdmin && (
+              <View className="mb-4">
+                <AdminSubscriptionCTA
+                  gate={subscriptionGate}
+                  message="Start the free trial to add study hours, configure areas, and unlock admin tools."
+                />
+              </View>
+            )}
             <View className="bg-gg-surface border border-gg-outlineVariant rounded-xl overflow-hidden flex-row">
               <View className="w-1 bg-gg-primary" />
               <View className="p-3 flex-1">
@@ -1106,18 +1163,32 @@ const Study = () => {
                   </View>
                 </View>
 
-              {(backgroundStatus && foregroundStatus) || !requiresLocationVerification ? (
+              {subscriptionGate.shouldGateAdmin && !isStudying ? (
                 <TouchableOpacity
-                  onPress={maintenanceMode ? () => Alert.alert('Maintenance Mode', 'Your organization is temporarily in maintenance mode.') : handleClock}
-                  disabled={(isLoading && !data) || pendingClockOut}
-                  className={`rounded-lg py-4 items-center ${effectiveIsStudying ? 'bg-red-600' : 'bg-gg-primary'} ${maintenanceMode || pendingClockOut ? 'opacity-70' : ''}`}
+                  onPress={subscriptionGate.openPaywall}
+                  disabled={subscriptionGate.subscriptionAction === 'paywall'}
+                  className={`rounded-lg py-4 items-center bg-gg-primary ${subscriptionGate.subscriptionAction === 'paywall' ? 'opacity-60' : ''}`}
+                >
+                  <Text className="font-psemibold text-white text-base">
+                    Start Free Trial
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={
+                    maintenanceMode
+                      ? () => Alert.alert('Maintenance Mode', 'Your organization is temporarily in maintenance mode.')
+                      : locationPermissionMissing && !isStudying
+                      ? showSettingsAlert
+                      : handleClock
+                  }
+                  disabled={isLoading && !data}
+                  className={`rounded-lg py-4 items-center ${isStudying ? 'bg-red-600' : 'bg-gg-primary'} ${maintenanceMode ? 'opacity-70' : ''}`}
                 >
                   <Text className="font-psemibold text-white text-base">
                     {maintenanceMode ? 'Maintenance mode' : pendingClockOut ? 'Syncing...' : effectiveIsStudying ? 'Clock out' : 'Clock in'}
                   </Text>
                 </TouchableOpacity>
-              ) : (
-                <PermissionButton handlePress={handleLocationPermission} />
               )}
 
               <View className={`mt-3 border rounded-lg p-3 ${locationStatus.tone}`}>
@@ -1137,19 +1208,22 @@ const Study = () => {
             </View>
           </View>
 
-          {requiresLocationVerification && (!backgroundStatus || !foregroundStatus) && (
+          {locationPermissionMissing && (
             <View className="mx-4 mt-4 p-4 bg-[#ffdad6] rounded-lg border border-[#ffb4ab]">
               <Text className="font-psemibold text-center text-gg-error mb-2">
                 Location Permission Required
               </Text>
-              <Text className="font-pregular text-center text-gg-error mb-3">
+              <Text
+                className="font-pregular text-center text-gg-error text-sm leading-5 mb-3"
+                style={{ alignSelf: 'stretch', flexShrink: 1 }}
+              >
                 {!foregroundStatus
-                  ? "You need to enable location access for this app to track your study sessions."
-                  : "Background location access is required to track when you leave study areas."}
+                  ? "Enable location access to verify study sessions."
+                  : "Enable background location so sessions end when you leave study areas."}
               </Text>
               <View className="flex items-center">
                 <TouchableOpacity
-                  onPress={() => Linking.openSettings()}
+                  onPress={() => { openAppSettings(); }}
                   className="bg-red-600 py-2 px-4 rounded-md"
                 >
                   <Text className="font-psemibold text-white text-center">
@@ -1317,7 +1391,7 @@ const Study = () => {
           <View className="mx-4 mt-4 flex-row">
             {allowManualEntry && (
               <TouchableOpacity
-                onPress={() => setManualEntryVisible(true)}
+                onPress={() => subscriptionGate.shouldGateAdmin ? subscriptionGate.openPaywall() : setManualEntryVisible(true)}
                 className="flex-1 bg-gg-surface border border-gg-outlineVariant rounded-lg p-3 mr-2 flex-row items-center"
               >
                 <Ionicons name="create-outline" size={19} color="#171d16" />
@@ -1481,7 +1555,7 @@ const Study = () => {
         </View>
       </Modal>
 
-      
+      <OrgPaywallModal gate={subscriptionGate} />
     </SafeAreaView>
   )
 }
