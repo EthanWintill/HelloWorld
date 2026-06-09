@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { AdminSubscriptionCTA, OrgPaywallModal } from '../../components/AdminSubscriptionGate';
 import { useOrgSubscriptionGate } from '../../hooks/useOrgSubscriptionGate';
+import TutorialModal from '../../components/TutorialModal';
 
 interface LocationType {
   id: number;
@@ -38,6 +39,7 @@ const GEOFENCE_TASK = 'GEOFENCE_TASK';
 const BACKGROUND_LOCATION_TASK = 'BACKGROUND_LOCATION_TASK';
 const ACTIVE_STUDY_LOCATION_KEY = 'activeStudyLocation';
 const PENDING_CLOCK_OUT_KEY = 'pendingClockOut';
+const TUTORIAL_PROMPT_KEY = 'hasSeenTutorialPrompt';
 
 const stopBackgroundStudyMonitoring = async () => {
   const geofenceStarted = await Location.hasStartedGeofencingAsync(GEOFENCE_TASK);
@@ -152,6 +154,8 @@ const Study = () => {
 
   const [isStudying, setIsStudying] = useState(false)
   const [pendingClockOut, setPendingClockOut] = useState(false)
+  const [showTutorialPrompt, setShowTutorialPrompt] = useState(false)
+  const [tutorialVisible, setTutorialVisible] = useState(false)
   
   // Add state for current study location with proper type
   const [currentStudyLocation, setCurrentStudyLocation] = useState<LocationType | null>(null);
@@ -1054,6 +1058,17 @@ const Study = () => {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    AsyncStorage.getItem(TUTORIAL_PROMPT_KEY).then(seen => {
+      if (!seen) setShowTutorialPrompt(true);
+    });
+  }, []);
+
+  const dismissTutorialPrompt = async () => {
+    setShowTutorialPrompt(false);
+    await AsyncStorage.setItem(TUTORIAL_PROMPT_KEY, 'true');
+  };
+
   const effectiveIsStudying = isStudying && !pendingClockOut;
 
   if (error && !data) {
@@ -1189,6 +1204,18 @@ const Study = () => {
                     {maintenanceMode ? 'Maintenance mode' : pendingClockOut ? 'Syncing...' : effectiveIsStudying ? 'Clock out' : 'Clock in'}
                   </Text>
                 </TouchableOpacity>
+              )}
+
+              {showTutorialPrompt && (
+                <View className="flex-row items-center self-start bg-gg-surfaceLow border border-gg-outlineVariant rounded-full px-3 py-1.5 mb-3">
+                  <Ionicons name="help-circle-outline" size={14} color="#6e7b6c" />
+                  <TouchableOpacity onPress={() => { setTutorialVisible(true); dismissTutorialPrompt(); }}>
+                    <Text className="text-gg-muted text-xs font-pregular mx-2">New here? Quick tour</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={dismissTutorialPrompt} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close" size={13} color="#6e7b6c" />
+                  </TouchableOpacity>
+                </View>
               )}
 
               <View className={`mt-3 border rounded-lg p-3 ${locationStatus.tone}`}>
@@ -1556,6 +1583,10 @@ const Study = () => {
       </Modal>
 
       <OrgPaywallModal gate={subscriptionGate} />
+      <TutorialModal
+        visible={tutorialVisible}
+        onClose={() => { setTutorialVisible(false); dismissTutorialPrompt(); }}
+      />
     </SafeAreaView>
   )
 }
