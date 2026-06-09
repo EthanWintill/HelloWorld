@@ -1182,8 +1182,8 @@ const Study = () => {
                       ? showSettingsAlert
                       : handleClock
                   }
-                  disabled={isLoading && !data}
-                  className={`rounded-lg py-4 items-center ${isStudying ? 'bg-red-600' : 'bg-gg-primary'} ${maintenanceMode ? 'opacity-70' : ''}`}
+                  disabled={(isLoading && !data) || pendingClockOut}
+                  className={`rounded-lg py-4 items-center ${effectiveIsStudying ? 'bg-red-600' : 'bg-gg-primary'} ${maintenanceMode || pendingClockOut ? 'opacity-70' : ''}`}
                 >
                   <Text className="font-psemibold text-white text-base">
                     {maintenanceMode ? 'Maintenance mode' : pendingClockOut ? 'Syncing...' : effectiveIsStudying ? 'Clock out' : 'Clock in'}
