@@ -3,7 +3,7 @@ const revenueCatDisabledFlag = process.env.EXPO_PUBLIC_REVENUECAT_DISABLED?.trim
 
 export const REVENUECAT_TEST_STORE_API_KEY = 'test_EuJhLcAOLnzNsnphmmJRDqasnkF'
 
-export const REVENUECAT_API_KEY = revenueCatEnvKey || (__DEV__ ? REVENUECAT_TEST_STORE_API_KEY : '')
+export const REVENUECAT_API_KEY = revenueCatEnvKey || (__DEV__ ? REVENUECAT_TEST_STORE_API_KEY : 'appl_iFpnnmkOErGDiCXThPAGkrInFhJ')
 export const REVENUECAT_IS_TEST_STORE_KEY = REVENUECAT_API_KEY.startsWith('test_')
 export const REVENUECAT_IS_DISABLED = ['1', 'true', 'yes'].includes(revenueCatDisabledFlag)
 export const REVENUECAT_IS_ENABLED = Boolean(REVENUECAT_API_KEY)
