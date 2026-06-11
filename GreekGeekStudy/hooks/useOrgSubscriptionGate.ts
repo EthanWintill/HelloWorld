@@ -5,7 +5,7 @@ import axios from 'axios'
 import { API_URL } from '@/constants'
 import { REVENUECAT_ENTITLEMENT_ID, REVENUECAT_PRODUCT_IDS } from '@/constants/revenuecat'
 import { useDashboard } from '@/context/DashboardContext'
-import { useRevenueCat } from '@/context/RevenueCatContext'
+import { buildProPurchaseCopy, useRevenueCat } from '@/context/RevenueCatContext'
 
 export type SubscriptionAction = 'paywall' | 'restore' | null
 
@@ -25,6 +25,7 @@ export const useOrgSubscriptionGate = () => {
     error: revenueCatError,
     isGreekGeekPro,
     isLoading: revenueCatLoading,
+    proIntroEligibility,
     proPackage,
     purchaseProPackage,
     refreshOfferings,
@@ -55,6 +56,7 @@ export const useOrgSubscriptionGate = () => {
   const proPrice = proPackage?.product.priceString
   const proTitle = proPackage?.product.title || 'GreekGeek Pro'
   const proDescription = proPackage?.product.description || 'Organization-wide Pro access for your chapter.'
+  const proPurchaseCopy = buildProPurchaseCopy(proPackage, proIntroEligibility)
 
   const syncWebBillingBeforePaywall = useCallback(async () => {
     const token = await AsyncStorage.getItem('accessToken')
@@ -87,10 +89,10 @@ export const useOrgSubscriptionGate = () => {
       const alreadyPremium = await syncWebBillingBeforePaywall()
       if (alreadyPremium) return
 
-      setPaywallVisible(true)
       await refreshOfferings().catch((error) => {
         console.warn('RevenueCat offerings failed:', error)
       })
+      setPaywallVisible(true)
     } catch (error) {
       console.warn('Billing sync before paywall failed:', error)
       Alert.alert('Subscription unavailable', 'Could not verify organization billing. Please try again.')
@@ -162,6 +164,7 @@ export const useOrgSubscriptionGate = () => {
     proDescription,
     proPackage,
     proPrice,
+    proPurchaseCopy,
     proProductIdentifier,
     proTitle,
     purchasePro,
@@ -181,6 +184,7 @@ export const useOrgSubscriptionGate = () => {
     proDescription,
     proPackage,
     proPrice,
+    proPurchaseCopy,
     proProductIdentifier,
     proTitle,
     purchasePro,

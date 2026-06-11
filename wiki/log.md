@@ -265,3 +265,7 @@ Changed the mobile RevenueCat configuration so dev builds can keep using the cur
 ## [2026-06-07] config | EAS production auto-increment
 
 Enabled remote EAS app version source and production `autoIncrement` so production/TestFlight builds automatically advance build numbers.
+
+## [2026-06-11] fix | RevenueCat intro eligibility paywall copy
+
+Updated the mobile RevenueCat paywall flow to check iOS introductory offer eligibility before showing custom purchase copy. Eligible App Store accounts see one-month free-trial language; ineligible or unknown accounts see upfront subscription copy while the native purchase sheet remains the final source of terms.
