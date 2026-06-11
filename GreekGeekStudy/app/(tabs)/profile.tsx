@@ -153,7 +153,7 @@ const buildBillingDisplay = (
     plan: 'GreekGeek Pro · $149.99/year',
     renewal: 'Not available',
     source: 'None',
-    statusDetail: 'Start the free trial to unlock premium access for your organization.',
+    statusDetail: 'Pro is available for your organization.',
     statusLabel: 'Trial',
     statusValue: 'Not started',
     subscription,
@@ -795,7 +795,7 @@ const Profile = () => {
                 ) : (
                   <Ionicons name="card-outline" size={21} color="white" />
                 )}
-                <Text className="text-white ml-3 font-psemibold flex-1">Start Free Trial</Text>
+                <Text className="text-white ml-3 font-psemibold flex-1">View Pro Options</Text>
                 <Ionicons name="chevron-forward" size={18} color="white" />
               </TouchableOpacity>
             ) : canManageOrgSubscription ? (

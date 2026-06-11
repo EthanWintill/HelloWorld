@@ -294,7 +294,7 @@ const History = () => {
           <View className="mb-4">
             <AdminSubscriptionCTA
               gate={subscriptionGate}
-              message="Start the free trial to unlock admin setup and Pro reporting. Members can keep tracking study time."
+              message="Pro adds admin setup and reporting. Members can keep tracking study time."
             />
           </View>
         )}

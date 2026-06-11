@@ -1,5 +1,17 @@
 # HelloWorld Log
 
+## [2026-06-11] compliance | App Store privacy/account deletion check
+
+Tightened the privacy policy to match the current in-app account deletion path, disclosed profile pictures in collected account data, and added focused tests for the privacy page and `/api/me/` account deletion behavior.
+
+## [2026-06-11] polish | Softer mobile Pro CTAs
+
+Reduced repeated free-trial language across the mobile admin-gated surfaces. Top-level gated cards now use quieter GreekGeek Pro / View Pro copy, while explicit Start Free Trial wording remains in the purchase modal.
+
+## [2026-06-11] fix | Mobile location permission timing
+
+Changed the Study screen so login no longer triggers foreground/background location permission prompts. The app now checks existing location permission status silently, keeps notification registration as the initial automatic permission path, and exposes location permission through clock-in or inline Enable Location actions in the existing status/map UI.
+
 ## [2026-06-07] fix | EAS CNG native folder handling
 
 Added `/ios/` and `/android/` to `GreekGeekStudy/.gitignore` and removed the generated iOS project from Git tracking so EAS can run Expo Prebuild / CNG from `app.json` instead of treating the app as a non-CNG native project.

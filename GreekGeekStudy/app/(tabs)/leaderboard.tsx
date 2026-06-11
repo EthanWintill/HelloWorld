@@ -218,7 +218,7 @@ const Leaderboard = () => {
             <View className="mb-4">
               <AdminSubscriptionCTA
                 gate={subscriptionGate}
-                message="Start the free trial to unlock admin controls and Pro reporting for your organization."
+                message="Pro adds admin controls and organization reporting."
               />
             </View>
           )}

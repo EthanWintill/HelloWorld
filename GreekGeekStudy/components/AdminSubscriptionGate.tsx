@@ -14,9 +14,9 @@ type AdminSubscriptionCTAProps = {
 
 export const AdminSubscriptionCTA = ({
   gate,
-  title = 'Start your free trial',
-  message = 'Unlock admin tools and Pro access for your organization.',
-  buttonLabel = 'Start Free Trial',
+  title = 'GreekGeek Pro',
+  message = 'Admin tools and reporting are available with Pro.',
+  buttonLabel = 'View Pro',
 }: AdminSubscriptionCTAProps) => {
   if (!gate.shouldGateAdmin) return null
 
@@ -164,13 +164,12 @@ export const AdminSubscriptionBlocker = ({ children }: { children: ReactNode }) 
           </View>
           <Text className="text-gg-text font-pbold text-2xl text-center">Admin tools are locked</Text>
           <Text className="text-gg-muted font-pregular text-base text-center mt-2">
-            Start the free trial to configure your organization, manage members, and view admin reports.
+            Pro unlocks organization setup, member management, and admin reports.
           </Text>
         </View>
         <AdminSubscriptionCTA
           gate={gate}
-          title="Start GreekGeek Pro"
-          message="Your members can keep using the app. Admin setup and reporting unlock after the trial starts."
+          message="Your members can keep using the app. Admin setup and reporting unlock with Pro."
         />
       </ScrollView>
       <OrgPaywallModal gate={gate} />

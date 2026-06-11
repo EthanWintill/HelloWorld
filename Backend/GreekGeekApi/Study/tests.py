@@ -253,12 +253,51 @@ class WebDashboardPageTestCase(TestCase):
 
 
 class WebLegalPageTestCase(TestCase):
+    def test_privacy_policy_discloses_profile_pictures_and_in_app_deletion(self):
+        response = self.client.get(reverse('privacy-page'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertContains(response, 'profile pictures')
+        self.assertContains(response, 'Profile > Legal and access > Delete account')
+
     def test_cookie_policy_page_renders_and_is_linked_from_footer(self):
         response = self.client.get(reverse('cookies-page'))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertContains(response, 'Cookie Policy')
         self.assertContains(response, 'href="/cookies/"')
+
+
+class CurrentUserAccountTestCase(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.org = Org.objects.create(
+            name="Deletion Test Org",
+            reg_code="DELETE",
+            school="Test University",
+        )
+        self.user = User.objects.create_user(
+            email="delete-me@example.com",
+            password="password123",
+            first_name="Delete",
+            last_name="Me",
+            org=self.org,
+        )
+        Session.objects.create(
+            user=self.user,
+            org=self.org,
+            start_time=timezone.now(),
+            hours=1,
+        )
+
+    def test_authenticated_user_can_delete_own_account_and_linked_sessions(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.delete(reverse('current-user-account'))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(User.objects.filter(id=self.user.id).exists())
+        self.assertFalse(Session.objects.filter(user_id=self.user.id).exists())
 
 
 class ModifyOrgDetailsTestCase(TestCase):

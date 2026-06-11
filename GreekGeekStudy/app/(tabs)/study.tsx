@@ -215,22 +215,37 @@ const Study = () => {
     );
   };
 
+  const refreshLocationPermissionStatus = async () => {
+    if (!requiresLocationVerification) {
+      setForegroundStatus(true);
+      setBackgroundStatus(true);
+      return true;
+    }
+
+    const [foregroundPermission, backgroundPermission] = await Promise.all([
+      Location.getForegroundPermissionsAsync(),
+      Location.getBackgroundPermissionsAsync(),
+    ]);
+    const foregroundGranted = foregroundPermission.status === 'granted';
+    const backgroundGranted = backgroundPermission.status === 'granted';
+
+    setForegroundStatus(foregroundGranted);
+    setBackgroundStatus(backgroundGranted);
+    return foregroundGranted && backgroundGranted;
+  };
+
   const handleForegroundLocationPermission = async () => {
     let foregroundPermission = await Location.getForegroundPermissionsAsync()
     if (foregroundPermission.status === 'granted'){
       setForegroundStatus(true)
       return true
     }
+    if (!foregroundPermission.canAskAgain && foregroundPermission.status !== 'undetermined') {
+      setForegroundStatus(false)
+      return false
+    }
     let res = await Location.requestForegroundPermissionsAsync()
     console.log('Foreground Location Permission:', res.status);
-
-    
-
-    while (res.status !== 'granted' && res.canAskAgain) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      res = await Location.requestForegroundPermissionsAsync()
-      console.log('Foreground Location Permission:', res);
-    }
 
     if (res.status !== 'granted') {
       setForegroundStatus(false)
@@ -255,15 +270,13 @@ const Study = () => {
       console.log("PERMISSIONS GOOD")
       return true
     }
+    if (!backgroundPermission.canAskAgain && backgroundPermission.status !== 'undetermined') {
+      setBackgroundStatus(false)
+      return false
+    }
     let res = await Location.requestBackgroundPermissionsAsync()
     
     console.log('Location Permission:', res);
-
-    while (res.status !== 'granted' && res.canAskAgain) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      res = await Location.requestBackgroundPermissionsAsync()
-      console.log('Location Permission:', res);
-    }
 
     if (res.status !== 'granted') {
       setBackgroundStatus(false)
@@ -397,6 +410,16 @@ const Study = () => {
     updateMapRegion(location.coords.latitude, location.coords.longitude, nearest?.location.gps_radius);
     return null;
   }
+
+  const handleEnableLocation = async () => {
+    const permissionsGranted = await handleLocationPermission();
+    if (!permissionsGranted) {
+      showSettingsAlert();
+      return;
+    }
+
+    await getStudyLocationGPS();
+  };
 
   // --- Navigation Functions ---
   const navigateToAdmin = () => {
@@ -842,13 +865,13 @@ const Study = () => {
 
     if (!foregroundStatus || !backgroundStatus) {
       return {
-        tone: 'bg-[#ffdad6] border-[#ffb4ab]',
-        icon: 'location' as const,
-        iconColor: '#ba1a1a',
-        title: 'Location access needed',
+        tone: 'bg-gg-bg border-gg-outlineVariant',
+        icon: 'location-outline' as const,
+        iconColor: '#3e4a3d',
+        title: 'Location access off',
         detail: !foregroundStatus
-          ? 'Enable location access to verify study sessions.'
-          : 'Enable background location so sessions can end when you leave.',
+          ? 'Enable location when you are ready to clock in from an approved study area.'
+          : 'Enable background location so active sessions can end when you leave.',
       };
     }
 
@@ -887,7 +910,7 @@ const Study = () => {
   const required = requiredHours();
   const percentComplete = calculatePercentComplete();
   const hoursLeft = studyHoursLeft();
-  const locationPermissionMissing = requiresLocationVerification && (!backgroundStatus || !foregroundStatus);
+  const locationPermissionMissing = requiresLocationVerification && Boolean(data?.org_locations?.length) && (!backgroundStatus || !foregroundStatus);
 
   // --- Storage Utilities ---
   const getAllAsyncStorageData = async () => {
@@ -941,55 +964,15 @@ const Study = () => {
   }, [isLoading, data]);
 
   useEffect(() => {
-    const exitHandler = () => {
-      clockOutAndRefresh();
-    };
-
     if (!requiresLocationVerification) {
       setBackgroundStatus(true);
       setForegroundStatus(true);
       return;
     }
 
-    // Initial permission check
-    handleLocationPermission();
-    
-    // Initialize map with user location when permissions are available
-    if (backgroundStatus && foregroundStatus) {
-      Location.getCurrentPositionAsync()
-        .then(location => {
-          updateMapRegion(location.coords.latitude, location.coords.longitude, data?.org_locations?.[0]?.gps_radius);
-        })
-        .catch(err => console.error('Error getting current position:', err));
-    }
-    
-    // Set up an interval to check for background permissions until granted
-    let permissionCheckInterval: any;
-    if (!backgroundStatus || !foregroundStatus) {
-      permissionCheckInterval = setInterval(async () => {
-        console.log('Checking permission status...');
-        const foreground = await Location.getForegroundPermissionsAsync();
-        const background = await Location.getBackgroundPermissionsAsync();
-        
-        console.log('Current permissions - Foreground:', foreground.granted, 'Background:', background.granted);
-        
-        // If both permissions are granted, clear the interval
-        if (foreground.granted && background.granted) {
-          console.log('Both permissions granted, stopping interval checks');
-          setBackgroundStatus(true);
-          setForegroundStatus(true);
-          clearInterval(permissionCheckInterval);
-        }
-      }, 1000); // Check every second
-    }
-    
-    return () => {
-      if (permissionCheckInterval) {
-        clearInterval(permissionCheckInterval);
-      }
-      //TaskManager.unregisterTaskAsync(GEOFENCE_TASK);
-    };
-  }, [backgroundStatus, foregroundStatus, requiresLocationVerification]);
+    refreshLocationPermissionStatus()
+      .catch(err => console.error('Error checking location permissions:', err));
+  }, [requiresLocationVerification]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -998,6 +981,8 @@ const Study = () => {
         // App reopened - refresh data and clock
         refreshDashboard();
         refreshClock();
+        refreshLocationPermissionStatus()
+          .catch(err => console.error('Error checking location permissions:', err));
         clockOutIfOutsideActiveStudyLocation();
         AsyncStorage.getItem(PENDING_CLOCK_OUT_KEY).then(pending => {
           if (pending) {
@@ -1126,7 +1111,7 @@ const Study = () => {
               <View className="mb-4">
                 <AdminSubscriptionCTA
                   gate={subscriptionGate}
-                  message="Start the free trial to add study hours, configure areas, and unlock admin tools."
+                  message="Pro unlocks admin setup, study areas, and chapter reporting."
                 />
               </View>
             )}
@@ -1178,23 +1163,10 @@ const Study = () => {
                   </View>
                 </View>
 
-              {subscriptionGate.shouldGateAdmin && !isStudying ? (
-                <TouchableOpacity
-                  onPress={subscriptionGate.openPaywall}
-                  disabled={subscriptionGate.subscriptionAction === 'paywall'}
-                  className={`rounded-lg py-4 items-center bg-gg-primary ${subscriptionGate.subscriptionAction === 'paywall' ? 'opacity-60' : ''}`}
-                >
-                  <Text className="font-psemibold text-white text-base">
-                    Start Free Trial
-                  </Text>
-                </TouchableOpacity>
-              ) : (
                 <TouchableOpacity
                   onPress={
                     maintenanceMode
                       ? () => Alert.alert('Maintenance Mode', 'Your organization is temporarily in maintenance mode.')
-                      : locationPermissionMissing && !isStudying
-                      ? showSettingsAlert
                       : handleClock
                   }
                   disabled={(isLoading && !data) || pendingClockOut}
@@ -1204,62 +1176,45 @@ const Study = () => {
                     {maintenanceMode ? 'Maintenance mode' : pendingClockOut ? 'Syncing...' : effectiveIsStudying ? 'Clock out' : 'Clock in'}
                   </Text>
                 </TouchableOpacity>
-              )}
 
-              {showTutorialPrompt && (
-                <View className="flex-row items-center self-start bg-gg-surfaceLow border border-gg-outlineVariant rounded-full px-3 py-1.5 mb-3">
-                  <Ionicons name="help-circle-outline" size={14} color="#6e7b6c" />
-                  <TouchableOpacity onPress={() => { setTutorialVisible(true); dismissTutorialPrompt(); }}>
-                    <Text className="text-gg-muted text-xs font-pregular mx-2">New here? Quick tour</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={dismissTutorialPrompt} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="close" size={13} color="#6e7b6c" />
-                  </TouchableOpacity>
-                </View>
-              )}
+                {showTutorialPrompt && (
+                  <View className="flex-row items-center self-start bg-gg-surfaceLow border border-gg-outlineVariant rounded-full px-3 py-1.5 mt-3 mb-3">
+                    <Ionicons name="help-circle-outline" size={14} color="#6e7b6c" />
+                    <TouchableOpacity onPress={() => { setTutorialVisible(true); dismissTutorialPrompt(); }}>
+                      <Text className="text-gg-muted text-xs font-pregular mx-2">New here? Quick tour</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={dismissTutorialPrompt} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="close" size={13} color="#6e7b6c" />
+                    </TouchableOpacity>
+                  </View>
+                )}
 
-              <View className={`mt-3 border rounded-lg p-3 ${locationStatus.tone}`}>
-                <View className="flex-row items-start">
-                  <Ionicons name={locationStatus.icon} size={20} color={locationStatus.iconColor} />
-                  <View className="ml-3 flex-1">
-                    <Text className="font-psemibold text-gg-text">
-                      {locationStatus.title}
-                    </Text>
-                    <Text className="font-pregular text-gg-muted text-sm mt-1">
-                      {locationStatus.detail}
-                    </Text>
+                <View className={`mt-3 border rounded-lg p-3 ${locationStatus.tone}`}>
+                  <View className="flex-row items-start">
+                    <Ionicons name={locationStatus.icon} size={20} color={locationStatus.iconColor} />
+                    <View className="ml-3 flex-1">
+                      <Text className="font-psemibold text-gg-text">
+                        {locationStatus.title}
+                      </Text>
+                      <Text className="font-pregular text-gg-muted text-sm mt-1">
+                        {locationStatus.detail}
+                      </Text>
+                      {locationPermissionMissing && (
+                        <TouchableOpacity
+                          onPress={handleEnableLocation}
+                          className="mt-3 self-start bg-gg-primary rounded-md px-3 py-2"
+                        >
+                          <Text className="font-psemibold text-white text-sm">
+                            Enable Location
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 </View>
               </View>
-              </View>
             </View>
           </View>
-
-          {locationPermissionMissing && (
-            <View className="mx-4 mt-4 p-4 bg-[#ffdad6] rounded-lg border border-[#ffb4ab]">
-              <Text className="font-psemibold text-center text-gg-error mb-2">
-                Location Permission Required
-              </Text>
-              <Text
-                className="font-pregular text-center text-gg-error text-sm leading-5 mb-3"
-                style={{ alignSelf: 'stretch', flexShrink: 1 }}
-              >
-                {!foregroundStatus
-                  ? "Enable location access to verify study sessions."
-                  : "Enable background location so sessions end when you leave study areas."}
-              </Text>
-              <View className="flex items-center">
-                <TouchableOpacity
-                  onPress={() => { openAppSettings(); }}
-                  className="bg-red-600 py-2 px-4 rounded-md"
-                >
-                  <Text className="font-psemibold text-white text-center">
-                    Open Settings
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
 
           <View className="mt-4 mx-4 rounded-xl overflow-hidden border border-gg-outlineVariant bg-gg-surface shadow-sm">
             <View className="px-4 py-3 border-b border-gg-outlineVariant">
@@ -1389,9 +1344,19 @@ const Study = () => {
                         {!requiresLocationVerification
                           ? "Location verification is disabled"
                           : !backgroundStatus || !foregroundStatus
-                          ? "Location permissions required"
+                          ? "Location access off"
                           : "Loading map..."}
                       </Text>
+                      {requiresLocationVerification && (!backgroundStatus || !foregroundStatus) && (
+                        <TouchableOpacity
+                          onPress={handleEnableLocation}
+                          className="mt-3 bg-gg-primary rounded-lg px-4 py-2"
+                        >
+                          <Text className="font-psemibold text-white text-sm">
+                            Enable Location
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   )}
                 </View>
