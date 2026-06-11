@@ -102,12 +102,17 @@ export const OrgPaywallModal = ({ gate }: { gate: OrgSubscriptionGate }) => (
         <View className="bg-gg-surface border-2 border-gg-primary rounded-xl p-4 mb-4">
           <View className="flex-row items-start justify-between">
             <View className="flex-1 pr-3">
+              {gate.proPurchaseCopy.offerBadge && (
+                <View className="self-start bg-gg-surfaceLow border border-gg-outlineVariant rounded-full px-3 py-1 mb-2">
+                  <Text className="text-gg-primary font-psemibold text-xs">{gate.proPurchaseCopy.offerBadge}</Text>
+                </View>
+              )}
               <Text className="text-gg-text font-psemibold text-lg">{gate.proTitle}</Text>
               <Text className="text-gg-muted font-pregular text-sm mt-1">{gate.proDescription}</Text>
             </View>
             <View className="items-end">
               <Text className="text-gg-primary font-pbold text-xl">{gate.proPrice || 'Yearly'}</Text>
-              <Text className="text-gg-muted font-pregular text-xs mt-1">{gate.proPrice ? 'subscription' : gate.proProductIdentifier}</Text>
+              <Text className="text-gg-muted font-pregular text-xs mt-1">{gate.proPrice ? gate.proPurchaseCopy.priceCaption : gate.proProductIdentifier}</Text>
             </View>
           </View>
         </View>
@@ -127,9 +132,13 @@ export const OrgPaywallModal = ({ gate }: { gate: OrgSubscriptionGate }) => (
           {gate.subscriptionAction === 'paywall' ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
-            <Text className="text-white font-pbold text-base">Start Free Trial</Text>
+            <Text className="text-white font-pbold text-base text-center px-4">{gate.proPurchaseCopy.buttonLabel}</Text>
           )}
         </TouchableOpacity>
+
+        <Text className="text-gg-muted font-pregular text-xs text-center mt-3">
+          {gate.proPurchaseCopy.terms}
+        </Text>
 
         <TouchableOpacity
           onPress={gate.restorePro}

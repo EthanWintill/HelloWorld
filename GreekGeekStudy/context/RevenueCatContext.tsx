@@ -1,10 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { Platform } from 'react-native'
 import Purchases, {
+  INTRO_ELIGIBILITY_STATUS,
   LOG_LEVEL,
   PACKAGE_TYPE,
   PURCHASES_ERROR_CODE,
   type CustomerInfo,
   type CustomerInfoUpdateListener,
+  type IntroEligibility,
   type PurchasesOfferings,
   type PurchasesPackage,
 } from 'react-native-purchases'
@@ -40,6 +43,7 @@ type RevenueCatContextType = {
   isLoading: boolean
   identifyUser: (user: RevenueCatUser) => Promise<void>
   openCustomerCenter: () => Promise<void>
+  proIntroEligibility: IntroEligibility | null
   proPackage: PurchasesPackage | null
   purchaseProPackage: () => Promise<CustomerInfo | null>
   refreshOfferings: () => Promise<PurchasesOfferings | null>
@@ -81,12 +85,71 @@ const isUserCancelledPurchase = (error: unknown) => {
     || maybeError.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
 }
 
+const formatIntroDuration = (introPrice: PurchasesPackage['product']['introPrice']) => {
+  if (!introPrice) return '1 month'
+
+  const unit = introPrice.periodUnit.toLowerCase()
+  const unitLabel = introPrice.periodNumberOfUnits === 1 ? unit : `${unit}s`
+  return `${introPrice.periodNumberOfUnits} ${unitLabel}`
+}
+
+export const buildProPurchaseCopy = (
+  proPackage: PurchasesPackage | null,
+  proIntroEligibility: IntroEligibility | null
+) => {
+  const price = proPackage?.product.priceString
+  const period = proPackage?.product.subscriptionPeriod === 'P1Y' ? 'per year' : 'subscription'
+  const introPrice = proPackage?.product.introPrice ?? null
+  const introDuration = formatIntroDuration(introPrice)
+  const hasFreeIntroOffer = introPrice?.price === 0
+  const introStatus = proIntroEligibility?.status
+  const isIntroEligible = introStatus === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE
+  const billingCopy = price
+    ? `Billed ${price} ${period} when you confirm with the App Store.`
+    : 'Billing starts when you confirm with the App Store.'
+
+  if (isIntroEligible && hasFreeIntroOffer) {
+    return {
+      buttonLabel: `Start ${introDuration} Free Trial`,
+      offerBadge: `${introDuration} free`,
+      priceCaption: price ? `then ${price} ${period}` : 'then yearly billing',
+      terms: `${introDuration} free, then ${price ? `${price} ${period}` : 'the yearly subscription price'}. The App Store confirms final terms before purchase.`,
+    }
+  }
+
+  if (introStatus === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_INELIGIBLE) {
+    return {
+      buttonLabel: price ? `Subscribe for ${price}` : 'Subscribe',
+      offerBadge: null,
+      priceCaption: price ? period : 'subscription',
+      terms: `The free trial is not available for this App Store account. ${billingCopy}`,
+    }
+  }
+
+  if (introStatus === INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_NO_INTRO_OFFER_EXISTS) {
+    return {
+      buttonLabel: price ? `Subscribe for ${price}` : 'Subscribe',
+      offerBadge: null,
+      priceCaption: price ? period : 'subscription',
+      terms: `This plan does not currently include an introductory free trial. ${billingCopy}`,
+    }
+  }
+
+  return {
+    buttonLabel: price ? `Subscribe for ${price}` : 'Subscribe',
+    offerBadge: null,
+    priceCaption: price ? period : 'subscription',
+    terms: `Free trial eligibility could not be confirmed. ${billingCopy}`,
+  }
+}
+
 export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isConfigured, setIsConfigured] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null)
+  const [proIntroEligibility, setProIntroEligibility] = useState<IntroEligibility | null>(null)
   const configuredRef = useRef(false)
   const configurePromiseRef = useRef<Promise<boolean> | null>(null)
   const identifiedUserIdRef = useRef<string | null>(null)
@@ -180,6 +243,25 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [ensureConfigured])
 
+  const loadProIntroEligibility = useCallback(async (packageToCheck: PurchasesPackage | null) => {
+    if (Platform.OS !== 'ios' || !packageToCheck?.product.identifier) {
+      setProIntroEligibility(null)
+      return null
+    }
+
+    const productId = packageToCheck.product.identifier
+    try {
+      const eligibilityByProduct = await Purchases.checkTrialOrIntroductoryPriceEligibility([productId])
+      const eligibility = eligibilityByProduct[productId] ?? null
+      setProIntroEligibility(eligibility)
+      return eligibility
+    } catch (eligibilityError) {
+      console.warn('RevenueCat intro eligibility check failed:', eligibilityError)
+      setProIntroEligibility(null)
+      return null
+    }
+  }, [])
+
   const refreshOfferings = useCallback(async () => {
     const configured = await ensureConfigured()
     if (!configured) return null
@@ -187,6 +269,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const nextOfferings = await Purchases.getOfferings()
       setOfferings(nextOfferings)
+      await loadProIntroEligibility(selectGreekGeekProPackage(nextOfferings))
       setError(null)
       return nextOfferings
     } catch (offeringsError) {
@@ -194,7 +277,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setError(message)
       throw offeringsError
     }
-  }, [ensureConfigured])
+  }, [ensureConfigured, loadProIntroEligibility])
 
   const identifyUser = useCallback(async (user: RevenueCatUser) => {
     if (!user.org?.revenuecat_app_user_id) return
@@ -209,6 +292,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const result = await Purchases.logIn(appUserID)
       identifiedUserIdRef.current = appUserID
       setCustomerInfo(result.customerInfo)
+      setProIntroEligibility(null)
       setError(null)
 
       const attributes: Record<string, string> = {
@@ -239,6 +323,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const info = await Purchases.logOut()
       identifiedUserIdRef.current = null
       setCustomerInfo(info)
+      setProIntroEligibility(null)
       setError(null)
     } catch (logoutError) {
       const message = messageFromError(logoutError, 'Could not reset the RevenueCat customer.')
@@ -323,6 +408,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     isLoading,
     identifyUser,
     openCustomerCenter,
+    proIntroEligibility,
     proPackage,
     purchaseProPackage,
     refreshOfferings,
@@ -337,6 +423,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     isLoading,
     openCustomerCenter,
     offerings,
+    proIntroEligibility,
     proPackage,
     purchaseProPackage,
     refreshOfferings,

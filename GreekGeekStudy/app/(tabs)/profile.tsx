@@ -5,7 +5,7 @@ import axios from 'axios';
 import { API_URL } from '@/constants';
 import { router } from 'expo-router';
 import { useDashboard } from '../../context/DashboardContext'
-import { useRevenueCat } from '../../context/RevenueCatContext'
+import { buildProPurchaseCopy, useRevenueCat } from '../../context/RevenueCatContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker';
@@ -170,6 +170,7 @@ const Profile = () => {
     isGreekGeekPro,
     isLoading: revenueCatLoading,
     openCustomerCenter,
+    proIntroEligibility,
     proPackage,
     purchaseProPackage,
     refreshOfferings,
@@ -209,9 +210,9 @@ const Profile = () => {
     || customerInfo?.activeSubscriptions[0]
     || REVENUECAT_PRODUCT_IDS.yearly
   const proPrice = proPackage?.product.priceString
-  const proPeriod = proPackage?.product.subscriptionPeriod === 'P1Y' ? 'per year' : 'subscription'
   const proTitle = proPackage?.product.title || 'GreekGeek Pro'
   const proDescription = proPackage?.product.description || 'Organization-wide Pro access for your chapter.'
+  const proPurchaseCopy = buildProPurchaseCopy(proPackage, proIntroEligibility)
   const billingDisplay = buildBillingDisplay(billingState, data?.org, isGreekGeekPro)
 
   useEffect(() => {
@@ -579,10 +580,10 @@ const Profile = () => {
       const alreadyPremium = await syncWebBillingBeforePaywall()
       if (alreadyPremium) return
 
-      setPaywallVisible(true)
       await refreshOfferings().catch((error) => {
         console.warn('RevenueCat offerings failed:', error)
       })
+      setPaywallVisible(true)
     } catch (error) {
       console.warn('Web billing sync before paywall failed:', error)
       Alert.alert('Subscription unavailable', 'Could not verify organization billing. Please try again.')
@@ -959,12 +960,17 @@ const Profile = () => {
               <View className="bg-gg-surface border-2 border-gg-primary rounded-xl p-4 mb-4">
                 <View className="flex-row items-start justify-between">
                   <View className="flex-1 pr-3">
+                    {proPurchaseCopy.offerBadge && (
+                      <View className="self-start bg-gg-surfaceLow border border-gg-outlineVariant rounded-full px-3 py-1 mb-2">
+                        <Text className="text-gg-primary font-psemibold text-xs">{proPurchaseCopy.offerBadge}</Text>
+                      </View>
+                    )}
                     <Text className="text-gg-text font-psemibold text-lg">{proTitle}</Text>
                     <Text className="text-gg-muted font-pregular text-sm mt-1">{proDescription}</Text>
                   </View>
                   <View className="items-end">
                     <Text className="text-gg-primary font-pbold text-xl">{proPrice || 'Yearly'}</Text>
-                    <Text className="text-gg-muted font-pregular text-xs mt-1">{proPrice ? proPeriod : proProductIdentifier}</Text>
+                    <Text className="text-gg-muted font-pregular text-xs mt-1">{proPrice ? proPurchaseCopy.priceCaption : proProductIdentifier}</Text>
                   </View>
                 </View>
               </View>
@@ -984,11 +990,13 @@ const Profile = () => {
                 {subscriptionAction === 'paywall' ? (
                   <ActivityIndicator size="small" color="white" />
                 ) : (
-                  <Text className="text-white font-pbold text-base">
-                    Start Free Trial
-                  </Text>
+                  <Text className="text-white font-pbold text-base text-center px-4">{proPurchaseCopy.buttonLabel}</Text>
                 )}
               </TouchableOpacity>
+
+              <Text className="text-gg-muted font-pregular text-xs text-center mt-3">
+                {proPurchaseCopy.terms}
+              </Text>
 
               <TouchableOpacity
                 onPress={handleRestorePurchases}
