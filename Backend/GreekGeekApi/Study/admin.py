@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import User, Org, OrgSettings, Location, Session, PeriodInstance, PeriodSetting, Group
+from .models import User, Org, OrgSettings, Location, Session, PeriodInstance, PeriodSetting, Group, NotificationToken
 
 # Override the default admin site to only allow superusers
 def superuser_only_has_permission(request):
@@ -17,3 +17,4 @@ admin.site.register(Session)
 admin.site.register(PeriodInstance)
 admin.site.register(PeriodSetting)
 admin.site.register(Group)
+admin.site.register(NotificationToken)
