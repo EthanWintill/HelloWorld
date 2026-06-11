@@ -53,7 +53,7 @@
                         <div class="form-field">
                             <label for="org-reg-code">Registration Code</label>
                             <div class="registration-code-row">
-                                <input type="text" id="org-reg-code" name="reg_code" required>
+                                <input type="text" id="org-reg-code" name="reg_code" required style="text-transform: uppercase;">
                                 <button class="btn btn-outline-dark" type="button" id="copy-code-btn">
                                     <i class="fas fa-copy me-2" aria-hidden="true"></i>Copy
                                 </button>
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const payload = {
             name: nameInput.value.trim(),
             school: schoolInput.value.trim(),
-            reg_code: regCodeInput.value.trim()
+            reg_code: regCodeInput.value.trim().toUpperCase()
         };
 
         if (!payload.name || !payload.school || !payload.reg_code) {
@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function copyRegistrationCode() {
-        const code = regCodeInput.value.trim();
+        const code = regCodeInput.value.trim().toUpperCase();
         if (!code) return;
 
         try {

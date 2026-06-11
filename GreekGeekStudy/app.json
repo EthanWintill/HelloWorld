@@ -11,7 +11,7 @@
       "icon": "./assets/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "app.greekgeek.GreekGeekStudy",
-      "appleTeamId": "TFXAED36Q2",
+      "appleTeamId": "28J9M2P8ZN",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "GreekGeek uses your location to verify that study sessions are started from approved study locations.",
         "NSPhotoLibraryUsageDescription": "GreekGeek uses your photo library to let you choose a profile picture.",
