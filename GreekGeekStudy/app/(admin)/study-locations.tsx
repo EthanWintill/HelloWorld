@@ -64,7 +64,6 @@ const StudyLocationsManagement = () => {
   const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
   const [geocodingError, setGeocodingError] = useState('');
   const [sliderWidth, setSliderWidth] = useState(1);
-  const [sliderPageX, setSliderPageX] = useState(0);
   const mapRef = useRef<MapView>(null);
   const sliderRef = useRef<View>(null);
   const MIN_RADIUS = 25;
@@ -85,7 +84,6 @@ const StudyLocationsManagement = () => {
   const onRegionChangeComplete = (region: Region) => {
     if (editMode) {
       setMapRegion(region);
-      setRadius(clampRadius(calculateRadiusInMeters(region)));
       setCurrentLocation({
         latitude: region.latitude,
         longitude: region.longitude,
@@ -634,13 +632,11 @@ const StudyLocationsManagement = () => {
     if (center) {
       const nextRegion = calculateMapRegion(center.latitude, center.longitude, clampedRadius);
       setMapRegion(nextRegion);
-      mapRef.current?.animateToRegion(nextRegion, 150);
     }
   };
 
-  const updateRadiusFromSlider = (pageX: number) => {
-    const localX = pageX - sliderPageX;
-    const position = Math.min(sliderWidth, Math.max(0, localX));
+  const updateRadiusFromSlider = (locationX: number) => {
+    const position = Math.min(sliderWidth, Math.max(0, locationX));
     const percentage = position / sliderWidth;
     updateRadius(MIN_RADIUS + percentage * (MAX_RADIUS - MIN_RADIUS));
   };
@@ -907,24 +903,22 @@ const StudyLocationsManagement = () => {
                 <View
                   ref={sliderRef}
                   className="h-10 justify-center"
-                  onLayout={() => {
-                    sliderRef.current?.measure((_x, _y, width, _height, pageX) => {
-                      setSliderWidth(width || 1);
-                      setSliderPageX(pageX);
-                    });
+                  onLayout={(event) => {
+                    setSliderWidth(event.nativeEvent.layout.width || 1);
                   }}
                   onStartShouldSetResponder={() => true}
                   onMoveShouldSetResponder={() => true}
-                  onResponderGrant={(event) => updateRadiusFromSlider(event.nativeEvent.pageX)}
-                  onResponderMove={(event) => updateRadiusFromSlider(event.nativeEvent.pageX)}
+                  onResponderGrant={(event) => updateRadiusFromSlider(event.nativeEvent.locationX)}
+                  onResponderMove={(event) => updateRadiusFromSlider(event.nativeEvent.locationX)}
                 >
-                  <View className="h-2 rounded-full bg-gg-outlineVariant overflow-hidden">
+                  <View className="h-2 rounded-full bg-gg-outlineVariant overflow-hidden" pointerEvents="none">
                     <View
                       className="h-2 rounded-full bg-gg-primary"
                       style={{ width: `${((radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)) * 100}%` }}
                     />
                   </View>
                   <View
+                    pointerEvents="none"
                     className="absolute h-6 w-6 rounded-full bg-gg-primary border-2 border-white"
                     style={{
                       left: `${((radius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS)) * 100}%`,
