@@ -245,7 +245,7 @@ class NotificationToken(models.Model):
         unique_together = ('user', 'device_id')
 
     def __str__(self):
-        return f"{self.user.username} - {self.token[:10]}..."
+        return f"{self.user.email} - {self.token[:10]}..."
 
 class PasswordResetToken(models.Model):
     """
