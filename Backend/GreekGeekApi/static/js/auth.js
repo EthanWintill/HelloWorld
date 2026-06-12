@@ -124,7 +124,7 @@ function logout() {
     localStorage.removeItem('refresh_token');
     updateNavbar();
     
-    // Redirect to home page to show login/register options
+    // Redirect to home page to show public navigation options
     window.location.href = '/';
 }
 
@@ -137,20 +137,12 @@ function updateNavbar() {
         // Fetch user info from API to display name
         fetchUserInfo().then(userData => {
             const displayName = userData ? `${userData.first_name} ${userData.last_name}` : 'User';
-            const needsTrial = userData?.org && !userData.org.is_premium && !['active', 'trialing'].includes(userData.org.stripe_subscription_status || '');
-            const trialLink = needsTrial ? `
-                        <li><a class="dropdown-item" href="/billing/">
-                            <i class="fas fa-credit-card me-2"></i>Start Free Trial
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-            ` : '';
             navbarAuth.innerHTML = `
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fas fa-user me-1"></i>${displayName}
                     </a>
                     <ul class="dropdown-menu">
-                        ${trialLink}
                         <li><a class="dropdown-item" href="/dashboard/">
                             <i class="fas fa-gauge me-2"></i>Dashboard
                         </a></li>
@@ -195,7 +187,7 @@ function updateNavbar() {
             </li>
             <li class="nav-item">
                 <a class="nav-link nav-cta" href="/register/">
-                    <i class="fas fa-plus me-1"></i>Start free trial
+                    <i class="fas fa-plus me-1"></i>Register
                 </a>
             </li>
         `;
