@@ -269,3 +269,7 @@ Enabled remote EAS app version source and production `autoIncrement` so producti
 ## [2026-06-11] fix | RevenueCat intro eligibility paywall copy
 
 Updated the mobile RevenueCat paywall flow to check iOS introductory offer eligibility before showing custom purchase copy. Eligible App Store accounts see one-month free-trial language; ineligible or unknown accounts see upfront subscription copy while the native purchase sheet remains the final source of terms.
+
+## [2026-06-11] fix | iPadOS 26 dev-client touch blocker
+
+Diagnosed the iPadOS 26 post-login "freeze" in the local dev build as Expo Dev Client's launch-time developer menu overlay capturing touches over the Study screen. Configured `expo-dev-client` to launch the most recent bundle without auto-opening the dev menu, skip onboarding, and hide the floating tools button in future dev-client rebuilds.
