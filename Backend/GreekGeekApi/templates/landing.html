@@ -4,9 +4,9 @@
 {% block title %}GreekGeek | Fraternity and Sorority Study Hour Tracking App{% endblock %}
 {% block meta_description %}GPS study hours tracking for fraternities, sororities, and campus organizations. Set chapter requirements, verify approved-location sessions, and report member progress.{% endblock %}
 {% block og_title %}GreekGeek | Fraternity and Sorority Study Hour Tracking App{% endblock %}
-{% block og_description %}Track chapter study hours with GPS-verified sessions, member invite codes, admin reports, and a one-month free trial.{% endblock %}
+{% block og_description %}Track chapter study hours with GPS-verified sessions, member invite codes, admin reports, and in-app purchase managed in the iOS app.{% endblock %}
 {% block twitter_title %}GreekGeek | Fraternity and Sorority Study Hour Tracking App{% endblock %}
-{% block twitter_description %}Track chapter study hours with GPS-verified sessions, member invite codes, admin reports, and a one-month free trial.{% endblock %}
+{% block twitter_description %}Track chapter study hours with GPS-verified sessions, member invite codes, admin reports, and in-app purchase managed in the iOS app.{% endblock %}
 
 {% block content %}
 <section class="landing-hero">
@@ -21,11 +21,11 @@
                     deadlines become a problem.
                 </p>
                 <div class="hero-actions">
-                    <a class="btn btn-primary btn-lg" href="/register/" data-track="org_trial_clicked">Start your one-month free trial</a>
+                    <a class="btn btn-primary btn-lg" href="/register/" data-track="org_register_clicked">Register organization</a>
                     {% include 'partials/app_store_badge.html' with track='app_store_clicked' %}
                     <a class="btn btn-outline-dark contact-cta" href="/contact/">Contact us</a>
                 </div>
-                <p class="hero-note">One month free, then $149.99 per year. Existing admins can <a href="/login/">sign in</a>.</p>
+                <p class="hero-note">Access is handled through in-app purchase in the iOS app. Existing admins can <a href="/login/">sign in</a>.</p>
             </div>
             <div class="hero-media" aria-label="GreekGeek product preview">
                 <figure class="device-shot hero-device hero-device-primary">
@@ -48,7 +48,7 @@
             </div>
             <div>
                 <strong>Chapter invite codes</strong>
-                <span>Free-trial admins can invite members after setup.</span>
+                <span>Chapter admins can invite members after setup.</span>
             </div>
             <div>
                 <strong>Progress reports</strong>
@@ -73,9 +73,9 @@
         <div class="inline-cta-panel">
             <div>
                 <h3>Ready to run one study period?</h3>
-                <p>Start with a free month, configure your first requirement, and invite members when your chapter is ready.</p>
+                <p>Download the iOS app, configure your first requirement, and invite members when your chapter is ready.</p>
             </div>
-            <a class="btn btn-primary" href="/register/" data-track="org_trial_midpage_clicked">Start free trial</a>
+            <a class="btn btn-primary" href="/register/" data-track="org_register_midpage_clicked">Register organization</a>
         </div>
         <div class="feature-grid three">
             <article class="feature-card">
@@ -175,13 +175,12 @@
                     locations, review history, and see where they stand on the leaderboard.
                 </p>
                 <div class="action-row">
-                    <a class="btn btn-primary" href="/register/" data-track="member_section_trial_clicked">Start free trial</a>
                     {% include 'partials/app_store_badge.html' with track='member_app_store_clicked' badge_class='app-store-badge-sm' width=135 height=45 %}
                 </div>
                 <p class="small-note">
                     Already have a chapter code? Download GreekGeek, choose Join organization,
                     and enter the code from your chapter admin. No code yet? Ask your academic
-                    chair or start a free organization trial.
+                    chair to set up GreekGeek in the app.
                 </p>
                 <p class="small-note">
                     Already managing GreekGeek for your chapter? <a href="/login/">Sign in</a>.
@@ -214,10 +213,10 @@
         </div>
         <div class="inline-cta-panel organization-cta">
             <div>
-                <h3>Launch with a real price and a short trial.</h3>
-                <p>One month free, then $149.99 per year.</p>
+                <h3>Set up your chapter inside the app.</h3>
+                <p>Organization access is handled through in-app purchase in the iOS app.</p>
             </div>
-            <a class="btn btn-primary" href="/register/" data-track="org_trial_admin_clicked">Start free trial</a>
+            <a class="btn btn-primary" href="/register/" data-track="org_register_admin_clicked">Register organization</a>
         </div>
     </div>
 </section>
@@ -274,18 +273,18 @@
     </div>
 </section>
 
-<section class="section pricing-section" id="pricing">
+<section class="section access-section" id="app-access">
     <div class="container">
-        <div class="pricing-card">
+        <div class="access-card">
             <div>
-                <p class="eyebrow">Simple pricing</p>
-                <h2>One simple price for every organization.</h2>
+                <p class="eyebrow">App access</p>
+                <h2>Subscriptions are managed in the iOS app.</h2>
             </div>
-            <div class="pricing-action">
-                <p class="price-label">Organization plan</p>
-                <strong>$149.99/year</strong>
-                <p class="pricing-note">One-month free trial included.</p>
-                <a class="btn btn-primary btn-lg w-100" href="/register/" data-track="org_trial_pricing_clicked">Start free trial</a>
+            <div class="access-action">
+                <p class="access-label">In-app purchase</p>
+                <strong>Managed by Apple</strong>
+                <p class="access-note">Open GreekGeek on iOS to manage access through in-app purchase.</p>
+                {% include 'partials/app_store_badge.html' with track='app_store_access_clicked' %}
             </div>
         </div>
     </div>
@@ -316,7 +315,7 @@
             </details>
             <details>
                 <summary>Can members sign up without an organization code?</summary>
-                <p>Members join after a chapter admin starts an organization and invites them. New chapters should start with the free trial.</p>
+                <p>Members join after a chapter admin sets up an organization and invites them from the app.</p>
             </details>
             <details>
                 <summary>How does GPS study hour verification work?</summary>
@@ -332,15 +331,15 @@
             </details>
             <details>
                 <summary>How do we start?</summary>
-                <p>Start a one-month free trial to create an admin account, set up your chapter, and invite members when you are ready.</p>
+                <p>Download the iOS app to set up your chapter and invite members when you are ready.</p>
             </details>
             <details>
-                <summary>How much does GreekGeek cost?</summary>
-                <p>GreekGeek is $149.99 per year after a one-month free trial.</p>
+                <summary>How is GreekGeek access managed?</summary>
+                <p>GreekGeek access is managed through in-app purchase in the iOS app.</p>
             </details>
             <details>
                 <summary>Is GreekGeek available on the App Store?</summary>
-                <p>The GreekGeek mobile app is the member clock-in experience. Chapter leaders should start a free trial first, then send members to the app after setup.</p>
+                <p>The GreekGeek mobile app is the member clock-in and chapter setup experience.</p>
             </details>
         </div>
     </div>
@@ -351,8 +350,9 @@
         <div class="final-cta-inner">
             <h2>Give your chapter a cleaner way to track study hours.</h2>
             <div class="hero-actions justify-content-center">
-                <a class="btn btn-primary btn-lg" href="/register/" data-track="org_trial_final_clicked">Start your one-month free trial</a>
+                <a class="btn btn-primary btn-lg" href="/register/" data-track="org_register_final_clicked">Register organization</a>
                 {% include 'partials/app_store_badge.html' with track='final_app_store_clicked' %}
+                <a class="btn btn-outline-dark contact-cta" href="/contact/">Contact us</a>
             </div>
         </div>
     </div>
@@ -379,16 +379,7 @@
         "Member invite codes",
         "Leaderboards",
         "Study hour reports"
-    ],
-    "offers": {
-        "@type": "Offer",
-        "availability": "https://schema.org/LimitedAvailability",
-        "priceSpecification": {
-            "@type": "PriceSpecification",
-            "price": "149.99",
-            "priceCurrency": "USD"
-        }
-    }
+    ]
 }
 </script>
 <script type="application/ld+json">
@@ -433,7 +424,7 @@
             "name": "Can members sign up without an organization code?",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Members join after a chapter admin starts an organization and invites them. New chapters should start with the free trial."
+                "text": "Members join after a chapter admin sets up an organization and invites them from the app."
             }
         },
         {
@@ -465,15 +456,15 @@
             "name": "How do we start?",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Start a one-month free trial to create an admin account, set up your chapter, and invite members when you are ready."
+                "text": "Download the iOS app to set up your chapter and invite members when you are ready."
             }
         },
         {
             "@type": "Question",
-            "name": "How much does GreekGeek cost?",
+            "name": "How is GreekGeek access managed?",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "GreekGeek is $149.99 per year after a one-month free trial."
+                "text": "GreekGeek access is managed through in-app purchase in the iOS app."
             }
         },
         {
@@ -481,7 +472,7 @@
             "name": "Is GreekGeek available on the App Store?",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "The GreekGeek mobile app is the member clock-in experience. Chapter leaders should start a free trial first, then send members to the app after setup."
+                "text": "The GreekGeek mobile app is the member clock-in and chapter setup experience."
             }
         }
     ]

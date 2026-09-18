@@ -48,6 +48,15 @@
           "photosPermission": "GreekGeek uses your photo library to let you choose a profile picture."
         }
       ],
+      [
+        "expo-dev-client",
+        {
+          "launchMode": "most-recent",
+          "toolsButton": false,
+          "skipOnboarding": true,
+          "showMenuAtLaunch": false
+        }
+      ],
       "@react-native-community/datetimepicker",
       "expo-font",
       [

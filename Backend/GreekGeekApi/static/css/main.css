@@ -358,7 +358,7 @@ h6 {
 .section-heading h2,
 .problem-panel h2,
 .split-grid h2,
-.pricing-card h2,
+.access-card h2,
 .final-cta h2 {
     font-size: clamp(2rem, 4vw, 3.5rem);
     font-weight: 800;
@@ -377,7 +377,7 @@ h6 {
 
 .problem-panel p,
 .split-grid p,
-.pricing-card p {
+.access-card p {
     color: var(--color-muted);
     font-size: 1.05rem;
 }
@@ -586,7 +586,7 @@ h6 {
     position: absolute;
 }
 
-.pricing-section {
+.access-section {
     background: var(--color-text);
 }
 
@@ -620,7 +620,7 @@ h6 {
     font-weight: 800;
 }
 
-.pricing-card {
+.access-card {
     align-items: center;
     color: #ffffff;
     display: grid;
@@ -628,35 +628,35 @@ h6 {
     grid-template-columns: minmax(0, 1fr) 310px;
 }
 
-.pricing-card h2,
-.pricing-card .eyebrow {
+.access-card h2,
+.access-card .eyebrow {
     color: #ffffff;
 }
 
-.pricing-card p {
+.access-card p {
     color: rgba(255, 255, 255, 0.75);
 }
 
-.pricing-action {
+.access-action {
     background: #ffffff;
     border-radius: var(--radius);
     color: var(--color-text);
     padding: 1.35rem;
 }
 
-.pricing-action strong {
+.access-action strong {
     display: block;
     font-size: 1.6rem;
     margin-bottom: 0.35rem;
 }
 
-.pricing-note {
+.access-note {
     color: var(--color-muted) !important;
     font-size: 0.95rem !important;
     margin-bottom: 1rem;
 }
 
-.price-label {
+.access-label {
     color: var(--color-muted) !important;
     font-size: 0.9rem !important;
     font-weight: 800;
@@ -1564,7 +1564,7 @@ details p {
     .problem-panel,
     .split-grid,
     .split-grid.reverse,
-    .pricing-card {
+    .access-card {
         grid-template-columns: 1fr;
     }
 
