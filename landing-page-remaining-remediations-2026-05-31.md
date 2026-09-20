@@ -1,9 +1,13 @@
 # Landing Page Remaining Remediations
 
+## Current-status note — September 19, 2026
+
+Reviewed against source September 19. Checked boxes below record May work, not a new browser test. The latest landing page temporarily removes web-payment copy and uses “Register organization”; any trial-first acceptance wording below is historical. Registration still contains the trial flow. The source App Store search fallback remains, production pricing/trial is unverified, and approved customer proof/static cleanup remain open. See [current state](wiki/current-state.md).
+
 Date: 2026-05-31
 Source: follow-up review of `landing-page-audit-2026-05-29.md` and `landing-page-remediations-2026-05-29/` against the current local Django landing page.
 
-Use this as the working checklist for the remaining landing-page launch pass.
+Use the current-status note above alongside this dated checklist for the remaining landing-page launch pass.
 
 ## Checklist
 

@@ -1,60 +1,53 @@
-# HelloWorld Current State
+# HelloWorld / GreekGeek current state
 
-## Migration Status
+Updated September 19, 2026. This snapshot describes source at `442a2a3` plus the uncommitted account-browser fix and the September 18–19 local checks. It does not establish that all local code is deployed.
 
-HelloWorld has been cloned into the workstation at `projects/helloworld` from `https://github.com/EthanWintill/HelloWorld`.
+## Product and implementation
 
-At migration time, the new clone and the legacy parent checkout at `../../../../HelloWorld` were both on `main` at commit `37586557dfcc615b151cb2281c1ac958648c5b52`.
+GreekGeek is the app's user-facing name; HelloWorld is the repository/workstation name. It tracks organization study hours at approved locations, supports member registration by chapter code, session history, individual/group rankings, and admin management of members, groups, locations, periods, and reports.
 
-## What Was Checked
+| Surface | Current implementation |
+| --- | --- |
+| Mobile | `GreekGeekStudy`: Expo 56, React Native 0.85.3, React 19.2.3, Expo Router, TypeScript; native development client required |
+| Backend and website | `Backend/GreekGeekApi`: Django/DRF, JWT, PostgreSQL; landing, registration, email verification, support/contact, comparison, dashboard and billing pages |
+| Integrations | ZeptoMail HTTP email, S3 media configuration, Stripe web subscriptions, RevenueCat mobile subscriptions, Expo notifications |
+| API target | `GreekGeekStudy/constants/api.js` currently uses `https://greekgeek.app/` |
+| Native projects | Expo Prebuild/CNG; generated `ios/` and `android/` are ignored |
 
-- Tracked files in the legacy checkout and new clone matched.
-- `../../../../startups/helloworld/venture.md` matched `../venture.md`.
-- `../../../../startups/helloworld/landing-page-prd-2026-04-28.md` matched `../landing-page-prd-2026-04-28.md`.
-- Ignored local files from the legacy checkout were not migrated.
+## Accounts and App Review
 
-## Current Goal
+The user supplied a Guideline 4 rejection for leaving the app to register/sign in. The September 19 source fix routes organization registration and password recovery through `services/AccountBrowser.ts` and `expo-web-browser.openBrowserAsync`. On iOS this presents Safari View Controller with a visible domain and native dismissal controls. Welcome registration, Sign In recovery, and Profile Change Password use this helper. Sign-in and member code registration remain native.
 
-Finish launch-critical product, backend, onboarding, and operational work so the app can be tested, distributed, and monetized with confidence.
+Profile offers account deletion with confirmation and `DELETE /api/me/`; the backend deletion implementation exists. Deletion was not executed during the latest checks. Registration and recovery presentation/dismissal were verified on the simulator; actual account creation, credential submission and reset-email delivery were not repeated. The fix has not been submitted in a new App Review build, and review acceptance is unknown.
 
-## Known Context
+## Billing and onboarding
 
-- Backend lives under `Backend/GreekGeekApi`.
-- React Native / Expo app lives under `GreekGeekStudy`.
-- Previous local bring-up used local Postgres on `localhost:5432`.
-- Frontend API target is controlled by `GreekGeekStudy/constants/api.js`.
-- Backend environment values are expected from `Backend/.env`.
-- Confirmed organization pricing is `$149.99` per year per organization.
-- Confirmed launch trial is one month free; do not use a one-year free trial.
-- First landing-page remediation pass is implemented: landing copy assumes App Store availability, App Store badges are retained with a centralized placeholder href for the final store URL, one-month trial pricing, trust/support section, SEO/social metadata, favicon, optimized WebP landing screenshots, and CampusStudy-informed SEO language for fraternity/sorority GPS study hour tracking.
-- SEO support pages are live in the Django site under `/support/`, covering approved-location study hours, sorority GPS study tracking, spreadsheet replacement, chapter study hour requirements, and member chapter-code onboarding.
-- Public contact form is live under `/contact/`, linked from the footer, landing support section, and support pages, and sends to `CONTACT_TO_EMAIL` through the existing ZeptoMail-backed email service.
-- Landing CTAs are focused on starting a free organization trial first and downloading the mobile app second; member-code CTA buttons were removed, and App Store badge links are controlled by `APP_STORE_URL`.
-- Product comparison pages are live under `/compare/`, covering GreekGeek vs CampusStudy, GreekGeek vs MyGreekStudy, and CampusStudy vs MyGreekStudy with a GreekGeek alternative angle.
-- New organization admin signup now requires email verification before sign-in. New orgs are created as non-premium, and email verification does not start the free trial.
-- Valid email verification links now auto-sign in the admin and send them to the start-trial prompt; admins should not have to manually sign in after clicking a valid verification link.
-- Stripe Billing starter is implemented as backend-managed annual subscription Checkout for verified org admins. The app should not collect raw card fields; admins should be sent to Stripe-hosted Checkout through `/api/billing/checkout-session/`, Stripe should collect payment details, and Stripe webhooks should sync `Org.is_premium`.
-- The intended trial model is Stripe-managed: the admin starts a 30-day Stripe subscription trial after sign-in, the org is premium while Stripe status is `trialing` or `active`, and Stripe automatically charges the annual plan after the trial if the payment method remains valid.
-- A simple web admin dashboard now lives at `/dashboard/`. It lets organization admins edit org name, school, and registration code, points admins to the mobile app for the full workflow, and links to `/billing/` for full org billing management. The billing page owns trial/subscription status, billing source, renewal/end date, subscription id, free-trial CTA for non-premium orgs, and cancellation scheduled at period end.
-- Stripe sandbox setup uses product `prod_UcC6g2cLgVZwOa`, annual price `price_1TcxhwFdUW1rAvnAxKr9UxvM`, and a test webhook endpoint pointed at `https://greekgeek.app/api/billing/stripe-webhook/`. Secrets stay in ignored env files or Stripe Dashboard only.
-- The Expo app now has org-level RevenueCat support: `react-native-purchases` and `react-native-purchases-ui` are installed, the root app configures RevenueCat with the current Test Store SDK key only in dev builds, and dashboard users are identified to RevenueCat by `Org.revenuecat_app_user_id` rather than individual user id. Profile checks the `GreekGeek Pro` entitlement for product `yearly`; unpaid org admins see Start Free Trial CTAs across the app, admin routes and admin-only Study actions are blocked behind the paywall, premium org admins can open the in-app billing modal for active billing management, and members in unpaid orgs keep normal app access. The paywall is custom React Native UI that fetches the current RevenueCat offering and purchases the selected package with `Purchases.purchasePackage`. Release/TestFlight builds skip RevenueCat unless `EXPO_PUBLIC_REVENUECAT_API_KEY` is set to a production RevenueCat App Store SDK key; `EXPO_PUBLIC_REVENUECAT_DISABLED=true` can force it off temporarily.
-- Expo release assets are configured for App Store preparation: `assets/icon.png`, `assets/adaptive-icon.png`, `assets/splash.png`, `assets/favicon.png`, and the runtime loading logo are rendered from the source SVG GreekGeek pillar mark. EAS should generate native app icon and splash assets from `app.json` through Expo Prebuild / CNG.
-- The Expo app is upgraded to Expo SDK 56 (`expo@56.0.9`, React Native `0.85.3`, React `19.2.3`) with Node `22.13.1` recorded in `GreekGeekStudy/.nvmrc`. SDK 56 requires Xcode 26.4+ for iOS builds; this Mac now uses Xcode 26.5. The app now uses Expo Prebuild / CNG for EAS builds: `GreekGeekStudy/.gitignore` ignores `/ios/` and `/android/`, and generated native projects should stay out of version control.
-- Stripe and RevenueCat both feed the org premium source of truth. `Org.is_premium` remains true when either Stripe is `trialing`/`active` or RevenueCat has an active entitlement, so Stripe-web premium orgs do not see the mobile paywall and RevenueCat expiration does not revoke access while Stripe is still active. Before the mobile app opens or completes the RevenueCat paywall, it calls `/api/billing/sync-subscription/` to refresh Stripe state and blocks RevenueCat purchase if the org is already premium. RevenueCat backend persistence requires the webhook at `/api/billing/revenuecat-webhook/` with `REVENUECAT_WEBHOOK_AUTHORIZATION` configured.
-- RevenueCat webhook handling is intentionally limited to access-changing or billing-state events: `INITIAL_PURCHASE`, `RENEWAL`, `PRODUCT_CHANGE`, `CANCELLATION`, `BILLING_ISSUE`, `UNCANCELLATION`, `TRANSFER`, `SUBSCRIPTION_PAUSED`, `EXPIRATION`, `SUBSCRIPTION_EXTENDED`, `TEMPORARY_ENTITLEMENT_GRANT`, and `REFUND_REVERSED`. `CANCELLATION` keeps org premium until expiration unless it is a customer-support refund; `EXPIRATION` removes RevenueCat access unless Stripe is still active.
+- Intended offer: **$149.99/year per organization with one month free**. Stripe implements a 30-day subscription trial after verified-admin checkout; account creation/email verification alone does not activate premium.
+- Email verification links auto-sign in new admins and lead to the trial prompt. The web dashboard supports basic organization editing; `/billing/` manages subscription status and cancellation at period end.
+- Stripe `trialing`/`active` or an active RevenueCat entitlement grants organization premium access. Mobile identifies RevenueCat customers by organization UUID and refreshes subscription state before purchase.
+- Unpaid admins encounter the mobile paywall for admin routes and admin-only Study actions. Members retain normal app access. The September 18 development paywall displayed **$79.99/year with no trial**. Production App Store price/trial configuration remains unverified and must be reconciled with the intended offer.
+- Development builds use the RevenueCat Test Store. Release/TestFlight requires a production `EXPO_PUBLIC_REVENUECAT_API_KEY`; `EXPO_PUBLIC_REVENUECAT_DISABLED=true` disables initialization. Backend webhook configuration is also required for persistent entitlement updates.
 
-## Background Clock-Out System
+## Website and assets
 
-The mobile app uses a layered system to detect when a member leaves a study location and clock them out automatically.
+The latest merge temporarily removed web-payment copy from the landing page: primary CTAs now say **Register organization**. Do not restore old trial-first landing copy simply because it appears in April/May plans. Registration and backend billing still contain the trial flow. Support, contact, comparison pages, SEO/social metadata, self-hosted vendor assets, and WebP landing screenshots exist in source.
 
-**Exit detection (two redundant mechanisms):**
-- `GEOFENCE_TASK` — primary, iOS-native `CLLocationManager` geofencing. Fires an exit event when the device crosses the registered region boundary.
+`APP_STORE_URL` still defaults to App Store search; the deployed override/final product URL is unverified. Approved customer proof and remaining static-asset cleanup are tracked in the [landing checklist](../landing-page-remaining-remediations-2026-05-31.md). Active app icons/splash are under `GreekGeekStudy/assets`; use the source SVG mark for changes. `bordered-logo-assets` is an alternate set.
 
+## Verified and blocked
 
-The backend `ClockOut` view accepts an `end_time` ISO string and backdates the session hours to the stored exit timestamp, clamped to no earlier than the session start time.
+The signed Debug app ran on **iPhone 17 Pro / iOS 26.5 using Xcode 27.0** with temporary local dependency edits. Study/map, History/filtering, rankings, Profile and unpaid-admin paywall checks passed. TypeScript and iOS JavaScript bundling passed. See the [dated verification record](verification-2026-09-19.md) for scope.
 
-## Open Questions
+Known unresolved issues:
 
-- What is the final GreekGeek App Store product URL for the centralized badge link?
-- Which customer segment is the first paid target?
-- What is the next concrete milestone?
+1. iOS 27 terminates the app with `UIScene life cycle is required for apps built with this SDK`.
+2. Push-token registration returned HTTP 500 from a duplicate user/device database constraint.
+3. Native build workarounds live in ignored Pods/node_modules and can disappear on regeneration; clean build reproducibility remains open.
+4. Local backend tests are blocked by PostgreSQL authentication.
+5. Successful session creation/clock-out, physical-device background exit, paid admin operations, purchase/restore, notification delivery, and production billing remain unverified in the latest run.
+
+Clock-out source includes manual, geofence, background-location and foreground checks, with offline pending retries. These implementations are documented in [Clock Out](clock-out.md); source presence is not a physical-device reliability result.
+
+## Next milestone
+
+Prepare and validate a release candidate containing the account-browser fix, resolve the known runtime/backend issues, verify billing and account lifecycle with test accounts, then resubmit to App Review. See the [launch checklist](todo.md) and [local runbook](local-development.md).

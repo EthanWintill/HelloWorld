@@ -1,5 +1,9 @@
 # Greek Geek Landing Page PRD
 
+## Current-status note — September 19, 2026
+
+Historical planning specification. The implemented Django website includes registration/email verification, dashboard/billing, support/contact and comparison pages. The latest merge temporarily removes web-payment copy from the landing page and uses “Register organization” CTAs; older trial-first copy below does not override that change. The intended offer remains $149.99/year with one month free, but production mobile pricing/trial is unverified. Mobile organization registration now opens inside Safari View Controller. See [current state](wiki/current-state.md) and the [landing follow-up](landing-page-remaining-remediations-2026-05-31.md).
+
 Date: 2026-04-28
 Project: HelloWorld / Greek Geek
 Owner: HelloWorld launch workstream

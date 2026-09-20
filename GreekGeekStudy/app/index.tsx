@@ -1,8 +1,9 @@
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Link, router } from "expo-router";
+import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { API_URL, images } from "@/constants";
+import { images } from "@/constants";
+import { openAccountPage } from "@/services/AccountBrowser";
 
 const featureChips = [
   { icon: "location-outline", label: "Verified areas" },
@@ -142,11 +143,11 @@ export default function Index() {
             </TouchableOpacity>
 
             <View className="items-center mt-3">
-              <Link href={`${API_URL}register/`}>
+              <TouchableOpacity accessibilityRole="button" onPress={() => openAccountPage('register/')}>
                 <Text className="font-pmedium text-gg-secondary text-[15px] text-center">
                   Register your organization
                 </Text>
-              </Link>
+              </TouchableOpacity>
             </View>
           </View>
         </View>

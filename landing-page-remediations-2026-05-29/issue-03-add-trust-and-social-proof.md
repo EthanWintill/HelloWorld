@@ -1,5 +1,9 @@
 # Issue 03: Add Trust And Social Proof
 
+## Current-status note — September 19, 2026
+
+Historical remediation plan. Support/contact and product trust content exist. Approved customer quotes, chapter logos or measured results remain pending; do not invent social proof. See the [remaining checklist](../landing-page-remaining-remediations-2026-05-31.md) and [current app state](../wiki/current-state.md).
+
 Severity: P1
 Score impact: raises trust/proof from `2` toward `4`
 Linked audit section: Scorecard, Competitor And Comparable Notes

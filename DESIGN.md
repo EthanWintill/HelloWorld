@@ -371,6 +371,15 @@ components:
     height: "{spacing.tab-bar-height}"
 ---
 
+## Implementation status — September 19, 2026
+
+This is a design specification, not a screen-by-screen conformance report. Current behavior and test limits are documented in [current state](wiki/current-state.md) and [verification](wiki/verification-2026-09-19.md).
+
+Account entry uses native sign-in and member-code signup. Organization registration and password recovery use Safari View Controller on iOS with a visible domain and native dismissal control. Profile includes account deletion with confirmation. Preserve these account flows when applying visual changes. The browser controls currently use `#006b2c`; design tokens below should not be read as a claim that every source color already matches them.
+
+Use source SVG logo assets for icon/splash changes. Production billing offer and release acceptance remain unverified.
+
+
 ## Overview
 
 GreekGeek should feel like the command center for a chapter’s study obligations: calm, trustworthy, fast, and precise. The product is not a playful habit app and not a marketing site. It is a mobile operations tool for students who need to clock study sessions with confidence and officers who need to know, at a glance, whether the chapter is on track.

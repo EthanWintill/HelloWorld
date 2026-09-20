@@ -1,5 +1,9 @@
 # GreekGeek Landing Page Conversion Audit
 
+## Current-status note — September 19, 2026
+
+Historical conversion audit and scores. Source now includes support/contact, SEO/social metadata, comparison pages, WebP screenshots and self-hosted vendor dependencies. The latest landing CTAs say “Register organization” and web-payment copy is temporarily removed. The original recommendations below are historical; see the [remaining checklist](landing-page-remaining-remediations-2026-05-31.md) and [current state](wiki/current-state.md). No new desktop/mobile conversion audit was run on September 19.
+
 Date: 2026-05-29
 Route audited: `http://127.0.0.1:8000/`
 Production spot check: `https://greekgeek.app/` returned the same title, meta description, stylesheet reference, and H1 on 2026-05-29.

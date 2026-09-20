@@ -1,5 +1,9 @@
 # Issue 05: Tighten The Mobile Scan Path
 
+## Current-status note — September 19, 2026
+
+Historical remediation plan. A mid-page organization CTA and mobile layout changes were recorded complete in May. The latest copy changed again; no new 390×844 landing-page visual audit was performed in September. See the [remaining checklist](../landing-page-remaining-remediations-2026-05-31.md) and [current app state](../wiki/current-state.md).
+
 Severity: P2
 Score impact: raises mobile formatting and CTA effectiveness from `3` toward `4`
 Linked audit section: Scorecard, Evidence Collected

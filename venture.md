@@ -1,37 +1,21 @@
-# HelloWorld Venture Brief
+# HelloWorld / GreekGeek venture brief
 
-## Status
+Updated September 19, 2026.
 
-Current primary project. Nearly complete mobile app SaaS, formerly known as Greek Geek.
+## Product and stage
 
-## Product Path
+GreekGeek is an organization study-hours app for fraternity, sorority and campus chapters. Members join with a code, track approved-location study sessions and view progress; administrators manage requirements, membership and reports. The active source is this `projects/helloworld` checkout.
 
-`HelloWorld/`
+The product is in launch hardening and App Review remediation. A Guideline 4 rejection prompted an embedded registration/password-recovery fix, verified locally but not yet submitted. A signed iOS 26.5 simulator run passed core smoke checks; this does not establish release readiness.
 
-## Current Goal
+## Commercial model
 
-Finish launch-critical product, backend, onboarding, and operational work so the app can be tested, distributed, and monetized with confidence.
+The intended package is **$149.99/year per organization with a one-month free trial**. Backend Stripe checkout implements a 30-day trial for verified organization admins. RevenueCat supports mobile purchases and organization-level access. Either active source can grant premium.
 
-## Working Assumptions
+The development RevenueCat offering observed September 18 was **$79.99/year without a trial**. Production pricing, trial eligibility and complete purchase/restore behavior need verification before promising the offer. The latest landing page uses registration CTAs and temporarily omits web-payment copy; keep that source decision separate from older trial-first copy plans.
 
-- The core app concept is already selected.
-- The highest-value work is launch readiness rather than broad ideation.
-- Root-level workstation files should support planning without disrupting the nested project repository.
+## Next milestone
 
-## Pricing And Trial
+Produce a validated release candidate and resubmit the account-flow correction to App Review. Resolve the iOS 27 launch issue, push registration failure, reproducible build gaps and billing verification. Exercise complete onboarding, account deletion and real-device study tracking.
 
-- Charge `$149.99` per year per organization.
-- Offer a one-month free trial before paid annual billing.
-- Do not use a one-year free trial; it was considered and rejected as too generous for launch.
-
-## Near-Term Priorities
-
-- Confirm backend deployment and environment setup.
-- Audit auth, password reset, email, and notification behavior.
-- Verify mobile app onboarding and core user flows.
-- Identify the final release checklist for app store or external beta distribution.
-
-## Open Questions
-
-- What exact launch channel comes first: TestFlight, internal beta, app store, or direct web onboarding?
-- Which customer segment is the first paid target?
+See [current state](wiki/current-state.md), [launch checklist](wiki/todo.md) and [verification](wiki/verification-2026-09-19.md). The first paid customer segment and rollout plan remain open decisions.

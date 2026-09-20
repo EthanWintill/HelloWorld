@@ -1,26 +1,28 @@
-# HelloWorld Wiki Index
+# HelloWorld documentation index
 
-## Core
+## Current guidance
 
-- [Current State](current-state.md): migrated source status, current goal, known context, and open questions.
-- [Todo](todo.md): project-local backlog items and launch polish notes.
-- [Log](log.md): chronological project-local wiki log.
+- [Current state](current-state.md): implemented behavior, known failures and release status.
+- [Local development](local-development.md): backend setup and current Xcode/simulator workarounds.
+- [Verification — September 18–19](verification-2026-09-19.md): observed results and explicit test limits.
+- [Launch checklist](todo.md): remaining work and completed local fixes.
+- [Clock Out](clock-out.md): implemented triggers and offline retry behavior.
+- [Repository overview](../README.md) and [mobile setup](../GreekGeekStudy/README.md).
+- [Venture brief](../venture.md): product, pricing intent and next milestone.
+- [Design](../DESIGN.md): design specification and implementation notes.
+- [Landing checklist](../landing-page-remaining-remediations-2026-05-31.md): historical completion record with current follow-up.
+- [Log](log.md): chronological decisions and work.
 
-## Feature Docs
+## Historical plans and evidence
 
-- [Clock Out](clock-out.md): triggers, API call, offline/pending clock-out handling, retry logic, UI states, error screen pattern, and relevant settings.
+These retain their original dates. Current-status notes take precedence over superseded instructions; old pass counts are not fresh results.
 
-## Product Docs
+- [Landing PRD — April 28](../landing-page-prd-2026-04-28.md)
+- [App/backend/compliance audit — April 28](../app-audit-backend-design-compliance-2026-04-28.md)
+- [QA run — April 28](../QA_FULL_TEST_RUN_2026-04-28.md)
+- [Landing audit — May 29](../landing-page-audit-2026-05-29.md), including linked issue plans
 
-- [Repo README](../README.md): original repo notes and useful links.
-- [Venture Brief](../venture.md): project goal and launch priorities.
-- [Landing Page PRD](../landing-page-prd-2026-04-28.md): landing page requirements.
-- [Landing Page Audit 2026-05-29](../landing-page-audit-2026-05-29.md): conversion audit, scorecard, evidence, and remediation links.
-- [Landing Page Remaining Remediations](../landing-page-remaining-remediations-2026-05-31.md): current checklist for remaining landing-page launch work.
-- [QA Full Test Run](../QA_FULL_TEST_RUN_2026-04-28.md): prior QA run notes.
-- [Design](../DESIGN.md): visual/design guidance.
+## Workstation
 
-## Workstation Links
-
-- [Top-Level HelloWorld Page](../../../wiki/projects/helloworld.md)
-- [Top-Level Compass](../../../wiki/00-compass.md)
+- [HelloWorld project page](../../../wiki/projects/helloworld.md)
+- [Compass](../../../wiki/00-compass.md)

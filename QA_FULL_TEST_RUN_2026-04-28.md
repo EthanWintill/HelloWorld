@@ -1,5 +1,9 @@
 # GreekGeek Full Test Run - 2026-04-28
 
+## Current-status note — September 19, 2026
+
+Historical test record: results below apply to April 28 only. The latest [September verification](wiki/verification-2026-09-19.md) covers a narrower simulator smoke check and documents outstanding failures. No full regression rerun was performed during the documentation refresh.
+
 Environment:
 - Backend: local Django API at `http://127.0.0.1:8000/`
 - Frontend: Expo iOS simulator

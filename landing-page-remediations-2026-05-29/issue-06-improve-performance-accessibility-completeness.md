@@ -1,5 +1,9 @@
 # Issue 06: Improve Performance, Accessibility, And Completeness Polish
 
+## Current-status note — September 19, 2026
+
+Historical remediation plan. WebP landing images and self-hosted vendor assets are implemented. Remaining screenshot-original cleanup and current accessibility/performance verification stay on the landing checklist. See the [remaining checklist](../landing-page-remaining-remediations-2026-05-31.md) and [current app state](../wiki/current-state.md).
+
 Severity: P2
 Score impact: raises performance/accessibility and completeness from `3` toward `4`
 Linked audit section: Evidence Collected, Scorecard

@@ -1,5 +1,9 @@
 # Issue 01: Fix Member Download And Code CTAs
 
+## Current-status note — September 19, 2026
+
+Historical remediation plan. App Store links are centralized through `APP_STORE_URL`, whose source fallback is still App Store search. Member guidance was added in May; the final deployed product URL remains unverified. See the [remaining checklist](../landing-page-remaining-remediations-2026-05-31.md) and [current app state](../wiki/current-state.md).
+
 Severity: P1
 Score impact: raises CTA effectiveness and download/register placement from `2` toward `4`
 Linked audit section: Prioritized Issues, SEO Opportunity Map

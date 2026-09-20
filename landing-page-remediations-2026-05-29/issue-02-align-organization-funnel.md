@@ -1,5 +1,9 @@
 # Issue 02: Align Organization Funnel Labels And Destination
 
+## Current-status note — September 19, 2026
+
+Historical remediation plan. Registration/email verification and backend trial billing exist. The latest landing CTA is “Register organization” with web-payment copy temporarily removed. Organization registration from mobile now opens in Safari View Controller. Revalidate complete onboarding before declaring this funnel finished. See the [remaining checklist](../landing-page-remaining-remediations-2026-05-31.md) and [current app state](../wiki/current-state.md).
+
 Severity: P1
 Score impact: raises CTA effectiveness, completeness, and funnel readiness from `2` toward `4`
 Linked audit section: Prioritized Issues, Recommended Implementation Order

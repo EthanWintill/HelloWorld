@@ -273,3 +273,18 @@ Updated the mobile RevenueCat paywall flow to check iOS introductory offer eligi
 ## [2026-06-11] fix | iPadOS 26 dev-client touch blocker
 
 Diagnosed the iPadOS 26 post-login "freeze" in the local dev build as Expo Dev Client's launch-time developer menu overlay capturing touches over the Study screen. Configured `expo-dev-client` to launch the most recent bundle without auto-opening the dev menu, skip onboarding, and hide the floating tools button in future dev-client rebuilds.
+
+## [2026-09-18] local run | Xcode 27 simulator build and launch findings
+
+Built checkout `442a2a3` successfully with Xcode 27 after local ignored-file fixes for RevenueCat, ExpoModulesJSI, old deployment targets, and stale generated Pods paths. Regenerated native config to include the existing dev-menu fix. Expo CLI cannot locate the former Simulator app; use Device Hub and direct Xcode/simctl commands. iOS 27 terminates the app for missing UIScene lifecycle adoption; the same build remains running on iPhone 17 Pro / iOS 26.5. Restarted Metro with IPv4 preferred after identifying an IPv6-only listener. UI and signed-in verification remain pending because the Mac was locked and no test login was selected. Detailed reproduction notes are in `current-state.md`.
+
+## [2026-09-18] verification | Signed simulator app and core screens
+
+Resumed after unlock and used the existing `Apple Paid` simulator login. Rebuilt with simulator signing enabled to remove the unsigned build's Keychain error. Verified Study/dashboard/map, History and period filtering/reset, individual and group rankings, Profile, and unpaid-admin paywall gating. Left the app on Study with Metro running. Runtime logs expose a backend push-registration HTTP 500 from the user/device unique constraint. The development RevenueCat offering shows `$79.99/year` without a trial; production pricing was not checked. Clock-in/out, paid admin workflows, purchase/restore, background geofencing, and notification delivery remain unverified.
+## 2026-09-19 | App Review Guideline 4 account browser fix
+
+Replaced the welcome screen's external organization-registration link with an in-app Safari View Controller via the already-installed `expo-web-browser`. Routed Sign In and Profile password recovery through the same small helper, with an error alert if presentation fails. Verified registration and recovery load inside GreekGeek and Done returns to the native screen on iPhone 17 Pro / iOS 26.5; native sign-in and member-registration screens remain available. TypeScript passed and Metro bundled the updated iOS app. Existing account deletion was checked in source (`Profile` -> `DELETE /api/me/`), without deleting an account. No account was created, reset email sent, or App Store submission made. The simulator was signed out to verify the public onboarding path.
+
+## 2026-09-19 | Documentation refresh
+
+Reconciled repository/mobile READMEs, project state, development runbook, verification record, launch checklist, venture brief, design/clock-out notes and workstation project summary with the current source and September 18–19 observations. Annotated April/May audits and remediation plans as historical and recorded the latest landing-copy change. Removed superseded setup/migration claims from active guidance. Documented the unsubmitted App Review fix, iOS 27 failure, push registration error, temporary dependency patches, database test blocker and unverified production billing. Preserved historical results; no new app regression run or deployment was performed for this documentation update.

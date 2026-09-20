@@ -1,5 +1,7 @@
 # Clock Out Feature
 
+Updated September 19, 2026 from source. These mechanisms are implemented; background exit and offline retry were not exercised in the latest simulator smoke run. Real-device validation remains on the [launch checklist](todo.md). Paths below are relative to `GreekGeekStudy/` unless identified as backend paths.
+
 ## Triggers
 
 There are four ways a clock-out can happen:
@@ -9,11 +11,11 @@ User taps the "Clock out" button on the Study screen. Calls `clockOut()`.
 - **File:** `app/(tabs)/study.tsx`
 
 ### 2. Geofence exit (background)
-`GEOFENCE_TASK` fires when the user leaves the study location boundary — works even when the app is backgrounded. Calls `clockOutFromBackgroundLocation()`.
+`GEOFENCE_TASK` fires when the user leaves the study location boundary — intended to operate while the app is backgrounded, subject to OS scheduling and permissions. Calls `clockOutFromBackgroundLocation()`.
 - **File:** `app/(tabs)/study.tsx` — `TaskManager.defineTask(GEOFENCE_TASK, ...)`
 
 ### 3. Background location polling
-`BACKGROUND_LOCATION_TASK` runs every 30s and checks if the user has exceeded `activeLocation.gps_radius` using haversine distance. Auto-clocks out if threshold is crossed.
+`BACKGROUND_LOCATION_TASK` requests a 30-second update interval (OS delivery is not guaranteed) and checks if the user has exceeded `activeLocation.gps_radius` using haversine distance. Auto-clocks out if threshold is crossed.
 - **File:** `app/(tabs)/study.tsx` — `TaskManager.defineTask(BACKGROUND_LOCATION_TASK, ...)`
 
 ### 4. Foreground location check

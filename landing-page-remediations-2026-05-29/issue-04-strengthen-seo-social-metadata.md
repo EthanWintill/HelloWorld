@@ -1,5 +1,9 @@
 # Issue 04: Strengthen SEO And Social Metadata
 
+## Current-status note — September 19, 2026
+
+Historical remediation plan. SEO/social metadata, support content and comparison pages exist in source. Historical scores below were not rerun; deployed indexing and previews are not established by this documentation update. See the [remaining checklist](../landing-page-remaining-remediations-2026-05-31.md) and [current app state](../wiki/current-state.md).
+
 Severity: P2
 Score impact: raises SEO/search intent from `2` toward `4`
 Linked audit section: SEO Opportunity Map

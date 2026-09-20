@@ -1,5 +1,9 @@
 # GreekGeek App Audit - Backend, Design, Apple Compliance
 
+## Current-status note — September 19, 2026
+
+Historical audit: the findings below are not a current unresolved-issue list. Current source includes Profile account deletion and `DELETE /api/me/`, organization registration, password recovery, and embedded Safari View Controller account pages. The September 19 Guideline 4 correction is locally verified but not submitted or accepted by App Review. Other historical findings require individual revalidation before being marked open or closed. Use [current state](wiki/current-state.md) and the [launch checklist](wiki/todo.md) for current priorities.
+
 Date: 2026-04-28
 
 Scope:

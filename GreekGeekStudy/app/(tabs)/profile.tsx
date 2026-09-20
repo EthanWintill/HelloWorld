@@ -12,6 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { REVENUECAT_ENTITLEMENT_ID, REVENUECAT_PRODUCT_IDS } from '@/constants/revenuecat';
+import { openAccountPage } from '@/services/AccountBrowser';
 
 type BillingApiResponse = {
   organization?: Record<string, any>
@@ -261,7 +262,7 @@ const Profile = () => {
   }
 
   const handleChangePassword = async () => {
-    await Linking.openURL(`${API_URL}forgot-password/`)
+    await openAccountPage('forgot-password/')
   }
 
   const handleDeleteAccount = () => {

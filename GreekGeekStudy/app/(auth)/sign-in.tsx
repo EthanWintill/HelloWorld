@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Image, Alert, Linking, TouchableOpacity } from 'react-native'
+import { View, Text, ScrollView, Image, Alert, TouchableOpacity } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { images } from "@/constants";
@@ -9,6 +9,7 @@ import { API_URL } from '@/constants'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { openAccountPage } from '@/services/AccountBrowser';
 
 
 const SignIn = () => {
@@ -104,7 +105,7 @@ const SignIn = () => {
                             )}
                             <View className="items-end mt-4 mb-1">
                                 <TouchableOpacity
-                                    onPress={() => Linking.openURL(`${API_URL}forgot-password/`)}
+                                    onPress={() => openAccountPage('forgot-password/')}
                                 >
                                   <Text className="text-sm font-psemibold text-gg-primary">
                                     Forgot password?
