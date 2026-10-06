@@ -1,0 +1,35 @@
+name: Temporary Apple Paid test access
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Inspect or grant Pro access to the Apple Paid test organization
+        required: true
+        type: choice
+        options:
+          - inspect
+          - grant
+
+jobs:
+  test-org:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load droplet SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DROPLET_SSH_KEY }}
+      - name: Inspect test organization
+        if: inputs.mode == 'inspect'
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new "${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}" \
+            'cd /home/sammy/GreekGeek/Backend/GreekGeekApi && GG_MODE=inspect /home/sammy/GreekGeek/Backend/.venv/bin/python manage.py shell' \
+            < .github/scripts/test_org_pro.py
+      - name: Grant test organization Pro access
+        if: inputs.mode == 'grant'
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new "${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}" \
+            'cd /home/sammy/GreekGeek/Backend/GreekGeekApi && GG_MODE=grant /home/sammy/GreekGeek/Backend/.venv/bin/python manage.py shell' \
+            < .github/scripts/test_org_pro.py
