@@ -24,14 +24,8 @@ with transaction.atomic():
     print('revenuecat_status_before:', org.revenuecat_subscription_status or '(empty)')
 
     if mode == 'grant':
-        if (org.stripe_subscription_id or org.stripe_customer_id or
-                org.stripe_subscription_status or org.revenuecat_subscription_status or
-                org.is_premium):
-            raise ValueError('Existing billing state found; refusing to overwrite it')
-        # The disposable test org has no payment IDs. This local entitlement
-        # exercises Pro features without creating a charge or purchase record.
-        org.stripe_subscription_status = 'active'
+        # This is a scoped test access flag. Preserve the existing Stripe and
+        # RevenueCat records; this is not a purchase or billing status change.
         org.is_premium = True
-        org.save(update_fields=['stripe_subscription_status', 'is_premium'])
+        org.save(update_fields=['is_premium'])
         print('premium_after:', org.is_premium)
-        print('stripe_status_after:', org.stripe_subscription_status)
