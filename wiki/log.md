@@ -327,3 +327,7 @@ Deployed App Review fixes via GitHub Actions run 37563502298. Live subscriber lo
 ## 2026-10-06 — Production build and live verification
 
 Production build 17 compiled successfully. RevenueCat configuration correction is deployed; authenticated production sync returns 200 and correctly denies expired subscription access. iPad restore without active purchases shows the expected message. Restored the authorized manual test-org Pro flag after billing checks. TestFlight upload is blocked by a missing/expired Apple agreement; physical-device sandbox purchase remains unverified. See [release evidence](release-2026-10-06.md). Temporary operational workflow removed after successful configuration/test runs.
+
+## 2026-10-06 — App Store Connect upload retry
+
+Retried upload of completed production build 17 at the user’s request. [Submission 20a0bd55](https://expo.dev/accounts/greekgeek/projects/GreekGeekStudy/submissions/20a0bd55-c01e-4bbb-a91a-8df7c9f28561) failed with the same required Apple agreement missing/expired error. The Account Holder must resolve the agreement before another upload; no new build is required.
