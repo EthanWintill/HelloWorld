@@ -1867,13 +1867,13 @@ class RevenueCatSubscriptionSyncView(APIView):
         user = request.user
         if not user.is_staff or not user.org:
             raise exceptions.PermissionDenied(detail="Only organization admins can manage billing")
-        if not settings.REVENUECAT_SECRET_API_KEY:
+        if not settings.REVENUECAT_API_KEY:
             return Response({"detail": "Purchase verification is not configured."}, status=503)
 
         try:
             response = requests.get(
                 f'https://api.revenuecat.com/v1/subscribers/{user.org.revenuecat_app_user_id}',
-                headers={'Authorization': f'Bearer {settings.REVENUECAT_SECRET_API_KEY}'},
+                headers={'Authorization': f'Bearer {settings.REVENUECAT_API_KEY}'},
                 timeout=10,
             )
             response.raise_for_status()

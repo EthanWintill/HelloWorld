@@ -2,6 +2,11 @@ name: Verify release billing
 
 on:
   workflow_dispatch:
+    inputs:
+      configure_sdk_key:
+        description: Configure the backend getter with the existing App Store SDK key
+        type: boolean
+        default: false
 
 jobs:
   verify:
@@ -14,25 +19,42 @@ jobs:
         env:
           DROPLET_USER: ${{ secrets.DROPLET_USER }}
           DROPLET_HOST: ${{ secrets.DROPLET_HOST }}
+          CONFIGURE_SDK_KEY: ${{ inputs.configure_sdk_key }}
         run: |
-          ssh -o StrictHostKeyChecking=no "$DROPLET_USER@$DROPLET_HOST" 'cd /home/sammy/GreekGeek/Backend/GreekGeekApi && ../.venv/bin/python manage.py shell' <<'PY'
+          ssh -o StrictHostKeyChecking=no "$DROPLET_USER@$DROPLET_HOST" "cd /home/sammy/GreekGeek/Backend/GreekGeekApi && RELEASE_CONFIGURE_SDK_KEY=$CONFIGURE_SDK_KEY ../.venv/bin/python manage.py shell" <<'PY'
           import json
+          import os
+          import re
+          from pathlib import Path
           import requests
           from django.conf import settings
           from django.urls import resolve
+          from dotenv import find_dotenv, set_key
           from Study.models import Org
+          org = Org.objects.get(id=16, name='Apple Paid')
+          key = settings.REVENUECAT_API_KEY
+          if os.environ.get('RELEASE_CONFIGURE_SDK_KEY') == 'true':
+              source = (Path(settings.BASE_DIR).parent.parent / 'GreekGeekStudy/constants/revenuecat.ts').read_text()
+              key = re.search(r"'(appl_[^']+)'", source).group(1)
+              response = requests.get(
+                  f'https://api.revenuecat.com/v1/subscribers/{org.revenuecat_app_user_id}',
+                  headers={'Authorization': f'Bearer {key}'}, timeout=15,
+              )
+              response.raise_for_status()
+              env_path = find_dotenv(usecwd=True)
+              assert env_path, 'Backend environment file not found'
+              set_key(env_path, 'REVENUECAT_API_KEY', key)
           result = {
               'route': resolve('/api/billing/sync-revenuecat/').url_name,
-              'revenuecat_key_configured': bool(settings.REVENUECAT_SECRET_API_KEY),
+              'revenuecat_key_configured': bool(key),
               'webhook_configured': bool(settings.REVENUECAT_WEBHOOK_AUTHORIZATION),
               'entitlement': settings.REVENUECAT_ENTITLEMENT_ID,
               'product': settings.REVENUECAT_PRODUCT_ID,
           }
-          org = Org.objects.get(id=16, name='Apple Paid')
-          if settings.REVENUECAT_SECRET_API_KEY:
+          if key:
               response = requests.get(
                   f'https://api.revenuecat.com/v1/subscribers/{org.revenuecat_app_user_id}',
-                  headers={'Authorization': f'Bearer {settings.REVENUECAT_SECRET_API_KEY}'},
+                  headers={'Authorization': f'Bearer {key}'},
                   timeout=15,
               )
               result['revenuecat_http_status'] = response.status_code
@@ -40,5 +62,11 @@ jobs:
                   subscriber = response.json().get('subscriber', {})
                   result['subscription_products'] = list(subscriber.get('subscriptions', {}))
                   result['entitlements'] = list(subscriber.get('entitlements', {}))
+              else:
+                  result['error_code'] = response.json().get('code')
+                  result['error_message'] = response.json().get('message')
           print(json.dumps(result))
           PY
+          if [ "$CONFIGURE_SDK_KEY" = "true" ]; then
+            ssh -o StrictHostKeyChecking=no "$DROPLET_USER@$DROPLET_HOST" 'sudo -n systemctl restart gunicorn && sudo -n systemctl is-active gunicorn'
+          fi

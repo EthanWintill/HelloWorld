@@ -944,7 +944,7 @@ class RevenueCatWebhookTests(TestCase):
         self.assertFalse(org.is_premium)
 
 
-@override_settings(REVENUECAT_SECRET_API_KEY='server-test-key')
+@override_settings(REVENUECAT_API_KEY='server-test-key')
 class RevenueCatSubscriptionSyncTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -1029,7 +1029,7 @@ class RevenueCatSubscriptionSyncTests(TestCase):
         self.assertEqual(self.sync({'subscriber': {}}).status_code, 503)
         self.assertFalse(self.org.is_premium)
 
-    @override_settings(REVENUECAT_SECRET_API_KEY='')
+    @override_settings(REVENUECAT_API_KEY='')
     def test_missing_key_returns_retryable_error(self):
         self.assertEqual(self.client.post(self.url, {}).status_code, 503)
 

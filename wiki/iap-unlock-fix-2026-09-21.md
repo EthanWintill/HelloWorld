@@ -42,7 +42,7 @@ Backend normal command, from `Backend/GreekGeekApi`, after PostgreSQL access is 
 
 ## Required release steps
 
-1. Deploy the new backend route and configure `REVENUECAT_SECRET_API_KEY` with a RevenueCat API v1 key for the same project as the mobile SDK. The local ignored environment currently has no value; deployed configuration was not checked. Keep the key server-side.
+1. Deploy the new backend route and configure `REVENUECAT_API_KEY` with a RevenueCat API v1-compatible key for the same project as the mobile SDK. The App Store public SDK key supports subscriber lookup; `REVENUECAT_SECRET_API_KEY` remains a legacy fallback. On October 6 the deployed legacy key returned 403, while the existing App Store SDK key returned 200 for the authorized test organization. Server configuration correction is in progress.
 2. Confirm the production App Store product and `GreekGeek Pro` entitlement mapping in RevenueCat. Ensure backend `REVENUECAT_PRODUCT_ID` and mobile `REVENUECAT_PRODUCT_IDS.yearly` match the intended product. The current release source has a production SDK-key fallback; it does not require an environment override when that fallback is correct. Development defaults to Test Store, which is distinct from Apple's sandbox.
 3. Keep the authorized RevenueCat webhook enabled for later renewal, expiration and refund events; immediate verification complements it.
 4. Confirm the Paid Apps Agreement is in effect and product metadata is complete in App Store Connect. Those account states were not accessed in this task.
