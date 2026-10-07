@@ -15,7 +15,8 @@ Updated October 6, 2026. [Current iPad evidence](verification-2026-10-05-ipad.md
 ## Release candidate
 
 - [x] Implement immediate RevenueCat purchase/restore verification and regression tests for Guideline 2.1(b); see [release requirements](iap-unlock-fix-2026-09-21.md).
-- [ ] Deploy the verification endpoint/key and verify a real Apple sandbox purchase/restore on iPadOS 26.5.
+- [x] Deploy the verification endpoint/key and verify live expired-subscription sync. See [release evidence](release-2026-10-06.md).
+- [ ] Verify a fresh Apple sandbox purchase, successful restore, and Pro unlock in production build 17 on iPadOS 26.5.
 
 - [ ] Fix iOS 27 UIScene lifecycle launch failure.
 - [ ] Make native dependency fixes reproducible through supported upgrades or durable patches; prove a clean build.

@@ -7,8 +7,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "ios": {
-      }
+      "ios": {}
     },
     "development-simulator": {
       "extends": "development",
@@ -24,6 +23,11 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6777619812",
+        "appleTeamId": "28J9M2P8ZN"
+      }
+    }
   }
 }

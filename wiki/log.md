@@ -323,3 +323,7 @@ The owner authorized deployment of the App Review fixes and a production build, 
 ## 2026-10-06 — Release billing configuration correction
 
 Deployed App Review fixes via GitHub Actions run 37563502298. Live subscriber lookup rejected the existing backend RevenueCat key with HTTP 403. Verified the existing public App Store SDK key returns HTTP 200 for the authorized Apple Paid test organization. Added REVENUECAT_API_KEY with legacy fallback and reran all 39 billing tests successfully. Production iOS build 17 (ed772804-dbc8-4845-bd58-48d8a8448d1b) is compiling. Live configuration correction and sandbox/device verification remain in progress; webhook authorization is absent.
+
+## 2026-10-06 — Production build and live verification
+
+Production build 17 compiled successfully. RevenueCat configuration correction is deployed; authenticated production sync returns 200 and correctly denies expired subscription access. iPad restore without active purchases shows the expected message. Restored the authorized manual test-org Pro flag after billing checks. TestFlight upload is blocked by a missing/expired Apple agreement; physical-device sandbox purchase remains unverified. See [release evidence](release-2026-10-06.md). Temporary operational workflow removed after successful configuration/test runs.
