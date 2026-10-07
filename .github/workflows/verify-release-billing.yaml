@@ -26,9 +26,7 @@ jobs:
           import os
           import re
           import subprocess
-          from pathlib import Path
-          import re
-          import subprocessquests
+          import requests
           from django.conf import settings
           from django.urls import resolve
           from dotenv import find_dotenv, set_key
