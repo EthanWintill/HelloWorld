@@ -79,7 +79,7 @@ jobs:
                   result['verified_subscription_status'] = org.revenuecat_subscription_status
                   result['verified_premium'] = org.is_premium
                   assert synced.status_code == 200, 'Live subscriber sync failed'
-                  assert synced.data['is_premium'] == org.is_premium
+                  assert synced.data['billing']['is_premium'] == org.is_premium
                   transaction.set_rollback(True)
               org.refresh_from_db()
               result['manual_test_access_preserved'] = org.is_premium == original_premium
