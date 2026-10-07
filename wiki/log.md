@@ -288,3 +288,34 @@ Replaced the welcome screen's external organization-registration link with an in
 ## 2026-09-19 | Documentation refresh
 
 Reconciled repository/mobile READMEs, project state, development runbook, verification record, launch checklist, venture brief, design/clock-out notes and workstation project summary with the current source and September 18–19 observations. Annotated April/May audits and remediation plans as historical and recorded the latest landing-copy change. Removed superseded setup/migration claims from active guidance. Documented the unsubmitted App Review fix, iOS 27 failure, push registration error, temporary dependency patches, database test blocker and unverified production billing. Preserved historical results; no new app regression run or deployment was performed for this documentation update.
+
+## 2026-09-20 | No-payment account-flow test
+
+Verified existing fast-test registration endpoint and the complete in-app embedded test-org creation → web dashboard → native dismissal path on iOS 26.5. No checkout, payment or trial was started. Two clearly named test organizations remain on the live backend. Documented shortcut limitations: random inaccessible password, skipped email verification and no native login handoff. Password recovery presentation/dismissal also passed. Freed about 2.7 GB of regenerable GreekGeek Xcode build cache after disk exhaustion. See project `wiki/verification-2026-09-20.md` for exact scope.
+
+## 2026-09-21 | IAP Pro unlock correction
+
+Added authenticated server-to-server RevenueCat subscription verification and mobile post-purchase/restore retries, organization identity checks and configured-Pro-product fallback. Documented required backend key/deployment and Apple sandbox validation. Verified 39 backend billing tests on isolated SQLite, 9 mocked mobile tests, TypeScript and diff whitespace. PostgreSQL remains blocked by authentication; no production deployment or real Apple sandbox purchase was performed. See project `wiki/iap-unlock-fix-2026-09-21.md`.
+
+## 2026-09-21 | Location permission wording
+
+Addressed Guideline 5.1.1(iv) in the Study screen: replaced both Enable Location buttons with Continue, changed explanatory copy to describe location use neutrally, and removed the directive to set Location to Always from the Settings fallback. Existing permission request and denial handling remain. TypeScript and diff checks passed; no simulator walkthrough or submission in this task.
+
+## 2026-09-27 | iPhone preview build and device signing
+
+Built the current mobile working tree through EAS with the `preview` internal-distribution profile, then refreshed the Samuel Bryant Apple team's ad hoc provisioning profile and re-signed the successful build for Ethan's iPhone 16e (UDID ending `401C`). The installable artifact is [EAS build 54503f99](https://expo.dev/accounts/greekgeek/projects/GreekGeekStudy/builds/54503f99-c930-4e6a-ad75-81568e2c83bb). Downloaded the IPA and verified that its embedded profile lists the phone, uses team `28J9M2P8ZN`, and matches bundle ID `app.greekgeek.GreekGeekStudy`. TypeScript and nine mocked mobile billing tests passed before the cloud build. Local Xcode 27 device building remains blocked by missing Xcode signing accounts and old CocoaPods deployment targets. Direct installation was attempted while the phone was locked; a subsequent device check reported Developer Mode off. Device installation and launch remain to be confirmed. This build does not establish backend deployment or a successful Apple sandbox purchase.
+
+## 2026-10-05 | 11-inch iPad simulator install
+
+Built the current mobile working tree as a standalone Release simulator app with Xcode 27, overriding the inherited CocoaPods deployment target to iOS 16.4 and disabling code signing for the simulator. Installed and launched `app.greekgeek.GreekGeekStudy` on the booted iPad Air 11-inch (M3), iPadOS 26.5, in Xcode Device Hub. The welcome screen rendered without an immediate crash. This verifies installation and initial launch only; sign-in, purchase, and study workflows were not repeated in this run.
+## [2026-10-05] verification | iPad Air 11-inch release QA and test Pro access
+
+Built and exercised the local Release app on iPad Air 11-inch (M3) / iPadOS 26.5. Verified signed-out account browser flows, free gating, manually granted test Pro access, admin screens, a short manual entry, GPS clock-in/out at a simulated approved study area, History, rankings, group create/delete, reports, and export presentation. The `Apple Paid` test org has `is_premium=true` without changing its canceled Stripe or expired RevenueCat records; billing sync may reset this test flag. Fixed empty sign-in/code error copy locally. See [dated iPad verification](verification-2026-10-05-ipad.md) for scope and remaining limits.
+
+## [2026-10-06] verification | Fresh iPad location denial and Profile group refresh
+
+On a fresh iPad Air 11-inch simulator, verified neutral Continue buttons, the native location prompt, denial state, and the permission-specific Clock in alert. Fixed a false “No Study Location Found” alert after denial. Found that Profile and Admin use separate dashboard providers, so refreshing only the Admin provider left Profile's group label stale. Profile now refreshes on focus; the rebuilt Release app showed “No group” immediately after deleting the disposable group. The final live dashboard read confirmed org 16 is still premium for QA, its group is null, and no study session is open. TypeScript and the native Release build passed. See [iPad verification](verification-2026-10-05-ipad.md).
+
+## [2026-10-06] release | Production deployment and iOS build started
+
+The owner authorized deployment of the App Review fixes and a production build, followed by testing. Re-ran 39 backend billing tests on isolated SQLite, nine mobile billing tests, TypeScript, and diff checks successfully. Preparing the matching backend deployment and production EAS build; live purchase verification and exact-build device testing are still pending.

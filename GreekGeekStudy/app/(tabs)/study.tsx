@@ -196,16 +196,16 @@ const Study = () => {
       Alert.alert(
         'Unable to Open Settings',
         Platform.OS === 'ios'
-          ? 'Open Settings, choose GreekGeek, then set Location to Always.'
-          : 'Open Settings, choose GreekGeek, then enable Location permissions.'
+          ? 'You can review location access in Settings → GreekGeek → Location.'
+          : 'You can review location access in Settings → GreekGeek → Permissions.'
       );
     }
   };
 
-  const showSettingsAlert = () => {
+  const showSettingsAlert = (foregroundGranted = foregroundStatus) => {
     Alert.alert(
       "Location Permission Required",
-      !foregroundStatus
+      !foregroundGranted
         ? "GreekGeek needs location access to verify study sessions."
         : "GreekGeek needs background location access to end sessions when you leave.",
       [
@@ -411,7 +411,7 @@ const Study = () => {
     return null;
   }
 
-  const handleEnableLocation = async () => {
+  const handleContinueLocationPermission = async () => {
     const permissionsGranted = await handleLocationPermission();
     if (!permissionsGranted) {
       showSettingsAlert();
@@ -463,6 +463,14 @@ const Study = () => {
       if (!token) throw new Error('No access token found');
 
       if (requiresLocationVerification && !studyLocationResult) {
+        const [foregroundPermission, backgroundPermission] = await Promise.all([
+          Location.getForegroundPermissionsAsync(),
+          Location.getBackgroundPermissionsAsync(),
+        ]);
+        if (foregroundPermission.status !== 'granted' || backgroundPermission.status !== 'granted') {
+          showSettingsAlert(foregroundPermission.status === 'granted');
+          return;
+        }
         Alert.alert('No Study Location Found', 'Please go to a study location to clock in.');
         return;
       }
@@ -870,8 +878,8 @@ const Study = () => {
         iconColor: '#3e4a3d',
         title: 'Location access off',
         detail: !foregroundStatus
-          ? 'Enable location when you are ready to clock in from an approved study area.'
-          : 'Enable background location so active sessions can end when you leave.',
+          ? 'Location is used to check whether you are at an approved study area when you clock in.'
+          : 'Background location is used during an active study session to end it when you leave the study area.',
       };
     }
 
@@ -1201,11 +1209,11 @@ const Study = () => {
                       </Text>
                       {locationPermissionMissing && (
                         <TouchableOpacity
-                          onPress={handleEnableLocation}
+                          onPress={handleContinueLocationPermission}
                           className="mt-3 self-start bg-gg-primary rounded-md px-3 py-2"
                         >
                           <Text className="font-psemibold text-white text-sm">
-                            Enable Location
+                            Continue
                           </Text>
                         </TouchableOpacity>
                       )}
@@ -1349,11 +1357,11 @@ const Study = () => {
                       </Text>
                       {requiresLocationVerification && (!backgroundStatus || !foregroundStatus) && (
                         <TouchableOpacity
-                          onPress={handleEnableLocation}
+                          onPress={handleContinueLocationPermission}
                           className="mt-3 bg-gg-primary rounded-lg px-4 py-2"
                         >
                           <Text className="font-psemibold text-white text-sm">
-                            Enable Location
+                            Continue
                           </Text>
                         </TouchableOpacity>
                       )}

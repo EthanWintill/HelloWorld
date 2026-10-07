@@ -2,6 +2,12 @@
 
 ## Current guidance
 
+- [iPad Air 11-inch Release QA — October 5–6](verification-2026-10-05-ipad.md): observed account, Pro test access, study, admin, location-permission, reporting results and limits.
+
+- [IAP unlock correction — September 21](iap-unlock-fix-2026-09-21.md): implementation, regression results and required release configuration.
+
+- [Account-flow verification — September 20](verification-2026-09-20.md): embedded test-org creation and dashboard access without payment.
+
 - [Current state](current-state.md): implemented behavior, known failures and release status.
 - [Local development](local-development.md): backend setup and current Xcode/simulator workarounds.
 - [Verification — September 18–19](verification-2026-09-19.md): observed results and explicit test limits.

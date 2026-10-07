@@ -143,10 +143,10 @@ const GroupsManagement = () => {
       setNewGroupName('')
       setSelectedUserIds([])
       setShowCreateModal(false)
-      Alert.alert('Success', 'Group created successfully')
       // Refresh both sources so membership labels and unassigned counts stay in sync.
       await fetchGroups()
       await refreshDashboard()
+      Alert.alert('Success', 'Group created successfully')
     } catch (error) {
       console.error('Error creating group:', error)
       if (axios.isAxiosError(error)) {
@@ -204,9 +204,9 @@ const GroupsManagement = () => {
       setShowEditModal(false)
       setSelectedGroupForEdit(null)
       setSelectedUserIds([])
-      Alert.alert('Success', 'Group updated successfully')
       await fetchGroups()
       await refreshDashboard()
+      Alert.alert('Success', 'Group updated successfully')
     } catch (error) {
       console.error('Error updating group:', error)
       if (axios.isAxiosError(error)) {
@@ -259,9 +259,9 @@ const GroupsManagement = () => {
                })
 
                setGroups(groups.filter(g => g.id !== group.id))
-               Alert.alert('Success', 'Group deleted successfully')
                await fetchGroups()
                await refreshDashboard()
+               Alert.alert('Success', 'Group deleted successfully')
              } catch (error) {
                console.error('Error deleting group:', error)
                if (axios.isAxiosError(error)) {

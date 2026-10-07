@@ -1,3 +1,5 @@
+import { hasProAccess } from '@/services/ProAccess'
+import { PurchaseSyncError } from '@/services/SubscriptionSync'
 import { useCallback, useMemo, useState } from 'react'
 import { Alert } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -22,6 +24,7 @@ export const useOrgSubscriptionGate = () => {
   const { dashboardState, refreshDashboard } = useDashboard()
   const {
     customerInfo,
+    activeOrganizationId,
     error: revenueCatError,
     isGreekGeekPro,
     isLoading: revenueCatLoading,
@@ -38,7 +41,7 @@ export const useOrgSubscriptionGate = () => {
   const hasOrgPremiumAccess = Boolean(
     org?.is_premium
     || hasWebBillingAccess
-    || isGreekGeekPro
+    || (activeOrganizationId === org?.revenuecat_app_user_id && isGreekGeekPro)
     || revenueCatEntitlementIsCurrent(org)
   )
   const isOrgAdmin = Boolean(data?.is_staff && org)
@@ -114,10 +117,10 @@ export const useOrgSubscriptionGate = () => {
         return
       }
 
-      const info = await purchaseProPackage()
+      const info = await purchaseProPackage(data)
       if (!info) return
 
-      if (info.entitlements.active[REVENUECAT_ENTITLEMENT_ID]) {
+      if (hasProAccess(info)) {
         await refreshDashboard().catch((error) => {
           console.warn('Dashboard refresh after RevenueCat purchase failed:', error)
         })
@@ -127,17 +130,17 @@ export const useOrgSubscriptionGate = () => {
         Alert.alert('Purchase pending', 'Your purchase is processing. GreekGeek Pro will unlock when the store confirms it.')
       }
     } catch (error) {
-      Alert.alert('Purchase failed', 'Could not complete the purchase. Please try again.')
+      Alert.alert(error instanceof PurchaseSyncError ? 'Purchase saved' : 'Purchase failed', error instanceof PurchaseSyncError ? error.message : 'Could not complete the purchase. Please try again.')
     } finally {
       setSubscriptionAction(null)
     }
-  }, [purchaseProPackage, refreshDashboard, syncWebBillingBeforePaywall])
+  }, [data, purchaseProPackage, refreshDashboard, syncWebBillingBeforePaywall])
 
   const restorePro = useCallback(async () => {
     setSubscriptionAction('restore')
     try {
-      const info = await restorePurchases()
-      if (info?.entitlements.active[REVENUECAT_ENTITLEMENT_ID]) {
+      const info = await restorePurchases(data)
+      if (hasProAccess(info)) {
         await refreshDashboard().catch((error) => {
           console.warn('Dashboard refresh after RevenueCat restore failed:', error)
         })
@@ -147,11 +150,11 @@ export const useOrgSubscriptionGate = () => {
         Alert.alert('No purchases found', 'No active GreekGeek Pro subscription was found for this store account.')
       }
     } catch (error) {
-      Alert.alert('Restore failed', 'Could not restore purchases. Please try again.')
+      Alert.alert('Restore incomplete', error instanceof PurchaseSyncError ? error.message : 'Could not restore purchases. Please try again.')
     } finally {
       setSubscriptionAction(null)
     }
-  }, [refreshDashboard, restorePurchases])
+  }, [data, refreshDashboard, restorePurchases])
 
   return useMemo(() => ({
     closePaywall,

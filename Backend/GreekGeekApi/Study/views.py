@@ -1859,6 +1859,66 @@ class BillingSubscriptionSyncView(APIView):
         return Response(billing_response(org), status=status.HTTP_200_OK)
 
 
+class RevenueCatSubscriptionSyncView(APIView):
+    """Verify purchases server-to-server; never trust client entitlement flags."""
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, format=None):
+        user = request.user
+        if not user.is_staff or not user.org:
+            raise exceptions.PermissionDenied(detail="Only organization admins can manage billing")
+        if not settings.REVENUECAT_SECRET_API_KEY:
+            return Response({"detail": "Purchase verification is not configured."}, status=503)
+
+        try:
+            response = requests.get(
+                f'https://api.revenuecat.com/v1/subscribers/{user.org.revenuecat_app_user_id}',
+                headers={'Authorization': f'Bearer {settings.REVENUECAT_SECRET_API_KEY}'},
+                timeout=10,
+            )
+            response.raise_for_status()
+            subscriber = response.json()['subscriber']
+            entitlements = subscriber['entitlements']
+            subscriptions = subscriber['subscriptions']
+            entitlement = entitlements.get(settings.REVENUECAT_ENTITLEMENT_ID)
+            # The configured Pro product also proves access if its entitlement
+            # association is missing. Never accept arbitrary purchased products.
+            product_id = (entitlement or {}).get('product_identifier') or settings.REVENUECAT_PRODUCT_ID
+            subscription = subscriptions.get(product_id) or {}
+            access = entitlement or subscriptions.get(settings.REVENUECAT_PRODUCT_ID)
+            from django.utils.dateparse import parse_datetime
+            expires_at = None
+            active = False
+            if access:
+                if 'expires_date' not in access:
+                    raise ValueError('Missing subscription expiration')
+                dates = []
+                for field in ('expires_date', 'grace_period_expires_date'):
+                    raw = access.get(field)
+                    if raw:
+                        parsed = parse_datetime(raw)
+                        if parsed is None or timezone.is_naive(parsed):
+                            raise ValueError('Invalid subscription date')
+                        dates.append(parsed)
+                expires_at = max(dates) if dates else None
+                active = (expires_at > timezone.now() if expires_at else bool(entitlement)) and not subscription.get('refunded_at')
+        except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError):
+            return Response({"detail": "Could not verify the purchase. Please restore purchases to retry."}, status=503)
+
+        # Reload under a lock so concurrent Stripe updates keep their access.
+        with transaction.atomic():
+            org = Org.objects.select_for_update().get(pk=user.org_id)
+            org.revenuecat_subscription_status = 'active' if active else 'expired'
+            org.revenuecat_entitlement_expires_at = expires_at
+            org.revenuecat_product_id = product_id if access else ''
+            org.revenuecat_store = subscription.get('store') or ''
+            fields = ['revenuecat_subscription_status', 'revenuecat_entitlement_expires_at',
+                      'revenuecat_product_id', 'revenuecat_store']
+            update_org_premium_state(org, fields)
+            org.save(update_fields=fields)
+        return Response(billing_response(org), status=status.HTTP_200_OK)
+
+
 class BillingSubscriptionCancelView(APIView):
     """
     Cancels the org Stripe subscription at period end.

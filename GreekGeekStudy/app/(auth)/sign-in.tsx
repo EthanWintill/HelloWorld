@@ -17,16 +17,25 @@ const SignIn = () => {
         email: '',
         password: '',
     })
-    const [formError, setFormError] = useState(false)
+    const [formError, setFormError] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
 
 
     const submit = async () => {
+        const email = form.email.trim()
+        if (!email || !form.password) {
+            setFormError('Enter your email and password.')
+            return
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            setFormError('Enter a valid email address.')
+            return
+        }
         setIsSubmitting(true);
-        setFormError(false)
+        setFormError('')
         try {
             const response = await axios.post(`${API_URL}api/token/`, {
-                email: form.email.toLowerCase(),
+                email: email.toLowerCase(),
                 password: form.password,
             });
 
@@ -37,10 +46,10 @@ const SignIn = () => {
                 await AsyncStorage.setItem('refreshToken', data.refresh);
                 router.replace('/study');
             } else {
-                setFormError(true)
+                setFormError('No account found with those credentials. Try again or reset your password.')
             }
         } catch (error: any) {
-            setFormError(true)
+            setFormError('No account found with those credentials. Try again or reset your password.')
         } finally {
             setIsSubmitting(false);
         }
@@ -99,7 +108,7 @@ const SignIn = () => {
                                 <View className="bg-[#ffdad6] border border-[#ffb4ab] rounded-lg p-3 mt-4 flex-row">
                                     <Ionicons name="alert-circle" size={18} color="#ba1a1a" />
                                     <Text className="text-gg-error ml-2 flex-1 font-pregular text-sm">
-                                        No account found with those credentials. Try again or reset your password.
+                                        {formError}
                                     </Text>
                                 </View>
                             )}

@@ -942,3 +942,100 @@ class RevenueCatWebhookTests(TestCase):
         self.assertEqual(response.status_code, 401)
         org.refresh_from_db()
         self.assertFalse(org.is_premium)
+
+
+@override_settings(REVENUECAT_SECRET_API_KEY='server-test-key')
+class RevenueCatSubscriptionSyncTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.org = Org.objects.create(name='Purchase Test', reg_code='IAPSYNC')
+        self.user = User.objects.create_user(email='iap-sync@example.com', password='test-password',
+                                            org=self.org, is_staff=True)
+        self.client.force_authenticate(self.user)
+        self.url = reverse('billing-sync-revenuecat')
+        self.future = (timezone.now() + timedelta(days=1)).isoformat()
+        self.past = (timezone.now() - timedelta(days=1)).isoformat()
+
+    def subscriber(self, expires=None, sandbox=True, entitlement=True):
+        subscription = {'expires_date': expires or self.future, 'store': 'app_store',
+                        'is_sandbox': sandbox, 'refunded_at': None}
+        return {'subscriber': {
+            'entitlements': {'GreekGeek Pro': dict(subscription, product_identifier='yearly')} if entitlement else {},
+            'subscriptions': {'yearly': subscription},
+        }}
+
+    def sync(self, payload):
+        with patch('Study.views.requests.get') as get:
+            get.return_value.json.return_value = payload
+            response = self.client.post(self.url, {'org_id': 999, 'is_premium': True})
+            self.assertTrue(get.call_args.args[0].endswith(str(self.org.revenuecat_app_user_id)))
+            self.assertEqual(get.call_args.kwargs['headers']['Authorization'], 'Bearer server-test-key')
+        self.org.refresh_from_db()
+        return response
+
+    def test_sandbox_purchase_unlocks_org_before_webhook_and_survives_dashboard_reload(self):
+        response = self.sync(self.subscriber())
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['billing']['is_premium'])
+        self.assertTrue(self.client.get(reverse('dashboard')).data['org']['is_premium'])
+
+    def test_production_purchase_and_repeated_restore_are_idempotent(self):
+        for _ in range(2):
+            self.assertEqual(self.sync(self.subscriber(sandbox=False)).status_code, 200)
+            self.assertTrue(self.org.is_premium)
+
+    def test_configured_product_unlocks_when_entitlement_mapping_is_missing(self):
+        self.sync(self.subscriber(entitlement=False))
+        self.assertTrue(self.org.is_premium)
+
+    def test_unrelated_product_and_client_premium_flag_cannot_unlock(self):
+        payload = self.subscriber(entitlement=False)
+        payload['subscriber']['subscriptions']['unrelated'] = payload['subscriber']['subscriptions'].pop('yearly')
+        self.sync(payload)
+        self.assertFalse(self.org.is_premium)
+
+    def test_expired_subscription_does_not_unlock(self):
+        self.sync(self.subscriber(expires=self.past))
+        self.assertFalse(self.org.is_premium)
+
+    def test_refunded_subscription_does_not_unlock(self):
+        payload = self.subscriber()
+        payload['subscriber']['subscriptions']['yearly']['refunded_at'] = self.past
+        self.sync(payload)
+        self.assertFalse(self.org.is_premium)
+
+    def test_grace_period_retains_access(self):
+        payload = self.subscriber(expires=self.past)
+        payload['subscriber']['entitlements']['GreekGeek Pro']['grace_period_expires_date'] = self.future
+        self.sync(payload)
+        self.assertTrue(self.org.is_premium)
+
+    def test_expired_revenuecat_does_not_remove_active_stripe_access(self):
+        self.org.stripe_subscription_status = 'active'
+        self.org.save()
+        self.sync(self.subscriber(expires=self.past))
+        self.assertTrue(self.org.is_premium)
+
+    def test_upstream_failure_preserves_existing_access(self):
+        import requests
+        self.org.is_premium = True
+        self.org.save()
+        with patch('Study.views.requests.get', side_effect=requests.Timeout):
+            self.assertEqual(self.client.post(self.url, {}).status_code, 503)
+        self.org.refresh_from_db()
+        self.assertTrue(self.org.is_premium)
+
+    def test_malformed_response_cannot_grant_access(self):
+        self.assertEqual(self.sync({'subscriber': {}}).status_code, 503)
+        self.assertFalse(self.org.is_premium)
+
+    @override_settings(REVENUECAT_SECRET_API_KEY='')
+    def test_missing_key_returns_retryable_error(self):
+        self.assertEqual(self.client.post(self.url, {}).status_code, 503)
+
+    def test_member_cannot_sync_billing(self):
+        self.user.is_staff = False
+        self.user.save()
+        with patch('Study.views.requests.get') as get:
+            self.assertEqual(self.client.post(self.url, {}).status_code, 403)
+            get.assert_not_called()

@@ -12,10 +12,11 @@ import Purchases, {
   type PurchasesPackage,
 } from 'react-native-purchases'
 import RevenueCatUI from 'react-native-purchases-ui'
+import { hasProAccess } from '@/services/ProAccess'
+import { syncPurchasedOrganization } from '@/services/SubscriptionSync'
 import {
   REVENUECAT_API_KEY,
   REVENUECAT_DISABLED_MESSAGE,
-  REVENUECAT_ENTITLEMENT_ID,
   REVENUECAT_IS_ENABLED,
   REVENUECAT_PRODUCT_IDS,
 } from '@/constants/revenuecat'
@@ -36,20 +37,21 @@ type RevenueCatUser = {
 
 type RevenueCatContextType = {
   customerInfo: CustomerInfo | null
+  activeOrganizationId: string | null
   currentOffering: PurchasesOfferings['current']
   error: string | null
   isConfigured: boolean
   isGreekGeekPro: boolean
   isLoading: boolean
   identifyUser: (user: RevenueCatUser) => Promise<void>
-  openCustomerCenter: () => Promise<void>
+  openCustomerCenter: (user: RevenueCatUser) => Promise<void>
   proIntroEligibility: IntroEligibility | null
   proPackage: PurchasesPackage | null
-  purchaseProPackage: () => Promise<CustomerInfo | null>
+  purchaseProPackage: (user: RevenueCatUser) => Promise<CustomerInfo | null>
   refreshOfferings: () => Promise<PurchasesOfferings | null>
   refreshCustomerInfo: () => Promise<CustomerInfo | null>
   resetUser: () => Promise<void>
-  restorePurchases: () => Promise<CustomerInfo | null>
+  restorePurchases: (user: RevenueCatUser) => Promise<CustomerInfo | null>
 }
 
 const RevenueCatContext = createContext<RevenueCatContextType | undefined>(undefined)
@@ -62,7 +64,7 @@ const messageFromError = (error: unknown, fallback: string) => {
 }
 
 const hasGreekGeekPro = (customerInfo: CustomerInfo | null) => {
-  return Boolean(customerInfo?.entitlements.active[REVENUECAT_ENTITLEMENT_ID])
+  return hasProAccess(customerInfo)
 }
 
 const selectGreekGeekProPackage = (offerings: PurchasesOfferings | null) => {
@@ -145,6 +147,7 @@ export const buildProPurchaseCopy = (
 
 export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null)
+  const [activeOrganizationId, setActiveOrganizationId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isConfigured, setIsConfigured] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -280,7 +283,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [ensureConfigured, loadProIntroEligibility])
 
   const identifyUser = useCallback(async (user: RevenueCatUser) => {
-    if (!user.org?.revenuecat_app_user_id) return
+    if (!user.org?.revenuecat_app_user_id) throw new Error('Organization billing identity is unavailable.')
 
     const configured = await ensureConfigured()
     if (!configured) return
@@ -288,9 +291,12 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const appUserID = user.org.revenuecat_app_user_id
     if (identifiedUserIdRef.current === appUserID) return
 
+    setActiveOrganizationId(null)
+    setCustomerInfo(null)
     try {
       const result = await Purchases.logIn(appUserID)
       identifiedUserIdRef.current = appUserID
+      setActiveOrganizationId(appUserID)
       setCustomerInfo(result.customerInfo)
       setProIntroEligibility(null)
       setError(null)
@@ -316,6 +322,9 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [ensureConfigured])
 
   const resetUser = useCallback(async () => {
+    setActiveOrganizationId(null)
+    setCustomerInfo(null)
+    identifiedUserIdRef.current = null
     const configured = await ensureConfigured()
     if (!configured) return
 
@@ -334,11 +343,15 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const proPackage = selectGreekGeekProPackage(offerings)
 
-  const purchaseProPackage = useCallback(async () => {
+  const purchaseProPackage = useCallback(async (user: RevenueCatUser) => {
     const configured = await ensureConfigured()
     if (!configured) return null
 
     try {
+      await identifyUser(user)
+      if (await Purchases.getAppUserID() !== user.org?.revenuecat_app_user_id) {
+        throw new Error('Organization billing identity could not be confirmed.')
+      }
       const packageToPurchase = proPackage ?? selectGreekGeekProPackage(await refreshOfferings())
       if (!packageToPurchase) {
         throw new Error('GreekGeek Pro is not available for purchase yet.')
@@ -346,6 +359,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       const { customerInfo: updatedInfo } = await Purchases.purchasePackage(packageToPurchase)
       setCustomerInfo(updatedInfo)
+      if (hasProAccess(updatedInfo)) await syncPurchasedOrganization()
       setError(null)
       return updatedInfo
     } catch (purchaseError) {
@@ -357,15 +371,20 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setError(message)
       throw purchaseError
     }
-  }, [ensureConfigured, proPackage, refreshOfferings])
+  }, [ensureConfigured, identifyUser, proPackage, refreshOfferings])
 
-  const restorePurchases = useCallback(async () => {
+  const restorePurchases = useCallback(async (user: RevenueCatUser) => {
     const configured = await ensureConfigured()
     if (!configured) return null
 
     try {
+      await identifyUser(user)
+      if (await Purchases.getAppUserID() !== user.org?.revenuecat_app_user_id) {
+        throw new Error('Organization billing identity could not be confirmed.')
+      }
       const info = await Purchases.restorePurchases()
       setCustomerInfo(info)
+      if (hasProAccess(info)) await syncPurchasedOrganization()
       setError(null)
       return info
     } catch (restoreError) {
@@ -373,13 +392,14 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setError(message)
       throw restoreError
     }
-  }, [ensureConfigured])
+  }, [ensureConfigured, identifyUser])
 
-  const openCustomerCenter = useCallback(async () => {
+  const openCustomerCenter = useCallback(async (user: RevenueCatUser) => {
     const configured = await ensureConfigured()
     if (!configured) return
 
     try {
+      await identifyUser(user)
       await RevenueCatUI.presentCustomerCenter({
         callbacks: {
           onRestoreCompleted: ({ customerInfo: restoredInfo }) => {
@@ -392,15 +412,18 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           },
         },
       })
+      const info = await refreshCustomerInfo()
+      if (hasProAccess(info)) await syncPurchasedOrganization()
     } catch (customerCenterError) {
       const message = messageFromError(customerCenterError, 'Could not open subscription management.')
       setError(message)
       throw customerCenterError
     }
-  }, [ensureConfigured])
+  }, [ensureConfigured, identifyUser, refreshCustomerInfo])
 
   const value = useMemo(() => ({
     customerInfo,
+    activeOrganizationId,
     currentOffering: offerings?.current ?? null,
     error,
     isConfigured,
@@ -417,6 +440,7 @@ export const RevenueCatProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     restorePurchases,
   }), [
     customerInfo,
+    activeOrganizationId,
     error,
     identifyUser,
     isConfigured,

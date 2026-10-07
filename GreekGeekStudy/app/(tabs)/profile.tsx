@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react'
+import { hasProAccess } from '@/services/ProAccess'
+import { PurchaseSyncError } from '@/services/SubscriptionSync'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, Alert, Image, Linking, Text, View, TouchableOpacity, SafeAreaView, ScrollView, Switch, Modal } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { API_URL } from '@/constants';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useDashboard } from '../../context/DashboardContext'
 import { buildProPurchaseCopy, useRevenueCat } from '../../context/RevenueCatContext'
 import { LoadingScreen } from '../../components/LoadingScreen'
@@ -165,8 +167,18 @@ const buildBillingDisplay = (
 
 const Profile = () => {
   const { dashboardState, refreshDashboard } = useDashboard()
+  // Admin screens have their own dashboard provider. Refresh this tab when
+  // returning so membership and organization edits appear without a relaunch.
+  const refreshDashboardRef = useRef(refreshDashboard)
+  refreshDashboardRef.current = refreshDashboard
+  useFocusEffect(useCallback(() => {
+    refreshDashboardRef.current().catch((error) => {
+      console.warn('Profile dashboard refresh failed:', error)
+    })
+  }, []))
   const {
     customerInfo,
+    activeOrganizationId,
     error: revenueCatError,
     isGreekGeekPro,
     isLoading: revenueCatLoading,
@@ -185,7 +197,7 @@ const Profile = () => {
     : null
   const orgRevenueCatIsCurrent = data?.org?.revenuecat_subscription_status === 'active'
     && (!orgRevenueCatExpiresAt || orgRevenueCatExpiresAt > new Date())
-  const hasRevenueCatBilling = isGreekGeekPro || orgRevenueCatIsCurrent
+  const hasRevenueCatBilling = (activeOrganizationId === data?.org?.revenuecat_app_user_id && isGreekGeekPro) || orgRevenueCatIsCurrent
   const hasOrgPremiumAccess = orgIsPremium || isGreekGeekPro
   const canManageOrgSubscription = Boolean(data?.is_staff && data?.org)
   const canPurchaseOrgSubscription = canManageOrgSubscription && !hasOrgPremiumAccess
@@ -602,10 +614,10 @@ const Profile = () => {
         return
       }
 
-      const info = await purchaseProPackage()
+      const info = await purchaseProPackage(data)
       if (!info) return
 
-      if (info.entitlements.active[REVENUECAT_ENTITLEMENT_ID]) {
+      if (hasProAccess(info)) {
         await refreshDashboard().catch((error) => {
           console.warn('Dashboard refresh after RevenueCat purchase failed:', error)
         })
@@ -615,7 +627,7 @@ const Profile = () => {
         Alert.alert('Purchase pending', 'Your purchase is processing. GreekGeek Pro will unlock when the store confirms it.')
       }
     } catch (error) {
-      Alert.alert('Purchase failed', 'Could not complete the purchase. Please try again.')
+      Alert.alert(error instanceof PurchaseSyncError ? 'Purchase saved' : 'Purchase failed', error instanceof PurchaseSyncError ? error.message : 'Could not complete the purchase. Please try again.')
     } finally {
       setSubscriptionAction(null)
     }
@@ -624,8 +636,8 @@ const Profile = () => {
   const handleRestorePurchases = async () => {
     setSubscriptionAction('restore')
     try {
-      const info = await restorePurchases()
-      if (info?.entitlements.active[REVENUECAT_ENTITLEMENT_ID]) {
+      const info = await restorePurchases(data)
+      if (hasProAccess(info)) {
         await refreshDashboard().catch((error) => {
           console.warn('Dashboard refresh after RevenueCat restore failed:', error)
         })
@@ -635,7 +647,7 @@ const Profile = () => {
         Alert.alert('No purchases found', 'No active GreekGeek Pro subscription was found for this store account.')
       }
     } catch (error) {
-      Alert.alert('Restore failed', 'Could not restore purchases. Please try again.')
+      Alert.alert('Restore incomplete', error instanceof PurchaseSyncError ? error.message : 'Could not restore purchases. Please try again.')
     } finally {
       setSubscriptionAction(null)
     }
@@ -644,11 +656,12 @@ const Profile = () => {
   const handleOpenCustomerCenter = async () => {
     setSubscriptionAction('customer-center')
     try {
-      await withTimeout(openCustomerCenter(), 15000, 'Customer Center')
+      await openCustomerCenter(data)
+      await refreshDashboard()
     } catch (error) {
       Alert.alert(
         'Subscription management unavailable',
-        'Could not open Customer Center. This can happen in Simulator or Test Store builds. Test App Store subscription management on a sandbox device or TestFlight build.'
+        error instanceof PurchaseSyncError ? error.message : 'Could not open subscription management. Please try again.'
       )
     } finally {
       setSubscriptionAction(null)

@@ -36,11 +36,16 @@ const SignUp = () => {
   const [organizationName, setOrganizationName] = useState('')
 
   const search = async () => {
+    const code = form.orgCode.trim()
+    if (!code) {
+      setFormErrors((prevErrors) => ({ ...prevErrors, orgCode: 'Enter your organization code.' }))
+      return
+    }
     setIsSubmitting(true)
     try {
       let result = await axios.request({
         method: 'GET',
-        url: `${API_URL}api/org-by-code/?reg_code=${form.orgCode}`
+        url: `${API_URL}api/org-by-code/?reg_code=${encodeURIComponent(code)}`
       })
       if (result.status === 200) {
         setOrganizationName(result.data.name)
