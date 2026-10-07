@@ -30,7 +30,10 @@ jobs:
           from django.conf import settings
           from django.urls import resolve
           from dotenv import find_dotenv, set_key
-          from Study.models import Org
+          from Study.models import Org, User
+          from django.db import transaction
+          from django.test import override_settings
+          from rest_framework.test import APIClient
           org = Org.objects.get(id=16, name='Apple Paid')
           key = settings.REVENUECAT_API_KEY
           if os.environ.get('RELEASE_CONFIGURE_SDK_KEY') == 'true':
@@ -65,6 +68,21 @@ jobs:
               else:
                   result['error_code'] = response.json().get('code')
                   result['error_message'] = response.json().get('message')
+          if key and result.get('revenuecat_http_status') == 200:
+              original_premium = org.is_premium
+              with transaction.atomic(), override_settings(REVENUECAT_API_KEY=key, ALLOWED_HOSTS=['testserver']):
+                  client = APIClient()
+                  client.force_authenticate(user=User.objects.get(email='admin@apple2.com', org=org, is_staff=True))
+                  synced = client.post('/api/billing/sync-revenuecat/', {}, format='json')
+                  org.refresh_from_db()
+                  result['sync_endpoint_status'] = synced.status_code
+                  result['verified_subscription_status'] = org.revenuecat_subscription_status
+                  result['verified_premium'] = org.is_premium
+                  assert synced.status_code == 200, 'Live subscriber sync failed'
+                  assert synced.data['is_premium'] == org.is_premium
+                  transaction.set_rollback(True)
+              org.refresh_from_db()
+              result['manual_test_access_preserved'] = org.is_premium == original_premium
           print(json.dumps(result))
           PY
           if [ "$CONFIGURE_SDK_KEY" = "true" ]; then
