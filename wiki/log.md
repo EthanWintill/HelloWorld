@@ -331,3 +331,7 @@ Production build 17 compiled successfully. RevenueCat configuration correction i
 ## 2026-10-06 — App Store Connect upload retry
 
 Retried upload of completed production build 17 at the user’s request. [Submission 20a0bd55](https://expo.dev/accounts/greekgeek/projects/GreekGeekStudy/submissions/20a0bd55-c01e-4bbb-a91a-8df7c9f28561) failed with the same required Apple agreement missing/expired error. The Account Holder must resolve the agreement before another upload; no new build is required.
+
+## 2026-10-07 — App Store Connect upload succeeded
+
+Verified the existing submission key accesses the correct GreekGeek app with Apple HTTP 200 and belongs to Samuel Bryant’s team. Production build 17 upload completed successfully in [submission 8f73dc23](https://expo.dev/accounts/greekgeek/projects/GreekGeekStudy/submissions/8f73dc23-ee51-4049-a0a6-23f49a6b4b3a). Apple processing is pending. Earlier uploader agreement errors were not independent evidence that the Account Holder had failed to accept the agreement. No App Review submission performed.
